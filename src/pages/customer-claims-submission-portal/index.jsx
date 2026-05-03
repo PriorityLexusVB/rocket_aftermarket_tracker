@@ -1,20 +1,17 @@
 import React, { useState, useEffect } from 'react'
 import AppLayout from '../../components/layouts/AppLayout'
 import { claimsService } from '../../services/claimsService'
-import {
-  FileText,
-  Upload,
-  Search,
-  CheckCircle,
-  AlertCircle,
-  Phone,
-  Mail,
-  User,
-  Car,
-  Package,
-  X,
-} from 'lucide-react'
-
+import FileText from 'lucide-react/dist/esm/icons/file-text.js'
+import Upload from 'lucide-react/dist/esm/icons/upload.js'
+import Search from 'lucide-react/dist/esm/icons/search.js'
+import CheckCircle from 'lucide-react/dist/esm/icons/check-circle.js'
+import AlertCircle from 'lucide-react/dist/esm/icons/alert-circle.js'
+import Phone from 'lucide-react/dist/esm/icons/phone.js'
+import Mail from 'lucide-react/dist/esm/icons/mail.js'
+import User from 'lucide-react/dist/esm/icons/user.js'
+import Car from 'lucide-react/dist/esm/icons/car.js'
+import Package from 'lucide-react/dist/esm/icons/package.js'
+import X from 'lucide-react/dist/esm/icons/x.js'
 // Import step schemas for validating the multi‑step claim wizard
 import {
   customerClaimStep1Schema,

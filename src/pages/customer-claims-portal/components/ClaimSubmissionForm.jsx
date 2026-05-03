@@ -1,5 +1,8 @@
 import React, { useState } from 'react'
-import { Upload, X, AlertCircle, File } from 'lucide-react'
+import Upload from 'lucide-react/dist/esm/icons/upload.js'
+import X from 'lucide-react/dist/esm/icons/x.js'
+import AlertCircle from 'lucide-react/dist/esm/icons/alert-circle.js'
+import File from 'lucide-react/dist/esm/icons/file.js'
 import { claimsService } from '../../../services/claimsService'
 
 const ClaimSubmissionForm = ({ vehicles, products, onSubmit, onCancel }) => {

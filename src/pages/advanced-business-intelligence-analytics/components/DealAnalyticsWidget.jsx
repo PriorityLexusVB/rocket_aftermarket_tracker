@@ -1,5 +1,9 @@
 import React from 'react'
-import { ShoppingCart, Package, TrendingUp, DollarSign, BarChart3 } from 'lucide-react'
+import ShoppingCart from 'lucide-react/dist/esm/icons/shopping-cart.js'
+import Package from 'lucide-react/dist/esm/icons/package.js'
+import TrendingUp from 'lucide-react/dist/esm/icons/trending-up.js'
+import DollarSign from 'lucide-react/dist/esm/icons/dollar-sign.js'
+import BarChart3 from 'lucide-react/dist/esm/icons/bar-chart-3.js'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 
 const DealAnalyticsWidget = ({ data }) => {

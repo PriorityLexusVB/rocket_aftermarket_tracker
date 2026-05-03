@@ -1,8 +1,10 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import { Home, FileText, Lock, ArrowLeft } from 'lucide-react'
-
+import Home from 'lucide-react/dist/esm/icons/home.js'
+import FileText from 'lucide-react/dist/esm/icons/file-text.js'
+import Lock from 'lucide-react/dist/esm/icons/lock.js'
+import ArrowLeft from 'lucide-react/dist/esm/icons/arrow-left.js'
 const NotFound = () => {
   const { user } = useAuth()
 

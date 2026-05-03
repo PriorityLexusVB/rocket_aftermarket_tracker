@@ -1,16 +1,13 @@
 import React, { useState } from 'react'
-import {
-  X,
-  Calendar,
-  User,
-  Wrench,
-  AlertTriangle,
-  Clock,
-  MapPin,
-  Save,
-  ArrowRight,
-} from 'lucide-react'
-
+import X from 'lucide-react/dist/esm/icons/x.js'
+import Calendar from 'lucide-react/dist/esm/icons/calendar.js'
+import User from 'lucide-react/dist/esm/icons/user.js'
+import Wrench from 'lucide-react/dist/esm/icons/wrench.js'
+import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle.js'
+import Clock from 'lucide-react/dist/esm/icons/clock.js'
+import MapPin from 'lucide-react/dist/esm/icons/map-pin.js'
+import Save from 'lucide-react/dist/esm/icons/save.js'
+import ArrowRight from 'lucide-react/dist/esm/icons/arrow-right.js'
 const StatusUpdateModal = ({ job, onClose, onStatusUpdate }) => {
   const [selectedStatus, setSelectedStatus] = useState(job?.job_status)
   const [notes, setNotes] = useState('')

@@ -5,16 +5,14 @@ import { useAuth } from '../../contexts/AuthContext'
 import useTenant from '../../hooks/useTenant'
 import AppLayout from '../../components/layouts/AppLayout'
 import UIButton from '../../components/ui/Button'
-import {
-  Users,
-  Package,
-  MessageSquare,
-  Building,
-  UserCheck,
-  AlertCircle,
-  RefreshCw,
-  QrCode,
-} from 'lucide-react'
+import Users from 'lucide-react/dist/esm/icons/users.js'
+import Package from 'lucide-react/dist/esm/icons/package.js'
+import MessageSquare from 'lucide-react/dist/esm/icons/message-square.js'
+import Building from 'lucide-react/dist/esm/icons/building.js'
+import UserCheck from 'lucide-react/dist/esm/icons/user-check.js'
+import AlertCircle from 'lucide-react/dist/esm/icons/alert-circle.js'
+import RefreshCw from 'lucide-react/dist/esm/icons/refresh-cw.js'
+import QrCode from 'lucide-react/dist/esm/icons/qr-code.js'
 import { useLogger } from '../../hooks/useLogger'
 import { clearDropdownCache } from '../../services/dropdownService'
 import adminService from '../../services/adminService'

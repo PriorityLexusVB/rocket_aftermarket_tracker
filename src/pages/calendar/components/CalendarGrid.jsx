@@ -9,7 +9,8 @@ import {
   set as setHM,
   startOfDay,
 } from 'date-fns'
-import { Clock, MapPin } from 'lucide-react'
+import Clock from 'lucide-react/dist/esm/icons/clock.js'
+import MapPin from 'lucide-react/dist/esm/icons/map-pin.js'
 import { estLabel } from '../../../lib/time'
 
 // Enhanced safe date parsing utility with comprehensive validation

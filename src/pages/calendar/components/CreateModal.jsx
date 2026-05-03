@@ -1,16 +1,14 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
-import {
-  X,
-  Search,
-  Calendar,
-  User,
-  MapPin,
-  AlertTriangle,
-  Plus,
-  Trash2,
-  Car,
-  UserPlus,
-} from 'lucide-react'
+import X from 'lucide-react/dist/esm/icons/x.js'
+import Search from 'lucide-react/dist/esm/icons/search.js'
+import Calendar from 'lucide-react/dist/esm/icons/calendar.js'
+import User from 'lucide-react/dist/esm/icons/user.js'
+import MapPin from 'lucide-react/dist/esm/icons/map-pin.js'
+import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle.js'
+import Plus from 'lucide-react/dist/esm/icons/plus.js'
+import Trash2 from 'lucide-react/dist/esm/icons/trash-2.js'
+import Car from 'lucide-react/dist/esm/icons/car.js'
+import UserPlus from 'lucide-react/dist/esm/icons/user-plus.js'
 import { format } from 'date-fns'
 import { combineDateAndTime, toDateInputValue } from '@/utils/dateTimeUtils'
 import { syncJobPartsForJob } from '../../../services/jobPartsService'

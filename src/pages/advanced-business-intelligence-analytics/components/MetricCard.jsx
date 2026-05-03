@@ -1,6 +1,6 @@
 import React from 'react'
-import { TrendingUp, TrendingDown } from 'lucide-react'
-
+import TrendingUp from 'lucide-react/dist/esm/icons/trending-up.js'
+import TrendingDown from 'lucide-react/dist/esm/icons/trending-down.js'
 const MetricCard = ({ icon, title, value, trend, trendUp, description }) => {
   return (
     <div className="bg-white/5 border border-white/10 rounded-xl p-6 shadow-sm hover:bg-white/10 transition">

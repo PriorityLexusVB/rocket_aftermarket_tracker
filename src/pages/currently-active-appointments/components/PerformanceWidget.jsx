@@ -1,6 +1,10 @@
 import React from 'react'
-import { X, TrendingUp, Clock, CheckCircle, BarChart3, Calendar } from 'lucide-react'
-
+import X from 'lucide-react/dist/esm/icons/x.js'
+import TrendingUp from 'lucide-react/dist/esm/icons/trending-up.js'
+import Clock from 'lucide-react/dist/esm/icons/clock.js'
+import CheckCircle from 'lucide-react/dist/esm/icons/check-circle.js'
+import BarChart3 from 'lucide-react/dist/esm/icons/bar-chart-3.js'
+import Calendar from 'lucide-react/dist/esm/icons/calendar.js'
 const PerformanceWidget = ({ metrics, onClose }) => {
   const formatHours = (hours) => {
     if (hours < 1) return `${Math.round(hours * 60)} min`

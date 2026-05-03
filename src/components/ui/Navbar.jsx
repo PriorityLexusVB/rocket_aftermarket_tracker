@@ -1,21 +1,19 @@
 import React, { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
-import {
-  Menu,
-  X,
-  Bell,
-  User,
-  LogOut,
-  Settings,
-  Calendar,
-  Car,
-  Package,
-  BarChart3,
-  Clock,
-  FileText,
-  MoreHorizontal,
-} from 'lucide-react'
+import Menu from 'lucide-react/dist/esm/icons/menu.js'
+import X from 'lucide-react/dist/esm/icons/x.js'
+import Bell from 'lucide-react/dist/esm/icons/bell.js'
+import User from 'lucide-react/dist/esm/icons/user.js'
+import LogOut from 'lucide-react/dist/esm/icons/log-out.js'
+import Settings from 'lucide-react/dist/esm/icons/settings.js'
+import Calendar from 'lucide-react/dist/esm/icons/calendar.js'
+import Car from 'lucide-react/dist/esm/icons/car.js'
+import Package from 'lucide-react/dist/esm/icons/package.js'
+import BarChart3 from 'lucide-react/dist/esm/icons/bar-chart-3.js'
+import Clock from 'lucide-react/dist/esm/icons/clock.js'
+import FileText from 'lucide-react/dist/esm/icons/file-text.js'
+import MoreHorizontal from 'lucide-react/dist/esm/icons/more-horizontal.js'
 import { useAuth } from '../../contexts/AuthContext'
 import { notificationService } from '../../services/notificationService'
 import QuickNavigation from '../common/QuickNavigation'

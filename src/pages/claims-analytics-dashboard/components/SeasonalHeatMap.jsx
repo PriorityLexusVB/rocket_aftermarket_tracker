@@ -1,6 +1,6 @@
 import React from 'react'
-import { Calendar, TrendingUp } from 'lucide-react'
-
+import Calendar from 'lucide-react/dist/esm/icons/calendar.js'
+import TrendingUp from 'lucide-react/dist/esm/icons/trending-up.js'
 const SeasonalHeatMap = ({ data = { monthly: [], seasonal: [] }, title }) => {
   const { monthly = [], seasonal = [] } = data
 

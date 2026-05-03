@@ -1,6 +1,11 @@
 import React, { useState } from 'react'
-import { Image as ImageIcon, Search, Calendar, Eye, Download, User, Clock } from 'lucide-react'
-
+import ImageIcon from 'lucide-react/dist/esm/icons/image.js'
+import Search from 'lucide-react/dist/esm/icons/search.js'
+import Calendar from 'lucide-react/dist/esm/icons/calendar.js'
+import Eye from 'lucide-react/dist/esm/icons/eye.js'
+import Download from 'lucide-react/dist/esm/icons/download.js'
+import User from 'lucide-react/dist/esm/icons/user.js'
+import Clock from 'lucide-react/dist/esm/icons/clock.js'
 const PhotoGalleryPanel = ({ photos = [], loading, filters = {}, onFiltersChange }) => {
   const [selectedPhoto, setSelectedPhoto] = useState(null)
   const [viewMode, setViewMode] = useState('grid') // 'grid' or 'list'

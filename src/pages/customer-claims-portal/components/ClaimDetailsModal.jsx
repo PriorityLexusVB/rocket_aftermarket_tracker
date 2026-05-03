@@ -1,15 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import {
-  X,
-  Calendar,
-  DollarSign,
-  User,
-  Car,
-  Package,
-  MessageSquare,
-  FileImage,
-  ExternalLink,
-} from 'lucide-react'
+import X from 'lucide-react/dist/esm/icons/x.js'
+import Calendar from 'lucide-react/dist/esm/icons/calendar.js'
+import DollarSign from 'lucide-react/dist/esm/icons/dollar-sign.js'
+import User from 'lucide-react/dist/esm/icons/user.js'
+import Car from 'lucide-react/dist/esm/icons/car.js'
+import Package from 'lucide-react/dist/esm/icons/package.js'
+import MessageSquare from 'lucide-react/dist/esm/icons/message-square.js'
+import FileImage from 'lucide-react/dist/esm/icons/file-image.js'
+import ExternalLink from 'lucide-react/dist/esm/icons/external-link.js'
 import { claimsService } from '../../../services/claimsService'
 
 const ClaimDetailsModal = ({ claim, onClose }) => {

@@ -1,18 +1,16 @@
 import React, { useState, useEffect } from 'react'
-import {
-  Search,
-  Clock,
-  AlertCircle,
-  CheckCircle,
-  XCircle,
-  User,
-  Car,
-  Package,
-  DollarSign,
-  FileText,
-  Eye,
-  ArrowUpDown,
-} from 'lucide-react'
+import Search from 'lucide-react/dist/esm/icons/search.js'
+import Clock from 'lucide-react/dist/esm/icons/clock.js'
+import AlertCircle from 'lucide-react/dist/esm/icons/alert-circle.js'
+import CheckCircle from 'lucide-react/dist/esm/icons/check-circle.js'
+import XCircle from 'lucide-react/dist/esm/icons/x-circle.js'
+import User from 'lucide-react/dist/esm/icons/user.js'
+import Car from 'lucide-react/dist/esm/icons/car.js'
+import Package from 'lucide-react/dist/esm/icons/package.js'
+import DollarSign from 'lucide-react/dist/esm/icons/dollar-sign.js'
+import FileText from 'lucide-react/dist/esm/icons/file-text.js'
+import Eye from 'lucide-react/dist/esm/icons/eye.js'
+import ArrowUpDown from 'lucide-react/dist/esm/icons/arrow-up-down.js'
 import { claimsService } from '../../services/claimsService'
 import { handleAuthError } from '@/lib/authErrorHandler'
 import ClaimProcessingModal from './components/ClaimProcessingModal'

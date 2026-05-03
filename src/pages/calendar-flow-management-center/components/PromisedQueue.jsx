@@ -1,5 +1,7 @@
 import React, { useMemo } from 'react'
-import { CheckCircle, Clock, RefreshCw } from 'lucide-react'
+import CheckCircle from 'lucide-react/dist/esm/icons/check-circle.js'
+import Clock from 'lucide-react/dist/esm/icons/clock.js'
+import RefreshCw from 'lucide-react/dist/esm/icons/refresh-cw.js'
 import { formatEtDateLabel } from '@/utils/scheduleDisplay'
 import { getJobLocationType } from '@/utils/locationType'
 

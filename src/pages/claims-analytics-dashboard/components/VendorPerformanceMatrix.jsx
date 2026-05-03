@@ -1,6 +1,8 @@
 import React from 'react'
-import { Star, Clock, DollarSign, Award } from 'lucide-react'
-
+import Star from 'lucide-react/dist/esm/icons/star.js'
+import Clock from 'lucide-react/dist/esm/icons/clock.js'
+import DollarSign from 'lucide-react/dist/esm/icons/dollar-sign.js'
+import Award from 'lucide-react/dist/esm/icons/award.js'
 const VendorPerformanceMatrix = ({ data = [], title }) => {
   const [sortBy, setSortBy] = React.useState('efficiency_score')
   const [sortOrder, setSortOrder] = React.useState('desc')

@@ -1,6 +1,7 @@
 import React from 'react'
-import { Filter, Building2, Star } from 'lucide-react'
-
+import Filter from 'lucide-react/dist/esm/icons/filter.js'
+import Building2 from 'lucide-react/dist/esm/icons/building-2.js'
+import Star from 'lucide-react/dist/esm/icons/star.js'
 const FilterControls = ({
   statusFilter,
   setStatusFilter,

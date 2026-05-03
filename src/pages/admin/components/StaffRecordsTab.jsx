@@ -1,7 +1,9 @@
 import React from 'react'
 import UIButton from '../../../components/ui/Button'
-import { Building, Edit, Plus, Trash2 } from 'lucide-react'
-
+import Building from 'lucide-react/dist/esm/icons/building.js'
+import Edit from 'lucide-react/dist/esm/icons/edit.js'
+import Plus from 'lucide-react/dist/esm/icons/plus.js'
+import Trash2 from 'lucide-react/dist/esm/icons/trash-2.js'
 const StaffRecordsTab = ({
   staffRecords,
   onlyMyOrg,

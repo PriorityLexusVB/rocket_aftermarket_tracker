@@ -1,6 +1,8 @@
 import React, { useState, useRef } from 'react'
-import { Upload, X, Camera, AlertCircle } from 'lucide-react'
-
+import Upload from 'lucide-react/dist/esm/icons/upload.js'
+import X from 'lucide-react/dist/esm/icons/x.js'
+import Camera from 'lucide-react/dist/esm/icons/camera.js'
+import AlertCircle from 'lucide-react/dist/esm/icons/alert-circle.js'
 const PhotoUploadModal = ({ isOpen, onClose, onUpload, jobInfo, vehicleInfo }) => {
   const [dragOver, setDragOver] = useState(false)
   const [selectedFile, setSelectedFile] = useState(null)

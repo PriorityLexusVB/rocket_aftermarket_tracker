@@ -1,6 +1,10 @@
 import React from 'react'
-import { Clock, AlertCircle, CheckCircle, XCircle, DollarSign, TrendingUp } from 'lucide-react'
-
+import Clock from 'lucide-react/dist/esm/icons/clock.js'
+import AlertCircle from 'lucide-react/dist/esm/icons/alert-circle.js'
+import CheckCircle from 'lucide-react/dist/esm/icons/check-circle.js'
+import XCircle from 'lucide-react/dist/esm/icons/x-circle.js'
+import DollarSign from 'lucide-react/dist/esm/icons/dollar-sign.js'
+import TrendingUp from 'lucide-react/dist/esm/icons/trending-up.js'
 const ClaimStatsWidget = ({ stats }) => {
   if (!stats) return null
 

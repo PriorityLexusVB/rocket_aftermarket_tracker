@@ -1,21 +1,19 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import {
-  X,
-  Clock,
-  User,
-  Building2,
-  MessageCircle,
-  FileText,
-  Edit3,
-  Save,
-  AlertTriangle,
-  RefreshCw,
-  Car,
-  DollarSign,
-  MapPin,
-  CalendarClock,
-} from 'lucide-react'
+import X from 'lucide-react/dist/esm/icons/x.js'
+import Clock from 'lucide-react/dist/esm/icons/clock.js'
+import User from 'lucide-react/dist/esm/icons/user.js'
+import Building2 from 'lucide-react/dist/esm/icons/building-2.js'
+import MessageCircle from 'lucide-react/dist/esm/icons/message-circle.js'
+import FileText from 'lucide-react/dist/esm/icons/file-text.js'
+import Edit3 from 'lucide-react/dist/esm/icons/edit-3.js'
+import Save from 'lucide-react/dist/esm/icons/save.js'
+import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle.js'
+import RefreshCw from 'lucide-react/dist/esm/icons/refresh-cw.js'
+import Car from 'lucide-react/dist/esm/icons/car.js'
+import DollarSign from 'lucide-react/dist/esm/icons/dollar-sign.js'
+import MapPin from 'lucide-react/dist/esm/icons/map-pin.js'
+import CalendarClock from 'lucide-react/dist/esm/icons/calendar-clock.js'
 import { appointmentsService } from '../../../services/appointmentsService'
 import {
   getAppointmentScheduleDisplay,

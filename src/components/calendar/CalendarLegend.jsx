@@ -1,5 +1,6 @@
 import React from 'react'
-import { Building, Truck } from 'lucide-react'
+import Building from 'lucide-react/dist/esm/icons/building.js'
+import Truck from 'lucide-react/dist/esm/icons/truck.js'
 import { getColorLegend, getStatusLegend } from '../../utils/calendarColors'
 
 /**

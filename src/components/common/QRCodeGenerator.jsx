@@ -1,6 +1,11 @@
 import React, { useState, useEffect } from 'react'
 import QRCode from 'qrcode'
-import { QrCode, Download, Copy, Share, CheckCircle, AlertCircle } from 'lucide-react'
+import QrCode from 'lucide-react/dist/esm/icons/qr-code.js'
+import Download from 'lucide-react/dist/esm/icons/download.js'
+import Copy from 'lucide-react/dist/esm/icons/copy.js'
+import Share from 'lucide-react/dist/esm/icons/share.js'
+import CheckCircle from 'lucide-react/dist/esm/icons/check-circle.js'
+import AlertCircle from 'lucide-react/dist/esm/icons/alert-circle.js'
 import Button from '../ui/Button'
 
 const QRCodeGenerator = ({

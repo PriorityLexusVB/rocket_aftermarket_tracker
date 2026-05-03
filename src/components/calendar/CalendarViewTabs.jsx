@@ -1,6 +1,8 @@
 import React, { useMemo } from 'react'
 import { Link, useLocation, useSearchParams } from 'react-router-dom'
-import { Calendar, List, LayoutGrid } from 'lucide-react'
+import Calendar from 'lucide-react/dist/esm/icons/calendar.js'
+import List from 'lucide-react/dist/esm/icons/list.js'
+import LayoutGrid from 'lucide-react/dist/esm/icons/layout-grid.js'
 import {
   getCalendarDestination,
   trackCalendarNavigation,

@@ -1,17 +1,14 @@
 import React, { useState, useEffect } from 'react'
 import { claimsService } from '../../services/claimsService'
-import {
-  FileText,
-  CheckCircle,
-  AlertCircle,
-  User,
-  Calendar,
-  Package,
-  MessageSquare,
-  Upload,
-  X,
-} from 'lucide-react'
-
+import FileText from 'lucide-react/dist/esm/icons/file-text.js'
+import CheckCircle from 'lucide-react/dist/esm/icons/check-circle.js'
+import AlertCircle from 'lucide-react/dist/esm/icons/alert-circle.js'
+import User from 'lucide-react/dist/esm/icons/user.js'
+import Calendar from 'lucide-react/dist/esm/icons/calendar.js'
+import Package from 'lucide-react/dist/esm/icons/package.js'
+import MessageSquare from 'lucide-react/dist/esm/icons/message-square.js'
+import Upload from 'lucide-react/dist/esm/icons/upload.js'
+import X from 'lucide-react/dist/esm/icons/x.js'
 // Import centralized schema for validating guest warranty claims
 import { guestClaimSchema } from '../../utils/claimSchemas'
 

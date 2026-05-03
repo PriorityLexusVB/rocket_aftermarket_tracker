@@ -1,6 +1,8 @@
 import React, { useState } from 'react'
-import { FileText, X, Save, AlertCircle } from 'lucide-react'
-
+import FileText from 'lucide-react/dist/esm/icons/file-text.js'
+import X from 'lucide-react/dist/esm/icons/x.js'
+import Save from 'lucide-react/dist/esm/icons/save.js'
+import AlertCircle from 'lucide-react/dist/esm/icons/alert-circle.js'
 const NoteCreationModal = ({ isOpen, onClose, onSave, jobInfo, vehicleInfo }) => {
   const [formData, setFormData] = useState({
     category: 'Progress Updates',

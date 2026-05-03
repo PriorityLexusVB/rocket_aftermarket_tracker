@@ -1,15 +1,13 @@
 import React, { useState } from 'react'
-import {
-  Calendar,
-  User,
-  Building2,
-  Phone,
-  Mail,
-  AlertTriangle,
-  Car,
-  ArrowRight,
-  Check,
-} from 'lucide-react'
+import Calendar from 'lucide-react/dist/esm/icons/calendar.js'
+import User from 'lucide-react/dist/esm/icons/user.js'
+import Building2 from 'lucide-react/dist/esm/icons/building-2.js'
+import Phone from 'lucide-react/dist/esm/icons/phone.js'
+import Mail from 'lucide-react/dist/esm/icons/mail.js'
+import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle.js'
+import Car from 'lucide-react/dist/esm/icons/car.js'
+import ArrowRight from 'lucide-react/dist/esm/icons/arrow-right.js'
+import Check from 'lucide-react/dist/esm/icons/check.js'
 import { getAppointmentScheduleDisplay, toSafeDateForTimeZone } from '@/utils/scheduleDisplay'
 import { getReopenTargetStatus } from '@/utils/jobStatusTimeRules.js'
 

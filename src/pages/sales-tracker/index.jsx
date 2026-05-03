@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import { Plus } from 'lucide-react'
-
+import Plus from 'lucide-react/dist/esm/icons/plus.js'
 import SpreadsheetTable from './components/SpreadsheetTable'
 import SummaryCards from './components/SummaryCards'
 import NewSaleModal from './components/NewSaleModal'

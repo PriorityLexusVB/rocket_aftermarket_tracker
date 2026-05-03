@@ -1,6 +1,5 @@
 import React from 'react'
-import { Filter } from 'lucide-react'
-
+import Filter from 'lucide-react/dist/esm/icons/filter.js'
 const FilterPanel = ({
   vendors = [],
   filters = { vendors: [], priorities: [], overdue: false, dateRange: 'all' },

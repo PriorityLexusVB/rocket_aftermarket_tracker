@@ -1,6 +1,9 @@
 import React, { useState } from 'react'
-import { Clock, User, Phone, Calendar, Search } from 'lucide-react'
-
+import Clock from 'lucide-react/dist/esm/icons/clock.js'
+import User from 'lucide-react/dist/esm/icons/user.js'
+import Phone from 'lucide-react/dist/esm/icons/phone.js'
+import Calendar from 'lucide-react/dist/esm/icons/calendar.js'
+import Search from 'lucide-react/dist/esm/icons/search.js'
 const PromisedQueue = ({ jobs = [], onScheduleJob }) => {
   const [searchQuery, setSearchQuery] = useState('')
 

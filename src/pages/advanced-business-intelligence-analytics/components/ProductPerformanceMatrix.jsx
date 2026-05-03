@@ -1,6 +1,9 @@
 import React, { useState } from 'react'
-import { Package, TrendingUp, TrendingDown, DollarSign, ShoppingCart } from 'lucide-react'
-
+import Package from 'lucide-react/dist/esm/icons/package.js'
+import TrendingUp from 'lucide-react/dist/esm/icons/trending-up.js'
+import TrendingDown from 'lucide-react/dist/esm/icons/trending-down.js'
+import DollarSign from 'lucide-react/dist/esm/icons/dollar-sign.js'
+import ShoppingCart from 'lucide-react/dist/esm/icons/shopping-cart.js'
 const ProductPerformanceMatrix = ({ data, selectedCategory }) => {
   const [sortBy, setSortBy] = useState('total_revenue')
   const [sortOrder, setSortOrder] = useState('desc')

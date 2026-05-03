@@ -1,20 +1,18 @@
 import React, { useState, useMemo, useEffect } from 'react'
-import {
-  X,
-  Download,
-  Copy,
-  FileText,
-  Calendar,
-  Clock,
-  Car,
-  Building2,
-  MapPin,
-  GitBranch,
-  CheckCircle,
-  RefreshCw,
-  XCircle,
-  RotateCcw,
-} from 'lucide-react'
+import X from 'lucide-react/dist/esm/icons/x.js'
+import Download from 'lucide-react/dist/esm/icons/download.js'
+import Copy from 'lucide-react/dist/esm/icons/copy.js'
+import FileText from 'lucide-react/dist/esm/icons/file-text.js'
+import Calendar from 'lucide-react/dist/esm/icons/calendar.js'
+import Clock from 'lucide-react/dist/esm/icons/clock.js'
+import Car from 'lucide-react/dist/esm/icons/car.js'
+import Building2 from 'lucide-react/dist/esm/icons/building-2.js'
+import MapPin from 'lucide-react/dist/esm/icons/map-pin.js'
+import GitBranch from 'lucide-react/dist/esm/icons/git-branch.js'
+import CheckCircle from 'lucide-react/dist/esm/icons/check-circle.js'
+import RefreshCw from 'lucide-react/dist/esm/icons/refresh-cw.js'
+import XCircle from 'lucide-react/dist/esm/icons/x-circle.js'
+import RotateCcw from 'lucide-react/dist/esm/icons/rotate-ccw.js'
 import { formatTime, getStatusBadge } from '../../../lib/time'
 import { formatEtDateLabel } from '@/utils/scheduleDisplay'
 import { isJobOnSite, getJobLocationType } from '@/utils/locationType'

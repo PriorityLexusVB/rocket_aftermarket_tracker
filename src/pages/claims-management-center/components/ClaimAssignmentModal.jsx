@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
-import { X, User, Save } from 'lucide-react'
-
+import X from 'lucide-react/dist/esm/icons/x.js'
+import User from 'lucide-react/dist/esm/icons/user.js'
+import Save from 'lucide-react/dist/esm/icons/save.js'
 const ClaimAssignmentModal = ({ claim, staff, onClose, onUpdate }) => {
   const [selectedAssignee, setSelectedAssignee] = useState(claim?.assigned_to || '')
   const [saving, setSaving] = useState(false)

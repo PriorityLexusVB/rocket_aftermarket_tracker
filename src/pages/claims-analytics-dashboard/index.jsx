@@ -1,13 +1,11 @@
 import React, { useState, useEffect } from 'react'
-import {
-  BarChart3,
-  TrendingUp,
-  Clock,
-  DollarSign,
-  AlertTriangle,
-  RefreshCw,
-  PieChart,
-} from 'lucide-react'
+import BarChart3 from 'lucide-react/dist/esm/icons/bar-chart-3.js'
+import TrendingUp from 'lucide-react/dist/esm/icons/trending-up.js'
+import Clock from 'lucide-react/dist/esm/icons/clock.js'
+import DollarSign from 'lucide-react/dist/esm/icons/dollar-sign.js'
+import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle.js'
+import RefreshCw from 'lucide-react/dist/esm/icons/refresh-cw.js'
+import PieChart from 'lucide-react/dist/esm/icons/pie-chart.js'
 import claimsAnalyticsService from '../../services/claimsAnalyticsService'
 import MetricCard from './components/MetricCard'
 import ClaimsDistributionChart from './components/ClaimsDistributionChart'

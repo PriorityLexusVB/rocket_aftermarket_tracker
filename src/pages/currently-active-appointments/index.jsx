@@ -1,15 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import {
-  Clock,
-  Calendar,
-  Search,
-  AlertTriangle,
-  CheckCircle,
-  RefreshCw,
-  BarChart3,
-  ArrowUpRight,
-  CheckCheck,
-} from 'lucide-react'
+import Clock from 'lucide-react/dist/esm/icons/clock.js'
+import Calendar from 'lucide-react/dist/esm/icons/calendar.js'
+import Search from 'lucide-react/dist/esm/icons/search.js'
+import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle.js'
+import CheckCircle from 'lucide-react/dist/esm/icons/check-circle.js'
+import RefreshCw from 'lucide-react/dist/esm/icons/refresh-cw.js'
+import BarChart3 from 'lucide-react/dist/esm/icons/bar-chart-3.js'
+import ArrowUpRight from 'lucide-react/dist/esm/icons/arrow-up-right.js'
+import CheckCheck from 'lucide-react/dist/esm/icons/check-check.js'
 import AppLayout from '../../components/layouts/AppLayout'
 import { useNavigate } from 'react-router-dom'
 import useTenant from '@/hooks/useTenant'

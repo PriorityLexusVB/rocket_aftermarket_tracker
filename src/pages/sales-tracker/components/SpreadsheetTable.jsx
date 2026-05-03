@@ -1,6 +1,11 @@
 import React, { useState, useCallback, useEffect } from 'react'
-import { DollarSign, Truck, Clock, CheckCircle2, AlertCircle, Edit, Trash2 } from 'lucide-react'
-
+import DollarSign from 'lucide-react/dist/esm/icons/dollar-sign.js'
+import Truck from 'lucide-react/dist/esm/icons/truck.js'
+import Clock from 'lucide-react/dist/esm/icons/clock.js'
+import CheckCircle2 from 'lucide-react/dist/esm/icons/check-circle-2.js'
+import AlertCircle from 'lucide-react/dist/esm/icons/alert-circle.js'
+import Edit from 'lucide-react/dist/esm/icons/edit.js'
+import Trash2 from 'lucide-react/dist/esm/icons/trash-2.js'
 import { useLogger } from '../../../hooks/useLogger'
 
 // Service Configuration - Easy to modify and expand

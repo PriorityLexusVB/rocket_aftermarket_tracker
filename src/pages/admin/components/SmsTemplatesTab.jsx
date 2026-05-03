@@ -1,7 +1,8 @@
 import React from 'react'
 import UIButton from '../../../components/ui/Button'
-import { Edit, Plus, Trash2 } from 'lucide-react'
-
+import Edit from 'lucide-react/dist/esm/icons/edit.js'
+import Plus from 'lucide-react/dist/esm/icons/plus.js'
+import Trash2 from 'lucide-react/dist/esm/icons/trash-2.js'
 const SmsTemplatesTab = ({
   smsTemplates,
   deletingId,

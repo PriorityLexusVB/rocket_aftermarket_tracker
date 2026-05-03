@@ -1,5 +1,9 @@
 import React from 'react'
-import { Building2, Clock, Car, Calendar, AlertTriangle } from 'lucide-react'
+import Building2 from 'lucide-react/dist/esm/icons/building-2.js'
+import Clock from 'lucide-react/dist/esm/icons/clock.js'
+import Car from 'lucide-react/dist/esm/icons/car.js'
+import Calendar from 'lucide-react/dist/esm/icons/calendar.js'
+import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle.js'
 import { formatTime, isOverdue, getStatusBadge } from '../../../lib/time'
 import { formatEtDateLabel } from '@/utils/scheduleDisplay'
 

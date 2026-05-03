@@ -1,6 +1,9 @@
 import React, { useState } from 'react'
-import { FileText, Search, Clock, User, MessageSquare } from 'lucide-react'
-
+import FileText from 'lucide-react/dist/esm/icons/file-text.js'
+import Search from 'lucide-react/dist/esm/icons/search.js'
+import Clock from 'lucide-react/dist/esm/icons/clock.js'
+import User from 'lucide-react/dist/esm/icons/user.js'
+import MessageSquare from 'lucide-react/dist/esm/icons/message-square.js'
 const DocumentationNotesPanel = ({ notes = [], loading, filters = {}, onFiltersChange }) => {
   const [expandedNotes, setExpandedNotes] = useState(new Set())
 

@@ -1,25 +1,23 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import {
-  X,
-  Car,
-  Calendar,
-  Clock,
-  User,
-  Phone,
-  MapPin,
-  Building2,
-  Package,
-  MessageSquare,
-  Camera,
-  Copy,
-  Eye,
-  Play,
-  CheckCircle,
-  XCircle,
-  RotateCcw,
-  AlertTriangle,
-} from 'lucide-react'
+import X from 'lucide-react/dist/esm/icons/x.js'
+import Car from 'lucide-react/dist/esm/icons/car.js'
+import Calendar from 'lucide-react/dist/esm/icons/calendar.js'
+import Clock from 'lucide-react/dist/esm/icons/clock.js'
+import User from 'lucide-react/dist/esm/icons/user.js'
+import Phone from 'lucide-react/dist/esm/icons/phone.js'
+import MapPin from 'lucide-react/dist/esm/icons/map-pin.js'
+import Building2 from 'lucide-react/dist/esm/icons/building-2.js'
+import Package from 'lucide-react/dist/esm/icons/package.js'
+import MessageSquare from 'lucide-react/dist/esm/icons/message-square.js'
+import Camera from 'lucide-react/dist/esm/icons/camera.js'
+import Copy from 'lucide-react/dist/esm/icons/copy.js'
+import Eye from 'lucide-react/dist/esm/icons/eye.js'
+import Play from 'lucide-react/dist/esm/icons/play.js'
+import CheckCircle from 'lucide-react/dist/esm/icons/check-circle.js'
+import XCircle from 'lucide-react/dist/esm/icons/x-circle.js'
+import RotateCcw from 'lucide-react/dist/esm/icons/rotate-ccw.js'
+import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle.js'
 import { formatTime, isOverdue, getStatusBadge } from '../../../lib/time'
 import { formatEtDateLabel } from '@/utils/scheduleDisplay'
 import { openCalendar } from '@/lib/navigation/calendarNavigation'

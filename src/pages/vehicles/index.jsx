@@ -1,19 +1,17 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import {
-  Car,
-  Search,
-  Calendar,
-  History,
-  FileText,
-  Phone,
-  Mail,
-  Filter,
-  Grid3X3,
-  LayoutList,
-  Zap,
-  Award,
-  TrendingUp,
-} from 'lucide-react'
+import Car from 'lucide-react/dist/esm/icons/car.js'
+import Search from 'lucide-react/dist/esm/icons/search.js'
+import Calendar from 'lucide-react/dist/esm/icons/calendar.js'
+import History from 'lucide-react/dist/esm/icons/history.js'
+import FileText from 'lucide-react/dist/esm/icons/file-text.js'
+import Phone from 'lucide-react/dist/esm/icons/phone.js'
+import Mail from 'lucide-react/dist/esm/icons/mail.js'
+import Filter from 'lucide-react/dist/esm/icons/filter.js'
+import Grid3X3 from 'lucide-react/dist/esm/icons/grid-3x3.js'
+import LayoutList from 'lucide-react/dist/esm/icons/layout-list.js'
+import Zap from 'lucide-react/dist/esm/icons/zap.js'
+import Award from 'lucide-react/dist/esm/icons/award.js'
+import TrendingUp from 'lucide-react/dist/esm/icons/trending-up.js'
 import AppLayout from '../../components/layouts/AppLayout'
 import { vehicleService } from '../../services/vehicleService'
 import { useNavigate } from 'react-router-dom'

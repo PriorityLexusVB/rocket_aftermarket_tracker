@@ -1,5 +1,11 @@
 import React from 'react'
-import { Calendar, BarChart3, Clock, Settings, X, ChevronRight, Package } from 'lucide-react'
+import Calendar from 'lucide-react/dist/esm/icons/calendar.js'
+import BarChart3 from 'lucide-react/dist/esm/icons/bar-chart-3.js'
+import Clock from 'lucide-react/dist/esm/icons/clock.js'
+import Settings from 'lucide-react/dist/esm/icons/settings.js'
+import X from 'lucide-react/dist/esm/icons/x.js'
+import ChevronRight from 'lucide-react/dist/esm/icons/chevron-right.js'
+import Package from 'lucide-react/dist/esm/icons/package.js'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { getCalendarDestination } from '@/lib/navigation/calendarNavigation'
 

@@ -1,19 +1,16 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import {
-  X,
-  Calendar,
-  Clock,
-  MapPin,
-  User,
-  Phone,
-  Copy,
-  Download,
-  MessageSquare,
-  Camera,
-  FileText,
-  CheckCircle,
-} from 'lucide-react'
-
+import X from 'lucide-react/dist/esm/icons/x.js'
+import Calendar from 'lucide-react/dist/esm/icons/calendar.js'
+import Clock from 'lucide-react/dist/esm/icons/clock.js'
+import MapPin from 'lucide-react/dist/esm/icons/map-pin.js'
+import User from 'lucide-react/dist/esm/icons/user.js'
+import Phone from 'lucide-react/dist/esm/icons/phone.js'
+import Copy from 'lucide-react/dist/esm/icons/copy.js'
+import Download from 'lucide-react/dist/esm/icons/download.js'
+import MessageSquare from 'lucide-react/dist/esm/icons/message-square.js'
+import Camera from 'lucide-react/dist/esm/icons/camera.js'
+import FileText from 'lucide-react/dist/esm/icons/file-text.js'
+import CheckCircle from 'lucide-react/dist/esm/icons/check-circle.js'
 import { estLabel } from '../../../lib/time'
 
 const AppointmentDrawer = ({ appointment, onClose, onExportICS, getStatusColor }) => {

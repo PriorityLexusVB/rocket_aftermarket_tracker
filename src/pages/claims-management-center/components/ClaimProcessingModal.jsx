@@ -1,20 +1,18 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import {
-  X,
-  Save,
-  MessageSquare,
-  User,
-  AlertCircle,
-  CheckCircle,
-  Clock,
-  XCircle,
-  Calendar,
-  Car,
-  Package,
-  FileText,
-  Mail,
-  Phone,
-} from 'lucide-react'
+import X from 'lucide-react/dist/esm/icons/x.js'
+import Save from 'lucide-react/dist/esm/icons/save.js'
+import MessageSquare from 'lucide-react/dist/esm/icons/message-square.js'
+import User from 'lucide-react/dist/esm/icons/user.js'
+import AlertCircle from 'lucide-react/dist/esm/icons/alert-circle.js'
+import CheckCircle from 'lucide-react/dist/esm/icons/check-circle.js'
+import Clock from 'lucide-react/dist/esm/icons/clock.js'
+import XCircle from 'lucide-react/dist/esm/icons/x-circle.js'
+import Calendar from 'lucide-react/dist/esm/icons/calendar.js'
+import Car from 'lucide-react/dist/esm/icons/car.js'
+import Package from 'lucide-react/dist/esm/icons/package.js'
+import FileText from 'lucide-react/dist/esm/icons/file-text.js'
+import Mail from 'lucide-react/dist/esm/icons/mail.js'
+import Phone from 'lucide-react/dist/esm/icons/phone.js'
 import { claimsService } from '../../../services/claimsService'
 
 const ClaimProcessingModal = ({ claim, staff, onClose, onUpdate }) => {

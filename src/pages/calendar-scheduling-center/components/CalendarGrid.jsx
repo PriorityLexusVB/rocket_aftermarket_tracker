@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react'
-import { User, AlertCircle, Wrench } from 'lucide-react'
-
+import User from 'lucide-react/dist/esm/icons/user.js'
+import AlertCircle from 'lucide-react/dist/esm/icons/alert-circle.js'
+import Wrench from 'lucide-react/dist/esm/icons/wrench.js'
 const CalendarGrid = ({ jobs = [], currentDate, viewType, onJobClick, onJobDragDrop, loading }) => {
   const [draggedJob, setDraggedJob] = useState(null)
   const gridRef = useRef(null)

@@ -1,6 +1,10 @@
 import React from 'react'
-import { Calendar, User, Wrench, AlertTriangle, Clock, MapPin } from 'lucide-react'
-
+import Calendar from 'lucide-react/dist/esm/icons/calendar.js'
+import User from 'lucide-react/dist/esm/icons/user.js'
+import Wrench from 'lucide-react/dist/esm/icons/wrench.js'
+import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle.js'
+import Clock from 'lucide-react/dist/esm/icons/clock.js'
+import MapPin from 'lucide-react/dist/esm/icons/map-pin.js'
 // Service Location Tag Component matching deals page implementation
 const ServiceLocationTag = ({ jobParts }) => {
   if (!jobParts || jobParts?.length === 0) {

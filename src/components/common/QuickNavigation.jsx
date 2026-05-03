@@ -1,6 +1,13 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Search, Calendar, Car, BarChart3, Settings, Package, Clock, Plus } from 'lucide-react'
+import Search from 'lucide-react/dist/esm/icons/search.js'
+import Calendar from 'lucide-react/dist/esm/icons/calendar.js'
+import Car from 'lucide-react/dist/esm/icons/car.js'
+import BarChart3 from 'lucide-react/dist/esm/icons/bar-chart-3.js'
+import Settings from 'lucide-react/dist/esm/icons/settings.js'
+import Package from 'lucide-react/dist/esm/icons/package.js'
+import Clock from 'lucide-react/dist/esm/icons/clock.js'
+import Plus from 'lucide-react/dist/esm/icons/plus.js'
 import { getCalendarDestination } from '@/lib/navigation/calendarNavigation'
 
 const GROUP_ORDER = ['Actions', 'Navigation']

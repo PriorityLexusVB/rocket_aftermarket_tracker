@@ -11,8 +11,8 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
-import { Car, TrendingUp } from 'lucide-react'
-
+import Car from 'lucide-react/dist/esm/icons/car.js'
+import TrendingUp from 'lucide-react/dist/esm/icons/trending-up.js'
 const VehicleTypeChart = ({ data }) => {
   // Process data for charts
   const processVehicleTypeData = () => {

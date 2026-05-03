@@ -1,5 +1,9 @@
 import React from 'react'
-import { DollarSign, TrendingDown, TrendingUp, PieChart, AlertCircle } from 'lucide-react'
+import DollarSign from 'lucide-react/dist/esm/icons/dollar-sign.js'
+import TrendingDown from 'lucide-react/dist/esm/icons/trending-down.js'
+import TrendingUp from 'lucide-react/dist/esm/icons/trending-up.js'
+import PieChart from 'lucide-react/dist/esm/icons/pie-chart.js'
+import AlertCircle from 'lucide-react/dist/esm/icons/alert-circle.js'
 import {
   PieChart as RechartsPieChart,
   Pie,

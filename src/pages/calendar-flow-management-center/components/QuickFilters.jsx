@@ -1,6 +1,11 @@
 import React from 'react'
-import { Calendar, Clock, AlertTriangle, UserX, CheckCircle, Filter, Check } from 'lucide-react'
-
+import Calendar from 'lucide-react/dist/esm/icons/calendar.js'
+import Clock from 'lucide-react/dist/esm/icons/clock.js'
+import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle.js'
+import UserX from 'lucide-react/dist/esm/icons/user-x.js'
+import CheckCircle from 'lucide-react/dist/esm/icons/check-circle.js'
+import Filter from 'lucide-react/dist/esm/icons/filter.js'
+import Check from 'lucide-react/dist/esm/icons/check.js'
 const QuickFilters = ({ filters, onFiltersChange, jobCounts }) => {
   const filterChips = [
     {

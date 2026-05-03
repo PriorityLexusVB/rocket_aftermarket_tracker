@@ -8,8 +8,8 @@ import {
   Area,
   AreaChart,
 } from 'recharts'
-import { TrendingUp, Clock } from 'lucide-react'
-
+import TrendingUp from 'lucide-react/dist/esm/icons/trending-up.js'
+import Clock from 'lucide-react/dist/esm/icons/clock.js'
 const ResolutionTrendsChart = ({ data = [], title, timeframe }) => {
   const [metric, setMetric] = React.useState('resolution_time')
 

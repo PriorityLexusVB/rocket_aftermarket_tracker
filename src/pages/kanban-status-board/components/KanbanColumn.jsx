@@ -1,6 +1,7 @@
 import React from 'react'
-import { AlertTriangle, Clock, Users } from 'lucide-react'
-
+import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle.js'
+import Clock from 'lucide-react/dist/esm/icons/clock.js'
+import Users from 'lucide-react/dist/esm/icons/users.js'
 const KanbanColumn = ({
   column,
   jobs = [],

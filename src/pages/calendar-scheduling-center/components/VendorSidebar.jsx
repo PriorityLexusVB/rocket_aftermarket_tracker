@@ -1,16 +1,13 @@
 import React, { useState } from 'react'
-import {
-  Calendar,
-  AlertTriangle,
-  CheckCircle,
-  Clock,
-  Plus,
-  Filter,
-  ChevronDown,
-  ChevronRight,
-  Activity,
-} from 'lucide-react'
-
+import Calendar from 'lucide-react/dist/esm/icons/calendar.js'
+import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle.js'
+import CheckCircle from 'lucide-react/dist/esm/icons/check-circle.js'
+import Clock from 'lucide-react/dist/esm/icons/clock.js'
+import Plus from 'lucide-react/dist/esm/icons/plus.js'
+import Filter from 'lucide-react/dist/esm/icons/filter.js'
+import ChevronDown from 'lucide-react/dist/esm/icons/chevron-down.js'
+import ChevronRight from 'lucide-react/dist/esm/icons/chevron-right.js'
+import Activity from 'lucide-react/dist/esm/icons/activity.js'
 const VendorSidebar = ({
   vendors = [],
   selectedVendors = [],

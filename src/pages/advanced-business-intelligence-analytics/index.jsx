@@ -1,15 +1,13 @@
 import React, { useState, useEffect } from 'react'
-import {
-  Users,
-  Package,
-  DollarSign,
-  Filter,
-  Download,
-  RefreshCw,
-  ChevronDown,
-  ShoppingCart,
-  Activity,
-} from 'lucide-react'
+import Users from 'lucide-react/dist/esm/icons/users.js'
+import Package from 'lucide-react/dist/esm/icons/package.js'
+import DollarSign from 'lucide-react/dist/esm/icons/dollar-sign.js'
+import Filter from 'lucide-react/dist/esm/icons/filter.js'
+import Download from 'lucide-react/dist/esm/icons/download.js'
+import RefreshCw from 'lucide-react/dist/esm/icons/refresh-cw.js'
+import ChevronDown from 'lucide-react/dist/esm/icons/chevron-down.js'
+import ShoppingCart from 'lucide-react/dist/esm/icons/shopping-cart.js'
+import Activity from 'lucide-react/dist/esm/icons/activity.js'
 import AppLayout from '../../components/layouts/AppLayout'
 import analyticsService from '../../services/analyticsService'
 import { handleAuthError } from '@/lib/authErrorHandler'

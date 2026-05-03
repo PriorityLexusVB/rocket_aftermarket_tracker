@@ -1,17 +1,15 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
-import {
-  Clock,
-  Car,
-  Building2,
-  AlertTriangle,
-  CheckCircle,
-  RefreshCw,
-  Search,
-  Download,
-  Eye,
-  ChevronLeft,
-  ChevronRight,
-} from 'lucide-react'
+import Clock from 'lucide-react/dist/esm/icons/clock.js'
+import Car from 'lucide-react/dist/esm/icons/car.js'
+import Building2 from 'lucide-react/dist/esm/icons/building-2.js'
+import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle.js'
+import CheckCircle from 'lucide-react/dist/esm/icons/check-circle.js'
+import RefreshCw from 'lucide-react/dist/esm/icons/refresh-cw.js'
+import Search from 'lucide-react/dist/esm/icons/search.js'
+import Download from 'lucide-react/dist/esm/icons/download.js'
+import Eye from 'lucide-react/dist/esm/icons/eye.js'
+import ChevronLeft from 'lucide-react/dist/esm/icons/chevron-left.js'
+import ChevronRight from 'lucide-react/dist/esm/icons/chevron-right.js'
 import AppLayout from '../../components/layouts/AppLayout'
 import { calendarService } from '../../services/calendarService'
 import {

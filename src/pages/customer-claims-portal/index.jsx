@@ -1,19 +1,17 @@
 import React, { useState, useEffect } from 'react'
 import { useToast } from '@/components/ui/ToastProvider'
-import {
-  Upload,
-  AlertCircle,
-  CheckCircle,
-  Clock,
-  XCircle,
-  Plus,
-  Search,
-  Filter,
-  Phone,
-  Mail,
-  Calendar,
-  DollarSign,
-} from 'lucide-react'
+import Upload from 'lucide-react/dist/esm/icons/upload.js'
+import AlertCircle from 'lucide-react/dist/esm/icons/alert-circle.js'
+import CheckCircle from 'lucide-react/dist/esm/icons/check-circle.js'
+import Clock from 'lucide-react/dist/esm/icons/clock.js'
+import XCircle from 'lucide-react/dist/esm/icons/x-circle.js'
+import Plus from 'lucide-react/dist/esm/icons/plus.js'
+import Search from 'lucide-react/dist/esm/icons/search.js'
+import Filter from 'lucide-react/dist/esm/icons/filter.js'
+import Phone from 'lucide-react/dist/esm/icons/phone.js'
+import Mail from 'lucide-react/dist/esm/icons/mail.js'
+import Calendar from 'lucide-react/dist/esm/icons/calendar.js'
+import DollarSign from 'lucide-react/dist/esm/icons/dollar-sign.js'
 import { claimsService } from '../../services/claimsService'
 import ClaimSubmissionForm from './components/ClaimSubmissionForm'
 

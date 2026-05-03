@@ -11,8 +11,7 @@ import {
   AreaChart,
   Area,
 } from 'recharts'
-import { TrendingUp } from 'lucide-react'
-
+import TrendingUp from 'lucide-react/dist/esm/icons/trending-up.js'
 const SalesTrendsChart = ({ data, timeframe }) => {
   const getTimeframeLabel = () => {
     switch (timeframe) {

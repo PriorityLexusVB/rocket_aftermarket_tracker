@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { X, Loader2 } from 'lucide-react'
+import X from 'lucide-react/dist/esm/icons/x.js'
+import Loader2 from 'lucide-react/dist/esm/icons/loader-2.js'
 import jobService from '@/services/jobService'
 
 // ─── helpers ────────────────────────────────────────────────────────────────

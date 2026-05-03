@@ -1,6 +1,9 @@
 import React from 'react'
-import { DollarSign, TrendingUp, Receipt, Users, CalendarDays } from 'lucide-react'
-
+import DollarSign from 'lucide-react/dist/esm/icons/dollar-sign.js'
+import TrendingUp from 'lucide-react/dist/esm/icons/trending-up.js'
+import Receipt from 'lucide-react/dist/esm/icons/receipt.js'
+import Users from 'lucide-react/dist/esm/icons/users.js'
+import CalendarDays from 'lucide-react/dist/esm/icons/calendar-days.js'
 const SummaryCards = ({ data, onCardClick }) => {
   // Calculate stats from data
   const calculateStats = (salesData) => {

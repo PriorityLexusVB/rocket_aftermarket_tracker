@@ -1,6 +1,10 @@
 import React, { useState } from 'react'
-import { Users, Star, DollarSign, Package, CheckCircle, AlertCircle } from 'lucide-react'
-
+import Users from 'lucide-react/dist/esm/icons/users.js'
+import Star from 'lucide-react/dist/esm/icons/star.js'
+import DollarSign from 'lucide-react/dist/esm/icons/dollar-sign.js'
+import Package from 'lucide-react/dist/esm/icons/package.js'
+import CheckCircle from 'lucide-react/dist/esm/icons/check-circle.js'
+import AlertCircle from 'lucide-react/dist/esm/icons/alert-circle.js'
 const VendorPerformanceTable = ({ data }) => {
   const [sortBy, setSortBy] = useState('total_revenue')
   const [sortOrder, setSortOrder] = useState('desc')

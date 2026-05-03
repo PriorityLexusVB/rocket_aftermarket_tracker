@@ -3,7 +3,8 @@
 // Minimal, read-only upcoming appointments list with inline actions: View Deal, Reschedule, Complete
 // Does NOT modify legacy calendar components; safe to remove.
 import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react'
-import { AlertTriangle, RefreshCw } from 'lucide-react'
+import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle.js'
+import RefreshCw from 'lucide-react/dist/esm/icons/refresh-cw.js'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { jobService } from '@/services/jobService'
 import { calendarService } from '@/services/calendarService'

@@ -1,6 +1,9 @@
 import React from 'react'
-import { X, CheckCircle, RefreshCw, Calendar, AlertTriangle } from 'lucide-react'
-
+import X from 'lucide-react/dist/esm/icons/x.js'
+import CheckCircle from 'lucide-react/dist/esm/icons/check-circle.js'
+import RefreshCw from 'lucide-react/dist/esm/icons/refresh-cw.js'
+import Calendar from 'lucide-react/dist/esm/icons/calendar.js'
+import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle.js'
 const BulkOperationsPanel = ({ selectedCount, onStatusUpdate, onCancel }) => {
   return (
     <div className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-2xl border-b border-indigo-500/20">
