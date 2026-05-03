@@ -9,6 +9,7 @@ import {
   Car,
   Building2,
   MapPin,
+  GitBranch,
   CheckCircle,
   RefreshCw,
   XCircle,
@@ -16,7 +17,7 @@ import {
 } from 'lucide-react'
 import { formatTime, getStatusBadge } from '../../../lib/time'
 import { formatEtDateLabel } from '@/utils/scheduleDisplay'
-import { isJobOnSite } from '@/utils/locationType'
+import { isJobOnSite, getJobLocationType } from '@/utils/locationType'
 
 const groupByVendor = (jobList) => {
   return jobList?.reduce((acc, job) => {
@@ -177,19 +178,46 @@ const RoundUpModal = ({
           </div>
 
           {/* Location */}
-          <div className="flex items-center text-gray-600">
-            {job?.vendor_id ? (
-              <>
-                <Building2 className="h-3 w-3 mr-1 text-orange-500" />
-                {job?.vendor_name}
-              </>
-            ) : (
-              <>
+          {(() => {
+            const locType = getJobLocationType(job)
+            if (locType === 'Mixed') {
+              return (
+                <div
+                  className="flex items-center gap-1 text-gray-600"
+                  aria-label="Location: Mixed"
+                >
+                  <GitBranch className="h-3 w-3 text-blue-500 shrink-0" />
+                  <span
+                    className="bg-blue-100 text-blue-700 font-semibold px-1.5 py-0.5 rounded-full whitespace-nowrap"
+                    title="Job has both in-house and off-site parts"
+                  >
+                    Split Work
+                  </span>
+                </div>
+              )
+            }
+            if (locType === 'Off-Site') {
+              return (
+                <div
+                  className="flex items-center text-gray-600"
+                  aria-label={`Location: Off-Site${job?.vendor_name ? ` — ${job.vendor_name}` : ''}`}
+                >
+                  <Building2 className="h-3 w-3 mr-1 text-orange-500" />
+                  {job?.vendor_name || 'Off-Site'}
+                </div>
+              )
+            }
+            // In-House or null fallback
+            return (
+              <div
+                className="flex items-center text-gray-600"
+                aria-label={`Location: ${locType ?? 'In-House'}`}
+              >
                 <MapPin className="h-3 w-3 mr-1 text-green-500" />
-                In-House
-              </>
-            )}
-          </div>
+                {locType === 'In-House' ? 'In-House' : '—'}
+              </div>
+            )
+          })()}
 
           {/* Status */}
           <div

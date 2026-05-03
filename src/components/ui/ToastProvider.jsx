@@ -9,10 +9,14 @@ export function ToastProvider({ children }) {
     setToasts((prev) => prev.filter((t) => t.id !== id))
   }, [])
 
+  const MAX_TOASTS = 5
   const push = useCallback(
     (message, variant = 'success', timeout = 3000, action = null) => {
       const id = Math.random().toString(36).slice(2)
-      setToasts((prev) => [...prev, { id, message, variant, action }])
+      setToasts((prev) => {
+        const next = [...prev, { id, message, variant, action }]
+        return next.length > MAX_TOASTS ? next.slice(next.length - MAX_TOASTS) : next
+      })
       if (timeout > 0) setTimeout(() => remove(id), timeout)
     },
     [remove]
@@ -30,8 +34,8 @@ export function ToastProvider({ children }) {
         return push(msgOrOpts?.message, 'success', timeout, msgOrOpts?.action ?? null)
       },
       error: (msgOrOpts) => {
-        if (typeof msgOrOpts === 'string') return push(msgOrOpts, 'error', 4000)
-        const timeout = msgOrOpts?.timeout ?? msgOrOpts?.duration ?? 4000
+        if (typeof msgOrOpts === 'string') return push(msgOrOpts, 'error', 7000)
+        const timeout = msgOrOpts?.timeout ?? msgOrOpts?.duration ?? 7000
         return push(msgOrOpts?.message, 'error', timeout, msgOrOpts?.action ?? null)
       },
       info: (msgOrOpts) => {
@@ -46,7 +50,7 @@ export function ToastProvider({ children }) {
   return (
     <ToastCtx.Provider value={api}>
       {children}
-      <div className="fixed top-3 right-3 z-50 space-y-2">
+      <div className="fixed top-3 right-3 z-[90] space-y-2 max-h-[calc(100vh-1.5rem)] overflow-y-auto">
         {toasts.map((t) => (
           <div
             key={t.id}
@@ -58,7 +62,8 @@ export function ToastProvider({ children }) {
             ]
               .filter(Boolean)
               .join(' ')}
-            role="status"
+            role={t.variant === 'error' ? 'alert' : 'status'}
+            aria-live={t.variant === 'error' ? 'assertive' : 'polite'}
           >
             <div className="flex items-center gap-3">
               <div className="flex-1">{t.message}</div>
@@ -75,6 +80,17 @@ export function ToastProvider({ children }) {
                   }}
                 >
                   {t.action.label}
+                </button>
+              ) : null}
+              {t.variant === 'error' ? (
+                <button
+                  type="button"
+                  className="shrink-0 rounded p-1 text-white/80 hover:bg-white/20 hover:text-white"
+                  onClick={() => remove(t.id)}
+                  aria-label="Dismiss notification"
+                  title="Dismiss"
+                >
+                  <span aria-hidden="true">×</span>
                 </button>
               ) : null}
             </div>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import {
   Menu,
@@ -13,6 +14,7 @@ import {
   BarChart3,
   Clock,
   FileText,
+  MoreHorizontal,
 } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { notificationService } from '../../services/notificationService'
@@ -194,11 +196,11 @@ const Navbar = () => {
 
   return (
     <>
-      {/* Mobile Bottom Navigation - Updated for 6 items with better spacing */}
+      {/* Mobile Bottom Navigation - 5 pinned items + More drawer trigger */}
       {!isTest && (
         <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-card/90 backdrop-blur-xl border-t border-border/80 shadow-lg">
           <div className="grid grid-cols-6 h-16">
-            {navigationLinks?.slice(0, 6)?.map((link) => {
+            {navigationLinks?.slice(0, 5)?.map((link) => {
               const Icon = link?.icon
               const isActive = isActivePath(link?.href)
               const displayName = link?.shortName || link?.name
@@ -206,6 +208,8 @@ const Navbar = () => {
                 <Link
                   key={link?.name}
                   to={link?.href}
+                  title={link?.name}
+                  aria-label={link?.name}
                   className={`flex flex-col items-center justify-center space-y-1 px-1 transition-colors duration-200 ${
                     isActive
                       ? 'text-foreground bg-accent/25'
@@ -220,6 +224,17 @@ const Navbar = () => {
                 </Link>
               )
             })}
+            {/* More button — opens slide-out drawer (Analytics + Admin reachable there) */}
+            <button
+              type="button"
+              onClick={() => setIsMenuOpen(true)}
+              title="More"
+              aria-label="Open more navigation"
+              className="flex flex-col items-center justify-center space-y-1 px-1 text-muted-foreground hover:text-foreground hover:bg-accent/35 transition-colors duration-200"
+            >
+              <MoreHorizontal className="w-4 h-4" />
+              <span className="text-[10px] font-medium leading-tight text-center">More</span>
+            </button>
           </div>
         </nav>
       )}
@@ -244,8 +259,8 @@ const Navbar = () => {
               </Link>
             </div>
 
-            {/* Desktop Navigation - Tighter spacing for all 6 items */}
-            <div className="flex items-center space-x-1">
+            {/* Desktop Navigation - Labels visible at md+ (768px+) */}
+            <div className="flex items-center space-x-0.5">
               {navigationLinks?.map((link) => {
                 const Icon = link?.icon
                 const isActive = isActivePath(link?.href)
@@ -253,15 +268,17 @@ const Navbar = () => {
                   <Link
                     key={link?.name}
                     to={link?.href}
-                    className={`flex items-center space-x-1.5 px-2.5 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                    title={link?.name}
+                    aria-label={link?.name}
+                    className={`flex items-center space-x-1 px-2 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
                       isActive
-                        ? '0 text-foreground border border-border'
-                        : 'text-muted-foreground hover:text-foreground 0'
+                        ? 'bg-accent/25 text-foreground border border-border'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-accent/35'
                     }`}
                     aria-current={isActive ? 'page' : undefined}
                   >
-                    <Icon className="w-4 h-4" />
-                    <span className="hidden lg:inline">{link?.name}</span>
+                    <Icon className="w-4 h-4 shrink-0" />
+                    <span className="hidden md:inline whitespace-nowrap">{link?.name}</span>
                   </Link>
                 )
               })}
@@ -284,7 +301,7 @@ const Navbar = () => {
                 <button
                   type="button"
                   onClick={() => setIsNotificationOpen(!isNotificationOpen)}
-                  className="relative p-2 text-muted-foreground hover:text-foreground transition-colors duration-200 rounded-lg 0"
+                  className="relative p-2 text-muted-foreground hover:text-foreground transition-colors duration-200 rounded-lg hover:bg-accent/35"
                   aria-label="Notifications"
                   aria-haspopup="menu"
                   aria-expanded={isNotificationOpen}
@@ -478,7 +495,7 @@ const Navbar = () => {
             <button
               type="button"
               onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="p-2 text-muted-foreground hover:text-foreground rounded-lg 0"
+              className="p-2 text-muted-foreground hover:text-foreground rounded-lg hover:bg-accent/35"
               aria-label={isMenuOpen ? 'Close menu' : 'Open menu'}
               aria-haspopup="menu"
               aria-expanded={isMenuOpen}
@@ -525,8 +542,8 @@ const Navbar = () => {
           </div>
         )}
 
-        {/* Mobile Slide-out Menu */}
-        {isMenuOpen && (
+        {/* Mobile Slide-out Menu — portaled to document.body to escape backdrop-filter containing block */}
+        {isMenuOpen && createPortal(
           <>
             <div
               className="fixed inset-0 bg-black/50 z-[75]"
@@ -572,8 +589,8 @@ const Navbar = () => {
                         onClick={() => setIsMenuOpen(false)}
                         className={`flex items-center space-x-3 px-3 py-3 rounded-lg text-sm font-medium transition-colors duration-200 ${
                           isActive
-                            ? '0 text-foreground border border-border'
-                            : 'text-muted-foreground hover:text-foreground 0'
+                            ? 'bg-accent/25 text-foreground border border-border'
+                            : 'text-muted-foreground hover:text-foreground hover:bg-accent/35'
                         }`}
                       >
                         <Icon className="w-5 h-5" />
@@ -610,7 +627,8 @@ const Navbar = () => {
                 </div>
               </div>
             </div>
-          </>
+          </>,
+          document.body
         )}
       </nav>
 

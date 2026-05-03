@@ -31,12 +31,14 @@ import ProductsTab from './components/ProductsTab'
 import SmsTemplatesTab from './components/SmsTemplatesTab'
 import QRCodeTab from './components/QRCodeTab'
 import AdminModal from './components/AdminModal'
+import { useToast } from '@/components/ui/ToastProvider'
 
 const AdminPage = () => {
   const { userProfile, user, loading: authLoading } = useAuth()
   const { orgId } = useTenant()
   const effectiveOrgId = orgId || userProfile?.dealer_id || userProfile?.org_id || null
   const { logBusinessAction, logError: logErr } = useLogger()
+  const toast = useToast()
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('userAccounts')
   const [error, setError] = useState(null)
@@ -380,7 +382,7 @@ const AdminPage = () => {
   // Attach/assign a single profile to current org
   const attachProfileToMyOrg = async (profileId) => {
     if (!orgId) {
-      alert('No organization detected for current user')
+      toast?.error?.('No organization found — please log out and log back in, or contact your manager.')
       return
     }
     try {
@@ -398,7 +400,7 @@ const AdminPage = () => {
       } catch {}
     } catch (e) {
       console.error('attachProfileToMyOrg error:', e)
-      alert('Failed to attach to org: ' + (e?.message || 'Unknown error'))
+      toast?.error?.(`Couldn't add user to your organization. Try again or contact support if the problem continues.`)
       try {
         await logErr?.(e, { where: 'attachProfileToMyOrg', orgId, profileId })
       } catch {}
@@ -920,7 +922,7 @@ const AdminPage = () => {
       }, 3000)
     } catch (error) {
       console.error('Error deleting item:', error)
-      alert('Error deleting item: ' + (error?.message || 'Unknown error'))
+      toast?.error?.(`Couldn't delete ${context}. Try again or reload the page.`)
 
       // On error, force refresh all data to ensure UI is in sync
       setTimeout(async () => {

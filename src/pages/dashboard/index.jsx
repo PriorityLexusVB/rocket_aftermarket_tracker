@@ -125,7 +125,13 @@ const DashboardPage = () => {
       setOpenOppSummary(oppSummary && typeof oppSummary === 'object' ? oppSummary : null)
     } catch (e) {
       console.error('[dashboard] load failed', e)
-      setError(e?.message || 'Failed to load dashboard')
+      const raw = String(e?.message || '')
+      const isTechNoise = /JWT|jwt|PostgrestError|infinite recursion|permission denied|RLS|relation .* does not exist/i.test(raw)
+      setError(
+        isTechNoise
+          ? "Couldn't load dashboard. Please refresh, or sign out and back in if the problem continues."
+          : raw || 'Failed to load dashboard'
+      )
       setTodayJobs([])
       setJobsThroughTomorrow([])
       setTodayDeals([])

@@ -466,7 +466,13 @@ export default function DealsPage() {
         return
       }
 
-      const errorMessage = `Failed to load deals: ${e?.message}`
+      const rawMsg = String(e?.message || '')
+      const isTechNoise = /JWT|jwt|PostgrestError|infinite recursion|permission denied|RLS/i.test(rawMsg)
+      const errorMessage = isTechNoise
+        ? "Couldn't load deals. Please refresh, or sign out and back in if the problem continues."
+        : rawMsg.startsWith('Failed to load deals')
+          ? rawMsg
+          : `Failed to load deals: ${rawMsg}`
       console.error('Load deals error:', e)
 
       if (isDealsDebugEnabled()) {
