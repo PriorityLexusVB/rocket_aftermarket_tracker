@@ -6,6 +6,10 @@ import Info from 'lucide-react/dist/esm/icons/info.js'
 import MoreVertical from 'lucide-react/dist/esm/icons/more-vertical.js'
 import Plus from 'lucide-react/dist/esm/icons/plus.js'
 import Search from 'lucide-react/dist/esm/icons/search.js'
+import RefreshCw from 'lucide-react/dist/esm/icons/refresh-cw.js'
+import Download from 'lucide-react/dist/esm/icons/download.js'
+import ClipboardList from 'lucide-react/dist/esm/icons/clipboard-list.js'
+import Settings2 from 'lucide-react/dist/esm/icons/settings-2.js'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import AppLayout from '@/components/layouts/AppLayout'
 import CalendarSchedulingCenter from '@/pages/calendar'
@@ -528,19 +532,25 @@ export default function CalendarShell() {
                 <div className="absolute right-0 z-30 mt-2 w-44 rounded-lg border border-border bg-popover p-2 text-xs text-popover-foreground shadow-lg">
                   <button
                     type="button"
-                    className="w-full rounded px-2 py-1 text-left hover:bg-muted"
+                    className="flex w-full items-center gap-2 rounded px-2 py-1 text-left hover:bg-muted"
+                    onClick={() => window.location.reload()}
+                    title="Reload the calendar"
                   >
+                    <RefreshCw className="h-3.5 w-3.5 shrink-0" />
                     Refresh
                   </button>
                   <button
                     type="button"
-                    className="w-full rounded px-2 py-1 text-left hover:bg-muted"
+                    disabled
+                    className="flex w-full items-center gap-2 rounded px-2 py-1 text-left text-muted-foreground/60 cursor-not-allowed"
+                    title="Export — coming soon"
                   >
+                    <Download className="h-3.5 w-3.5 shrink-0" />
                     Export
                   </button>
                   <button
                     type="button"
-                    className="w-full rounded px-2 py-1 text-left hover:bg-muted"
+                    className="flex w-full items-center gap-2 rounded px-2 py-1 text-left hover:bg-muted"
                     aria-label="Open daily round-up"
                     onClick={(e) => {
                       e.currentTarget.closest('details')?.removeAttribute('open')
@@ -548,12 +558,16 @@ export default function CalendarShell() {
                       setShowRoundUp(true)
                     }}
                   >
+                    <ClipboardList className="h-3.5 w-3.5 shrink-0" />
                     Round-Up
                   </button>
                   <button
                     type="button"
-                    className="w-full rounded px-2 py-1 text-left hover:bg-muted"
+                    disabled
+                    className="flex w-full items-center gap-2 rounded px-2 py-1 text-left text-muted-foreground/60 cursor-not-allowed"
+                    title="Calendar settings — coming soon"
                   >
+                    <Settings2 className="h-3.5 w-3.5 shrink-0" />
                     Settings
                   </button>
                 </div>

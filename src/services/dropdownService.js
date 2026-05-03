@@ -82,7 +82,7 @@ function _isRlsError(error) {
 
 // handleAuthError logic is now in src/lib/authErrorHandler.js — re-exported here for callers.
 import { handleAuthError as _sharedHandleAuthError } from '../lib/authErrorHandler'
-function handleAuthError(error, label = 'dropdown') {
+function handleAuthError(error, label = 'session') {
   return _sharedHandleAuthError(error, label)
 }
 

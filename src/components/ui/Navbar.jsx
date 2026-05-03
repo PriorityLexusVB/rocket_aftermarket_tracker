@@ -39,6 +39,17 @@ const Navbar = () => {
   const location = useLocation()
 
   // Ensure content can scroll past the fixed mobile bottom nav.
+  // Mobile drawer Escape-key dismiss (Wave XX accessibility polish — hostile-break Attack B + sense-check)
+  useEffect(() => {
+    if (!isMenuOpen) return
+    if (typeof document === 'undefined') return
+    const onKeyDown = (e) => {
+      if (e.key === 'Escape') setIsMenuOpen(false)
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [isMenuOpen])
+
   useEffect(() => {
     if (isTest) return
     if (typeof window === 'undefined' || typeof document === 'undefined') return
