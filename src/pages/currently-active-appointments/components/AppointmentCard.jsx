@@ -11,6 +11,7 @@ import Check from 'lucide-react/dist/esm/icons/check.js'
 import { getAppointmentScheduleDisplay, toSafeDateForTimeZone } from '@/utils/scheduleDisplay'
 import { getReopenTargetStatus } from '@/utils/jobStatusTimeRules.js'
 import { getJobLocationType } from '@/utils/locationType'
+import { getWorkTagLabel, MAX_WORK_TAGS_VISIBLE } from '@/utils/workTags'
 
 const AppointmentCard = ({
   appointment,
@@ -257,9 +258,10 @@ const AppointmentCard = ({
                     )}
                     {Array.isArray(appointment?.work_tags) && appointment.work_tags.length ? (
                       <div className="mt-2 flex flex-wrap gap-1">
-                        {appointment.work_tags.slice(0, 4).map((tag) => (
+                        {appointment.work_tags.slice(0, MAX_WORK_TAGS_VISIBLE).map((tag) => (
                           <span
                             key={tag}
+                            title={getWorkTagLabel(tag)}
                             className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-700"
                           >
                             {tag}

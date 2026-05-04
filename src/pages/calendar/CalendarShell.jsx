@@ -7,9 +7,7 @@ import MoreVertical from 'lucide-react/dist/esm/icons/more-vertical.js'
 import Plus from 'lucide-react/dist/esm/icons/plus.js'
 import Search from 'lucide-react/dist/esm/icons/search.js'
 import RefreshCw from 'lucide-react/dist/esm/icons/refresh-cw.js'
-import Download from 'lucide-react/dist/esm/icons/download.js'
 import ClipboardList from 'lucide-react/dist/esm/icons/clipboard-list.js'
-import Settings2 from 'lucide-react/dist/esm/icons/settings-2.js'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import AppLayout from '@/components/layouts/AppLayout'
 import CalendarSchedulingCenter from '@/pages/calendar'
@@ -366,7 +364,7 @@ export default function CalendarShell() {
                 {[
                   { key: 'board', label: 'Board', tip: 'Vendor lanes — drag to reassign work' },
                   { key: 'calendar', label: 'Calendar', tip: 'Day / Week / Month grid' },
-                  { key: 'list', label: 'List', disabled: !agendaEnabled, tip: 'Agenda rows' },
+                  { key: 'list', label: 'List', disabled: !agendaEnabled, tip: 'Time-ordered list of every job for the day' },
                 ].map((item) => (
                   <button
                     key={item.key}
@@ -479,8 +477,8 @@ export default function CalendarShell() {
                     onChange={handleLocationChange}
                   >
                     {LOCATION_FILTER_OPTIONS.map((opt) => (
-                      <option key={opt} value={opt}>
-                        {opt}
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
                       </option>
                     ))}
                   </select>
@@ -497,9 +495,9 @@ export default function CalendarShell() {
                   <span className="inline-block h-2.5 w-2.5 rounded-full bg-amber-500 shrink-0" aria-hidden="true" />
                   Off-Site
                 </span>
-                <span className="flex items-center gap-1" title="Mixed — some work on-site, some at a vendor">
+                <span className="flex items-center gap-1" title="Split Work — some parts in-house, some at a vendor">
                   <span className="inline-block h-2.5 w-2.5 rounded-full bg-blue-500 shrink-0" aria-hidden="true" />
-                  Mixed
+                  Split Work
                 </span>
               </div>
 
@@ -545,7 +543,11 @@ export default function CalendarShell() {
               </button>
 
               <details className="group relative">
-                <summary className="flex cursor-pointer list-none items-center rounded-md border border-border bg-background p-2 text-muted-foreground">
+                <summary
+                  className="flex cursor-pointer list-none items-center rounded-md border border-border bg-background p-2 text-muted-foreground"
+                  title="More actions"
+                  aria-label="More actions"
+                >
                   <MoreVertical className="h-4 w-4" />
                 </summary>
                 <div className="absolute right-0 z-30 mt-2 w-44 rounded-lg border border-border bg-popover p-2 text-xs text-popover-foreground shadow-lg">
@@ -557,24 +559,6 @@ export default function CalendarShell() {
                   >
                     <RefreshCw className="h-3.5 w-3.5 shrink-0" />
                     Refresh
-                  </button>
-                  <button
-                    type="button"
-                    disabled
-                    className="flex w-full items-center gap-2 rounded px-2 py-1 text-left text-muted-foreground/60 cursor-not-allowed"
-                    title="Export — coming soon"
-                  >
-                    <Download className="h-3.5 w-3.5 shrink-0" />
-                    Export
-                  </button>
-                  <button
-                    type="button"
-                    disabled
-                    className="flex w-full items-center gap-2 rounded px-2 py-1 text-left text-muted-foreground/60 cursor-not-allowed"
-                    title="Calendar settings — coming soon"
-                  >
-                    <Settings2 className="h-3.5 w-3.5 shrink-0" />
-                    Settings
                   </button>
                 </div>
               </details>

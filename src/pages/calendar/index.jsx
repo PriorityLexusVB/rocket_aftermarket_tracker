@@ -27,6 +27,7 @@ import {
 } from '@/lib/navigation/calendarNavigation'
 import { isCalendarDealDrawerEnabled, isCalendarUnifiedShellEnabled } from '@/config/featureFlags'
 import { getJobLocationType } from '@/utils/locationType'
+import { getWorkTagLabel, MAX_WORK_TAGS_VISIBLE } from '@/utils/workTags'
 import { calendarQueryMatches } from '@/utils/calendarQueryMatch'
 
 // Returns Tailwind border-left class + short label for in-house/off-site/mixed.
@@ -938,9 +939,10 @@ const CalendarSchedulingCenter = ({
                     )}
                     {Array.isArray(job?.work_tags) && job.work_tags.length ? (
                       <div className="mt-1 flex flex-wrap gap-1">
-                        {job.work_tags.slice(0, 4).map((tag) => (
+                        {job.work_tags.slice(0, MAX_WORK_TAGS_VISIBLE).map((tag) => (
                           <span
                             key={tag}
+                            title={getWorkTagLabel(tag)}
                             className="rounded bg-white/70 px-1.5 py-0.5 text-[10px] font-medium text-gray-700"
                           >
                             {tag}

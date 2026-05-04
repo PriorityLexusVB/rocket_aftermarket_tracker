@@ -1,4 +1,12 @@
-export const LOCATION_FILTER_OPTIONS = ['All', 'In-House', 'Off-Site', 'Mixed']
+// User-facing labels for the location filter. Values mirror getJobLocationType()
+// output ('Mixed' is the canonical internal value); 'Split Work' is the
+// user-facing label for that state across cards, legends, and pills.
+export const LOCATION_FILTER_OPTIONS = [
+  { value: 'All', label: 'All' },
+  { value: 'In-House', label: 'In-House' },
+  { value: 'Off-Site', label: 'Off-Site' },
+  { value: 'Mixed', label: 'Split Work' },
+]
 
 // Location field is authoritative. Fall back to vendor_id only when location is unset.
 export function isJobOnSite(job) {

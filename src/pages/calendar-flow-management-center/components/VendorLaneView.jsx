@@ -7,6 +7,7 @@ import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle.js'
 import { formatTime, isOverdue, getStatusBadge } from '../../../lib/time'
 import { formatEtDateLabel } from '@/utils/scheduleDisplay'
 import { getJobLocationType } from '@/utils/locationType'
+import { getWorkTagLabel, MAX_WORK_TAGS_VISIBLE } from '@/utils/workTags'
 
 const VendorLaneView = ({ vendors, jobs, onJobClick, onDrop, draggedJob }) => {
   const renderEventChip = (job) => {
@@ -117,8 +118,12 @@ const VendorLaneView = ({ vendors, jobs, onJobClick, onDrop, draggedJob }) => {
           {/* Work tags (EXTERIOR/INTERIOR/WINDSHIELD/RG/EVERNEW/FILM) — at-a-glance product flags */}
           {Array.isArray(job?.work_tags) && job.work_tags.length ? (
             <div className="mt-1 flex flex-wrap gap-1">
-              {job.work_tags.slice(0, 4).map((tag) => (
-                <span key={tag} className="rounded bg-white/70 px-1.5 py-0.5 text-[10px] font-medium text-gray-700">
+              {job.work_tags.slice(0, MAX_WORK_TAGS_VISIBLE).map((tag) => (
+                <span
+                  key={tag}
+                  title={getWorkTagLabel(tag)}
+                  className="rounded bg-white/70 px-1.5 py-0.5 text-[10px] font-medium text-gray-700"
+                >
                   {tag}
                 </span>
               ))}
@@ -129,7 +134,7 @@ const VendorLaneView = ({ vendors, jobs, onJobClick, onDrop, draggedJob }) => {
           {!isOnSite && (
             <div className="text-xs opacity-90 mt-1 flex items-center">
               <Building2 className="h-3 w-3 mr-1" />
-              {job?.vendor_name || (isMixed ? 'Split work' : '')}
+              {job?.vendor_name || (isMixed ? 'Split Work' : '')}
             </div>
           )}
         </div>

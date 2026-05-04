@@ -441,7 +441,7 @@ const DashboardPage = () => {
                                   {job?.vehicle?.stock_number ? ` · #${job.vehicle.stock_number}` : ''}
                                 </div>
                                 <div className="mt-0.5 text-[11px] text-gray-500 truncate">
-                                  {job?.vendor_name || (job?.vendor_id ? 'Vendor' : 'On-site')}
+                                  Location: {job?.vendor_name || (job?.vendor_id ? 'Vendor' : 'In-House')}
                                 </div>
                               </div>
                               <div className="flex flex-wrap items-center gap-1 justify-end">
@@ -466,13 +466,14 @@ const DashboardPage = () => {
                                   </Pill>
                                 ) : profit != null ? (
                                   <Pill
+                                    title="Estimated gross profit"
                                     className={
                                       profit >= 0
                                         ? 'border-emerald-200 bg-emerald-50 text-emerald-900'
                                         : 'border-rose-200 bg-rose-50 text-rose-900'
                                     }
                                   >
-                                    {money0OrDash(profit)}
+                                    GP {money0OrDash(profit)}
                                   </Pill>
                                 ) : null}
                               </div>

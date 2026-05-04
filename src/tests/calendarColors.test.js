@@ -78,11 +78,12 @@ describe('calendarColors', () => {
       expect(legend.length).toBeGreaterThan(0)
     })
 
-    it('should include onsite and vendor items', () => {
+    it('should include the In-House / Off-Site / Split Work tri-state', () => {
       const legend = getColorLegend()
 
-      expect(legend.some((item) => item.label === 'Onsite Service')).toBe(true)
-      expect(legend.some((item) => item.label === 'Vendor/Offsite')).toBe(true)
+      expect(legend.some((item) => item.label === 'In-House')).toBe(true)
+      expect(legend.some((item) => item.label === 'Off-Site')).toBe(true)
+      expect(legend.some((item) => item.label === 'Split Work')).toBe(true)
     })
 
     it('should include icon names', () => {

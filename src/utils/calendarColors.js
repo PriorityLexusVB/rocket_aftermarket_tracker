@@ -107,22 +107,38 @@ export function getLaneColors(serviceType) {
 }
 
 /**
- * Get legend items for calendar color guide
+ * Get legend items for calendar color guide.
+ * Returns the location tri-state shown on chips: In-House (green) / Off-Site
+ * (amber) / Split Work (blue, where one job has both in-house and off-site
+ * parts). Matches getJobLocationType() output, the location filter, and
+ * the location pills on every card.
  * @returns {Array} Legend items with labels and colors
  */
 export function getColorLegend() {
   return [
     {
-      label: 'Onsite Service',
-      description: 'Work performed at dealership',
-      ...SERVICE_TYPE_COLORS.onsite,
+      label: 'In-House',
+      description: 'Work stays on the lot',
+      bg: 'bg-green-100',
+      border: 'border-green-300',
+      text: 'text-green-900',
       icon: 'Building',
     },
     {
-      label: 'Vendor/Offsite',
-      description: 'Work performed by external vendor',
-      ...SERVICE_TYPE_COLORS.vendor,
+      label: 'Off-Site',
+      description: 'Sent to an outside vendor',
+      bg: 'bg-amber-100',
+      border: 'border-amber-300',
+      text: 'text-amber-900',
       icon: 'Truck',
+    },
+    {
+      label: 'Split Work',
+      description: 'Some parts in-house, some at a vendor',
+      bg: 'bg-blue-100',
+      border: 'border-blue-300',
+      text: 'text-blue-900',
+      icon: 'Building',
     },
   ]
 }
