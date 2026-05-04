@@ -200,20 +200,20 @@ const RoundUpModal = ({
     return (
       <div
         key={job?.id}
-        className="flex items-center py-3 border-b border-gray-100 last:border-b-0"
+        className="flex items-center py-3 border-b border-border last:border-b-0"
       >
         {/* Checkbox */}
         <input
           type="checkbox"
           checked={selectedJobs?.has(job?.id)}
           onChange={() => handleSelectJob(job?.id)}
-          className="mr-3 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+          className="mr-3 rounded border-input text-indigo-600 focus:ring-indigo-500"
         />
         {/* Job Info */}
         <div className="flex-1 grid grid-cols-6 gap-4 items-center text-sm">
           {/* Time */}
-          <div className="flex items-center text-gray-900">
-            <Clock className="h-3 w-3 mr-1 text-gray-400" />
+          <div className="flex items-center text-foreground">
+            <Clock className="h-3 w-3 mr-1 text-muted-foreground" />
             {job?.scheduled_start_time
               ? `${formatTime(job?.scheduled_start_time)}–${formatTime(job?.scheduled_end_time)}`
               : 'Unscheduled'}
@@ -221,19 +221,19 @@ const RoundUpModal = ({
 
           {/* Stock & Product (line 1) + customer · stock# (line 2) */}
           <div className="min-w-0">
-            <div className="flex items-center text-gray-900 truncate">
-              <Car className="h-3 w-3 mr-1 text-gray-400 shrink-0" />
+            <div className="flex items-center text-foreground truncate">
+              <Car className="h-3 w-3 mr-1 text-muted-foreground shrink-0" />
               {job?.job_number?.split('-')?.pop()} — {job?.title}
             </div>
-            <div className="text-[10px] text-gray-500 truncate">
+            <div className="text-[10px] text-muted-foreground truncate">
               {job?.customer_name || job?.vehicle?.owner_name || '—'}
               {job?.vehicle?.stock_number ? ` · #${job.vehicle.stock_number}` : ''}
             </div>
           </div>
 
           {/* Promise Date */}
-          <div className="flex items-center text-gray-600">
-            <Calendar className="h-3 w-3 mr-1 text-gray-400" />
+          <div className="flex items-center text-muted-foreground">
+            <Calendar className="h-3 w-3 mr-1 text-muted-foreground" />
             {formatEtDateLabel(promise, { weekday: undefined }) || '—'}
           </div>
 
@@ -243,7 +243,7 @@ const RoundUpModal = ({
             if (locType === 'Mixed') {
               return (
                 <div
-                  className="flex items-center gap-1 text-gray-600"
+                  className="flex items-center gap-1 text-muted-foreground"
                   aria-label="Location: Mixed"
                 >
                   <GitBranch className="h-3 w-3 text-blue-500 shrink-0" />
@@ -259,7 +259,7 @@ const RoundUpModal = ({
             if (locType === 'Off-Site') {
               return (
                 <div
-                  className="flex items-center text-gray-600"
+                  className="flex items-center text-muted-foreground"
                   aria-label={`Location: Off-Site${job?.vendor_name ? ` — ${job.vendor_name}` : ''}`}
                 >
                   <Building2 className="h-3 w-3 mr-1 text-amber-600" />
@@ -270,7 +270,7 @@ const RoundUpModal = ({
             // In-House or null fallback
             return (
               <div
-                className="flex items-center text-gray-600"
+                className="flex items-center text-muted-foreground"
                 aria-label={`Location: ${locType ?? 'In-House'}`}
               >
                 <MapPin className="h-3 w-3 mr-1 text-green-500" />
@@ -283,8 +283,8 @@ const RoundUpModal = ({
           <div
             className={`
             inline-flex px-2 py-1 rounded-full text-xs font-medium
-            ${statusBadge?.bg || 'bg-gray-100'} 
-            ${statusBadge?.textColor || 'text-gray-800'}
+            ${statusBadge?.bg || 'bg-muted'}
+            ${statusBadge?.textColor || 'text-foreground'}
           `}
           >
             {statusBadge?.label || job?.job_status?.toUpperCase()}
@@ -296,7 +296,7 @@ const RoundUpModal = ({
               onClick={() => (isCompleted ? onReopen?.(job) : onComplete?.(job))}
               className={
                 isCompleted
-                  ? 'p-1 hover:bg-gray-100 rounded text-gray-700'
+                  ? 'p-1 hover:bg-muted rounded text-foreground'
                   : 'p-1 hover:bg-blue-100 rounded text-blue-600'
               }
               disabled={isStatusInFlight?.(job?.id) || false}
@@ -321,8 +321,8 @@ const RoundUpModal = ({
   const renderJobGroup = (groupName, groupData) => {
     return (
       <div key={groupName} className="mb-8">
-        <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
-          <Calendar className="h-5 w-5 mr-2 text-gray-600" />
+        <h3 className="text-lg font-medium text-foreground mb-4 flex items-center">
+          <Calendar className="h-5 w-5 mr-2 text-muted-foreground" />
           {groupName}
         </h3>
 
@@ -331,10 +331,10 @@ const RoundUpModal = ({
           <div className="mb-6">
             <div className="flex items-center mb-3">
               <div className="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
-              <h4 className="font-medium text-green-900">In-House Jobs</h4>
-              <span className="ml-2 text-sm text-gray-600">({groupData?.onSite?.length} jobs)</span>
+              <h4 className="font-medium text-green-900 dark:text-green-300">In-House Jobs</h4>
+              <span className="ml-2 text-sm text-muted-foreground">({groupData?.onSite?.length} jobs)</span>
             </div>
-            <div className="bg-green-50 rounded-lg p-4">{groupData?.onSite?.map(renderJobRow)}</div>
+            <div className="bg-green-50 dark:bg-green-950/30 rounded-lg p-4">{groupData?.onSite?.map(renderJobRow)}</div>
           </div>
         )}
 
@@ -343,10 +343,10 @@ const RoundUpModal = ({
           <div key={vendorName} className="mb-6">
             <div className="flex items-center mb-3">
               <div className="w-3 h-3 bg-amber-500 rounded-full mr-2"></div>
-              <h4 className="font-medium text-amber-900">{vendorName}</h4>
-              <span className="ml-2 text-sm text-gray-600">({vendorJobs?.length} jobs)</span>
+              <h4 className="font-medium text-amber-900 dark:text-amber-300">{vendorName}</h4>
+              <span className="ml-2 text-sm text-muted-foreground">({vendorJobs?.length} jobs)</span>
             </div>
-            <div className="bg-amber-50 rounded-lg p-4">{vendorJobs?.map(renderJobRow)}</div>
+            <div className="bg-amber-50 dark:bg-amber-950/30 rounded-lg p-4">{vendorJobs?.map(renderJobRow)}</div>
           </div>
         ))}
       </div>
@@ -357,46 +357,50 @@ const RoundUpModal = ({
 
   return (
     <div className="fixed inset-0 z-50 overflow-hidden">
-      <div className="absolute inset-0 bg-black bg-opacity-50" onClick={onClose}></div>
-      <div className="absolute right-0 top-0 h-full w-full max-w-6xl bg-white shadow-xl">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose}></div>
+      <div className="absolute right-0 top-0 h-full w-full max-w-6xl bg-card text-card-foreground shadow-xl">
         <div className="flex flex-col h-full">
           {/* Header */}
-          <div className="px-6 py-4 border-b border-gray-200 bg-white">
+          <div className="px-6 py-4 border-b border-border bg-card">
             <div className="flex items-center justify-between">
               <div className="flex items-center">
-                <Download className="h-5 w-5 text-gray-600 mr-3" />
+                <Download className="h-5 w-5 text-muted-foreground mr-3" />
                 <div>
-                  <h2 className="text-xl font-semibold text-gray-900">
+                  <h2 className="text-xl font-semibold text-foreground">
                     {ROUND_UP_LABEL[type].title} Round-Up
                   </h2>
-                  <p className="text-sm text-gray-600">{ROUND_UP_LABEL[type].subtitle}</p>
+                  <p className="text-sm text-muted-foreground">{ROUND_UP_LABEL[type].subtitle}</p>
                 </div>
               </div>
 
-              <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full">
-                <X className="h-5 w-5 text-gray-400" />
+              <button
+                onClick={onClose}
+                className="p-2 hover:bg-muted rounded-full"
+                aria-label="Close round-up"
+              >
+                <X className="h-5 w-5 text-muted-foreground" />
               </button>
             </div>
 
             {/* Controls */}
             <div className="flex items-center justify-between mt-4">
               {/* Type Toggle */}
-              <div className="flex items-center bg-gray-100 rounded-lg p-1">
+              <div className="flex items-center bg-muted rounded-lg p-1">
                 <button
                   onClick={() => onTypeChange?.('daily')}
-                  className={`px-3 py-1 rounded text-sm ${type === 'daily' ? 'bg-white shadow-sm' : ''}`}
+                  className={`px-3 py-1 rounded text-sm ${type === 'daily' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'}`}
                 >
                   Daily
                 </button>
                 <button
                   onClick={() => onTypeChange?.('weekly')}
-                  className={`px-3 py-1 rounded text-sm ${type === 'weekly' ? 'bg-white shadow-sm' : ''}`}
+                  className={`px-3 py-1 rounded text-sm ${type === 'weekly' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'}`}
                 >
                   Weekly
                 </button>
                 <button
                   onClick={() => onTypeChange?.('monthly')}
-                  className={`px-3 py-1 rounded text-sm ${type === 'monthly' ? 'bg-white shadow-sm' : ''}`}
+                  className={`px-3 py-1 rounded text-sm ${type === 'monthly' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'}`}
                 >
                   Monthly
                 </button>
@@ -409,7 +413,7 @@ const RoundUpModal = ({
                   onClick={() => handleExport('copy')}
                   disabled={exportBusy !== null || isLoading}
                   title="Copy as TSV (paste directly into Excel)"
-                  className="flex items-center px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex items-center px-3 py-2 text-sm border border-input bg-background text-foreground rounded-lg hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Copy className="h-4 w-4 mr-2" />
                   {exportBusy === 'copy' ? 'Copying…' : 'Copy'}
@@ -419,7 +423,7 @@ const RoundUpModal = ({
                   onClick={() => handleExport('csv')}
                   disabled={exportBusy !== null || isLoading}
                   title="Download as CSV (BDC tracking format)"
-                  className="flex items-center px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex items-center px-3 py-2 text-sm border border-input bg-background text-foreground rounded-lg hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <FileText className="h-4 w-4 mr-2" />
                   {exportBusy === 'csv' ? 'Exporting…' : 'CSV'}
@@ -428,7 +432,7 @@ const RoundUpModal = ({
                   type="button"
                   disabled
                   title="PDF export — coming soon"
-                  className="flex items-center px-3 py-2 text-sm border border-gray-200 rounded-lg text-gray-400 cursor-not-allowed"
+                  className="flex items-center px-3 py-2 text-sm border border-border rounded-lg text-muted-foreground cursor-not-allowed"
                 >
                   <Download className="h-4 w-4 mr-2" />
                   PDF
@@ -440,8 +444,8 @@ const RoundUpModal = ({
           {/* Content */}
           <div className="flex-1 overflow-y-auto px-6 py-6">
             {isLoading ? (
-              <div className="text-center py-12 text-gray-500">
-                <RefreshCw className="h-8 w-8 mx-auto mb-3 text-gray-400 animate-spin" />
+              <div className="text-center py-12 text-muted-foreground">
+                <RefreshCw className="h-8 w-8 mx-auto mb-3 text-muted-foreground animate-spin" />
                 <div className="text-lg">Loading jobs…</div>
               </div>
             ) : Object.keys(groupedJobs)?.length > 0 ? (
@@ -449,8 +453,8 @@ const RoundUpModal = ({
                 renderJobGroup(groupName, groupData)
               )
             ) : (
-              <div className="text-center py-12 text-gray-500">
-                <Calendar className="h-8 w-8 mx-auto mb-3 text-gray-400" />
+              <div className="text-center py-12 text-muted-foreground">
+                <Calendar className="h-8 w-8 mx-auto mb-3 text-muted-foreground" />
                 <div className="text-lg">
                   {`No jobs scheduled for this ${ROUND_UP_LABEL[type].noun}.`}
                 </div>

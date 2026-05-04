@@ -23,7 +23,7 @@ import useTenant from '@/hooks/useTenant'
 import QuickFilters from './components/QuickFilters'
 import { useToast } from '@/components/ui/ToastProvider'
 
-import PromisedQueue from './components/PromisedQueue'
+import UnscheduledQueue from './components/UnscheduledQueue'
 import JobDrawer from './components/JobDrawer'
 import RoundUpModal from './components/RoundUpModal'
 import { formatTime, isOverdue, getStatusBadge } from '../../lib/time'
@@ -1754,9 +1754,9 @@ const CalendarFlowManagementCenter = ({
 
       {/* Main Content */}
       <div className={`${isEmbedded ? 'flex flex-1 min-h-0' : 'flex h-screen'}`}>
-        {/* Promised Queue Sidebar - Hide for month view */}
+        {/* Unscheduled queue sidebar — hidden for month view */}
         {viewMode !== 'month' && (
-          <PromisedQueue
+          <UnscheduledQueue
             unscheduledJobs={unscheduledItemsFiltered}
             needsTimeCount={filteredNeedsSchedulingJobs.length}
             overdueCount={overdueNeedsTimeCount}

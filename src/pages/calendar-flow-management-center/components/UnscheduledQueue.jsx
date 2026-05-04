@@ -13,7 +13,7 @@ function getQueueLocationMeta(job) {
   return { border: '', dot: '', label: '' }
 }
 
-export default function PromisedQueue({
+export default function UnscheduledQueue({
   unscheduledJobs,
   needsTimeCount,
   overdueCount,

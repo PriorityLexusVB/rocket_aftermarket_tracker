@@ -25,7 +25,7 @@ export default function CalendarLegend({ showStatuses = false, compact = false }
           return (
             <div key={index} className="flex items-center gap-2">
               <div className={`w-3 h-3 rounded ${item.bg} ${item.border} border`} />
-              <span className="text-gray-700">{item.label}</span>
+              <span className="text-foreground">{item.label}</span>
             </div>
           )
         })}
@@ -34,12 +34,12 @@ export default function CalendarLegend({ showStatuses = false, compact = false }
   }
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
-      <h3 className="text-sm font-semibold text-gray-900 mb-3">Calendar Legend</h3>
+    <div className="bg-card border border-border rounded-lg p-4 shadow-sm">
+      <h3 className="text-sm font-semibold text-foreground mb-3">Calendar Legend</h3>
 
       {/* Service Types */}
       <div className="space-y-2 mb-4">
-        <div className="text-xs font-medium text-gray-600 uppercase tracking-wider">
+        <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
           Service Type
         </div>
         {serviceLegend.map((item, index) => {
@@ -52,8 +52,8 @@ export default function CalendarLegend({ showStatuses = false, compact = false }
                 {Icon && <Icon className={`w-4 h-4 ${item.text}`} />}
               </div>
               <div>
-                <div className="text-sm font-medium text-gray-900">{item.label}</div>
-                <div className="text-xs text-gray-500">{item.description}</div>
+                <div className="text-sm font-medium text-foreground">{item.label}</div>
+                <div className="text-xs text-muted-foreground">{item.description}</div>
               </div>
             </div>
           )
@@ -62,8 +62,8 @@ export default function CalendarLegend({ showStatuses = false, compact = false }
 
       {/* Status Indicators (optional) */}
       {showStatuses && statusLegend.length > 0 && (
-        <div className="space-y-2 pt-4 border-t border-gray-200">
-          <div className="text-xs font-medium text-gray-600 uppercase tracking-wider">
+        <div className="space-y-2 pt-4 border-t border-border">
+          <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
             Job Status
           </div>
           <div className="grid grid-cols-2 gap-2">
@@ -80,7 +80,7 @@ export default function CalendarLegend({ showStatuses = false, compact = false }
         </div>
       )}
 
-      <div className="mt-4 pt-4 border-t border-gray-200 text-xs text-gray-500">
+      <div className="mt-4 pt-4 border-t border-border text-xs text-muted-foreground">
         Color intensity indicates job status: darker = active, lighter = completed
       </div>
     </div>

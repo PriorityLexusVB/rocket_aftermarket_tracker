@@ -12,7 +12,7 @@ const VendorLaneView = ({ vendors, jobs, onJobClick, onDrop, draggedJob }) => {
   const renderEventChip = (job) => {
     // Tri-state: In-House (green) / Off-Site (amber) / Mixed (blue, "Split Work").
     // Matches the legend in CalendarShell, the location badge in RoundUpModal, and
-    // the dot in PromisedQueue.jsx.
+    // the dot in UnscheduledQueue.jsx.
     const locType = getJobLocationType(job) // 'In-House' | 'Off-Site' | 'Mixed' | null
     const isMixed = locType === 'Mixed'
     const isOnSite = locType === 'In-House' || (locType == null && !job?.vendor_id)
