@@ -390,7 +390,8 @@ export default function CalendarShell() {
                   type="button"
                   onClick={handlePrev}
                   className="rounded-md p-1 text-muted-foreground hover:bg-muted"
-                  aria-label="Previous"
+                  aria-label="Previous period"
+                  title="Previous period"
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </button>
@@ -398,6 +399,7 @@ export default function CalendarShell() {
                   type="button"
                   onClick={handleToday}
                   className="rounded-md px-2 py-1 text-xs font-medium text-foreground hover:bg-muted"
+                  title="Jump to today"
                 >
                   Today
                 </button>
@@ -405,7 +407,8 @@ export default function CalendarShell() {
                   type="button"
                   onClick={handleNext}
                   className="rounded-md p-1 text-muted-foreground hover:bg-muted"
-                  aria-label="Next"
+                  aria-label="Next period"
+                  title="Next period"
                 >
                   <ChevronRight className="h-4 w-4" />
                 </button>
@@ -447,7 +450,10 @@ export default function CalendarShell() {
               </div>
 
               <details className="group relative">
-                <summary className="flex cursor-pointer list-none items-center rounded-md border border-border bg-background px-2 py-1 text-xs text-foreground">
+                <summary
+                  className="flex cursor-pointer list-none items-center rounded-md border border-border bg-background px-2 py-1 text-xs text-foreground"
+                  title="Search tips"
+                >
                   Help
                 </summary>
                 <div className="absolute right-0 z-30 mt-2 w-64 rounded-lg border border-border bg-popover p-3 text-xs text-popover-foreground shadow-lg">

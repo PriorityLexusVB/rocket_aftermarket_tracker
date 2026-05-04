@@ -13,6 +13,14 @@ import { getReopenTargetStatus } from '@/utils/jobStatusTimeRules.js'
 import { getJobLocationType } from '@/utils/locationType'
 import { getWorkTagLabel, MAX_WORK_TAGS_VISIBLE } from '@/utils/workTags'
 
+// Pill styling per location tri-state. Display label is what the user sees;
+// internal locType keys ('Mixed' / 'In-House' / 'Off-Site') match getJobLocationType().
+const LOCATION_PILL = {
+  Mixed: { bg: 'bg-blue-100 text-blue-800', label: 'Split Work' },
+  'In-House': { bg: 'bg-green-100 text-green-800', label: 'In-House' },
+  'Off-Site': { bg: 'bg-amber-100 text-amber-800', label: 'Off-Site' },
+}
+
 const AppointmentCard = ({
   appointment,
   onClick,
@@ -229,29 +237,30 @@ const AppointmentCard = ({
             <div>
               {(() => {
                 const locType = getJobLocationType(appointment)
-                const isMixed = locType === 'Mixed'
-                const isInHouse = locType === 'In-House' || (!locType && !appointment?.vendors)
-                const pillBg = isMixed
-                  ? 'bg-blue-100 text-blue-800'
-                  : isInHouse
-                    ? 'bg-green-100 text-green-800'
-                    : 'bg-amber-100 text-amber-800'
-                const label = isMixed ? 'Split Work' : isInHouse ? 'In-House' : 'Off-Site'
+                // Default to In-House when locType is null and no vendor row attached.
+                const resolvedKey =
+                  locType && LOCATION_PILL[locType]
+                    ? locType
+                    : appointment?.vendors
+                      ? 'Off-Site'
+                      : 'In-House'
+                const pill = LOCATION_PILL[resolvedKey]
+                const showVendor = resolvedKey !== 'In-House'
                 return (
                   <>
                     <div className="flex items-center gap-2">
                       <span
-                        className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${pillBg}`}
+                        className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${pill.bg}`}
                       >
-                        {label}
+                        {pill.label}
                       </span>
-                      {!isInHouse && appointment?.vendors?.name && (
+                      {showVendor && appointment?.vendors?.name && (
                         <span className="text-sm font-semibold text-gray-900 truncate">
                           {appointment.vendors.name}
                         </span>
                       )}
                     </div>
-                    {!isInHouse && appointment?.vendors?.specialty && (
+                    {showVendor && appointment?.vendors?.specialty && (
                       <div className="text-xs text-gray-600 mt-0.5 truncate">
                         {appointment.vendors.specialty}
                       </div>

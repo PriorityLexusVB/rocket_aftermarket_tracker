@@ -52,8 +52,9 @@ export default function UnscheduledQueue({
                 : 'bg-slate-100 text-slate-700'
             }`}
             aria-pressed={highlightNeedsTime}
+            title="Filter to jobs that have a promise date but no scheduled time window"
           >
-            Needs Time
+            Needs Time Set
             <span className="rounded-full bg-white/70 px-1.5 py-0.5 text-[10px] font-semibold">
               {needsTimeTotal}
             </span>

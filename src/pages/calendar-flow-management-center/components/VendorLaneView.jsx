@@ -9,6 +9,11 @@ import { formatEtDateLabel } from '@/utils/scheduleDisplay'
 import { getJobLocationType } from '@/utils/locationType'
 import { getWorkTagLabel, MAX_WORK_TAGS_VISIBLE } from '@/utils/workTags'
 
+// Default daily slot count per vendor lane. Pulled from BDC's standard
+// scheduling load (7 booked deals/day per off-site bay). Tune per-vendor
+// once we surface a vendor.daily_capacity column.
+const DEFAULT_VENDOR_CAPACITY = 7
+
 const VendorLaneView = ({ vendors, jobs, onJobClick, onDrop, draggedJob }) => {
   const renderEventChip = (job) => {
     // Tri-state: In-House (green) / Off-Site (amber) / Mixed (blue, "Split Work").
@@ -146,7 +151,7 @@ const VendorLaneView = ({ vendors, jobs, onJobClick, onDrop, draggedJob }) => {
     const vendorJobs = jobs?.filter((job) => job?.vendor_id === vendorId)
     return {
       scheduled: vendorJobs?.length || 0,
-      remaining: Math.max(0, 7 - (vendorJobs?.length || 0)), // Default capacity of 7
+      remaining: Math.max(0, DEFAULT_VENDOR_CAPACITY - (vendorJobs?.length || 0)),
     }
   }
 
