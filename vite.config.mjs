@@ -39,14 +39,21 @@ export default defineConfig({
       output: {
         manualChunks(id) {
           if (!id.includes('node_modules')) return
-          if (id.includes('react-dom')) return 'vendor-react'
-          if (/[\\/]react[\\/]/.test(id) || /[\\/]scheduler[\\/]/.test(id)) return 'vendor-react'
-          if (id.includes('react-router')) return 'vendor-router'
+          // React core + router + redux all load at app boot. Keep them in ONE
+          // chunk: splitting them across chunks risks a cross-chunk circular
+          // import where the router chunk evaluates before React initializes
+          // and throws "Cannot read properties of undefined (createContext)".
+          if (
+            /[\\/](react|react-dom|scheduler|react-router|react-router-dom|react-router-hash-link|react-redux|redux)[\\/]/.test(
+              id
+            ) ||
+            /[\\/]@reduxjs[\\/]/.test(id)
+          )
+            return 'vendor-react'
           if (id.includes('@supabase')) return 'vendor-supabase'
           if (id.includes('lucide-react')) return 'vendor-icons'
           if (id.includes('recharts') || id.includes('/d3-') || id.includes('victory-')) return 'vendor-charts'
           if (id.includes('framer-motion')) return 'vendor-animation'
-          if (id.includes('@reduxjs/toolkit') || /[\\/]redux[\\/]/.test(id)) return 'vendor-redux'
           if (id.includes('react-hook-form') || id.includes('@hookform') || /[\\/]zod[\\/]/.test(id))
             return 'vendor-forms'
           if (id.includes('date-fns')) return 'vendor-date'
