@@ -81,7 +81,7 @@ export function setAuthRedirectReason() {
  * Use in service-layer catch blocks where a 401 means the session is dead.
  * DO NOT use on routine RLS denials — those are handled by the calling code.
  */
-export function handleAuthError(error, _label) {
+export function handleAuthError(error) {
   if (!isAuthFailure(error)) return false
   if (_redirectInFlight) return true
 

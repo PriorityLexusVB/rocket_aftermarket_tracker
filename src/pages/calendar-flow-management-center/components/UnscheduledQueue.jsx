@@ -25,6 +25,7 @@ export default function UnscheduledQueue({
   onToggleOverdueOnly,
   onJobClick,
   onDragStart,
+  onDragEnd,
   onComplete,
   onReopen,
   isStatusInFlight,
@@ -123,6 +124,7 @@ export default function UnscheduledQueue({
               onClick={() => onJobClick?.(raw)}
               draggable
               onDragStart={() => onDragStart?.(raw)}
+              onDragEnd={() => onDragEnd?.()}
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">

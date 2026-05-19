@@ -125,6 +125,17 @@ const RoundUpModal = ({
     }
   }, [isOpen])
 
+  // ESC key closes the modal — the overlay covers the calendar header, hiding the
+  // Round-Up toggle that opened it, so users need a non-X exit path.
+  useEffect(() => {
+    if (!isOpen) return
+    const onKeyDown = (e) => {
+      if (e.key === 'Escape') onClose?.()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [isOpen, onClose])
+
   // baseDate is a Date object — its reference can churn across parent re-renders
   // even when the value hasn't changed. Memoize on the timestamp value.
   const baseDateMs = baseDate?.getTime?.() ?? null
@@ -356,8 +367,13 @@ const RoundUpModal = ({
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-50 overflow-hidden">
-      <div className="absolute inset-0 bg-black/50" onClick={onClose}></div>
+    <div className="fixed inset-0 z-50 overflow-hidden" role="dialog" aria-modal="true">
+      <div
+        className="absolute inset-0 bg-black/50"
+        onClick={(e) => {
+          if (e.target === e.currentTarget) onClose?.()
+        }}
+      ></div>
       <div className="absolute right-0 top-0 h-full w-full max-w-6xl bg-card text-card-foreground shadow-xl">
         <div className="flex flex-col h-full">
           {/* Header */}

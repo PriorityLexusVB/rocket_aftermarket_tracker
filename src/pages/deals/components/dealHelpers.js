@@ -3,8 +3,7 @@
 // These have zero React dependencies and can be imported anywhere.
 
 import { money0, titleCase, prettyPhone } from '../../../lib/format'
-import { formatEtMonthDay, toSafeDateForTimeZone } from '../../../utils/scheduleDisplay'
-import { getDealFinancials } from '../../../utils/dealKpis'
+import { toSafeDateForTimeZone } from '../../../utils/scheduleDisplay'
 
 // ── Formatting helpers ──────────────────────────────────────────────
 

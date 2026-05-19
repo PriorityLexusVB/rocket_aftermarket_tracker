@@ -653,17 +653,21 @@ const Navbar = () => {
         />
       )}
 
-      <EnvChip className="fixed bottom-24 right-2 z-[60] md:bottom-8" />
+      {!import.meta.env.PROD && (
+        <>
+          <EnvChip className="fixed bottom-24 right-2 z-[60] md:bottom-8" />
 
-      {buildLabel ? (
-        <div
-          className="pointer-events-none fixed bottom-20 right-2 z-[60] select-none text-[10px] text-muted-foreground md:bottom-2"
-          aria-label="Build info"
-          title={`Build ${buildLabel}${buildTimeIso ? ` @ ${buildTimeIso}` : ''}`}
-        >
-          build {buildLabel}
-        </div>
-      ) : null}
+          {buildLabel ? (
+            <div
+              className="pointer-events-none fixed bottom-20 right-2 z-[60] select-none text-[10px] text-muted-foreground md:bottom-2"
+              aria-label="Build info"
+              title={`Build ${buildLabel}${buildTimeIso ? ` @ ${buildTimeIso}` : ''}`}
+            >
+              build {buildLabel}
+            </div>
+          ) : null}
+        </>
+      )}
     </>
   )
 }

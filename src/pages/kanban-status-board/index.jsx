@@ -79,7 +79,7 @@ const KanbanStatusBoard = () => {
 
   // Real-time subscription for job updates
   useEffect(() => {
-    const unsubscribe = kanbanService.subscribeToJobChanges((payload) => {
+    const unsubscribe = kanbanService.subscribeToJobChanges(() => {
       loadJobs() // Refresh jobs on any change
     })
 

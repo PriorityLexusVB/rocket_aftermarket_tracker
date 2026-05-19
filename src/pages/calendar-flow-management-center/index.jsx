@@ -719,12 +719,14 @@ const CalendarFlowManagementCenter = ({
     try {
       // Vendor lane drop (no explicit time slot): set vendor/location only.
       if (!timeSlot) {
-        await calendarService?.updateJobSchedule(draggedJob?.id, {
+        const jobId = draggedJob?.id
+        setDraggedJob(null)
+        await calendarService?.updateJobSchedule(jobId, {
           vendorId,
           location: vendorId ? 'off_site' : undefined,
         })
         await loadCalendarData()
-        triggerMicroFlash(draggedJob?.id)
+        triggerMicroFlash(jobId)
         toast?.success?.(
           'Vendor assigned — drop the card on a Week-view time slot to set the appointment time.'
         )
@@ -1288,6 +1290,35 @@ const CalendarFlowManagementCenter = ({
                     <div className="space-y-2">{dayNoTimeJobs?.map(renderEventChip)}</div>
                   </div>
                 )}
+                {/* Out-of-grid-hours banner (day view only) */}
+                {viewMode === 'day' && (() => {
+                  const gridMin = timeSlots[0]
+                  const gridMax = timeSlots[timeSlots.length - 1]
+                  const outOfGridJobs = (dayJobs || []).filter((job) => {
+                    const h = new Date(job?.scheduled_start_time)?.getHours?.()
+                    return typeof h === 'number' && (h < gridMin || h > gridMax)
+                  })
+                  if (!outOfGridJobs.length) return null
+                  return (
+                    <div className="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 my-1 text-indigo-900">
+                      <div className="flex items-start gap-2 text-sm">
+                        <Clock className="mt-0.5 h-4 w-4 shrink-0" />
+                        <div className="min-w-0">
+                          <span className="font-semibold">
+                            {outOfGridJobs.length} job{outOfGridJobs.length !== 1 ? 's' : ''} scheduled outside 7AM–6PM
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => activateDeal(outOfGridJobs[0])}
+                            className="ml-2 inline-flex items-center rounded border border-indigo-300 bg-white px-2 py-0.5 text-xs font-medium text-indigo-900 hover:bg-indigo-100"
+                          >
+                            View
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })()}
                 {/* Time slots */}
                 <div className="space-y-0">
                   {timeSlots?.map((hour) => (
@@ -1778,6 +1809,7 @@ const CalendarFlowManagementCenter = ({
             onToggleOverdueOnly={() => setShowOverdueOnly((v) => !v)}
             onJobClick={promisedQueueClick}
             onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
             onComplete={(job) => handleCompleteJob(job)}
             onReopen={(job) => handleReopenJob(job)}
             isStatusInFlight={isStatusInFlight}

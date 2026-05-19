@@ -74,8 +74,6 @@ export default function DealsPage() {
   // ✅ FIXED: Added missing error state management
   const [error, setError] = useState('')
 
-  const currentMonthKey = getEtDayKey(new Date()).slice(0, 7)
-
   // ✅ UPDATED: Status tabs & quick search with enhanced filtering
   const [filters, setFilters] = useState({
     status: 'All',

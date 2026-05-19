@@ -22,8 +22,8 @@ const AppLayout = ({ children }) => {
       {/* Main content area with proper spacing for top navbar */}
       <main className={`${shouldShowNavbar ? 'pt-0 md:pt-16' : ''}`}>{children}</main>
 
-      {/* Build SHA badge: show here only on routes where Navbar is excluded */}
-      {!shouldShowNavbar && <NavbarBuildBadge />}
+      {/* Build SHA badge: show here only on routes where Navbar is excluded; hidden in prod */}
+      {!shouldShowNavbar && !import.meta.env.PROD && <NavbarBuildBadge />}
     </div>
   )
 }
