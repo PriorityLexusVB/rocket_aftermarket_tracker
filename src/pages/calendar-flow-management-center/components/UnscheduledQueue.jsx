@@ -1,5 +1,7 @@
-import React, { useMemo } from 'react'
+import React, { useMemo, useState } from 'react'
 import CheckCircle from 'lucide-react/dist/esm/icons/check-circle.js'
+import ChevronDown from 'lucide-react/dist/esm/icons/chevron-down.js'
+import ChevronUp from 'lucide-react/dist/esm/icons/chevron-up.js'
 import Clock from 'lucide-react/dist/esm/icons/clock.js'
 import RefreshCw from 'lucide-react/dist/esm/icons/refresh-cw.js'
 import { formatEtDateLabel } from '@/utils/scheduleDisplay'
@@ -31,11 +33,34 @@ export default function UnscheduledQueue({
   const rows = useMemo(() => unscheduledJobs ?? [], [unscheduledJobs])
   const needsTimeTotal = Number.isFinite(needsTimeCount) ? needsTimeCount : 0
   const overdueTotal = Number.isFinite(overdueCount) ? overdueCount : 0
+  const [mobileOpen, setMobileOpen] = useState(false)
 
   return (
-    <div className="hidden md:block w-80 shrink-0 rounded-lg border border-gray-200 bg-white">
+    <div className="w-full md:w-80 shrink-0 rounded-lg border border-gray-200 bg-white">
+      {/* Small-screen toggle — hidden on md+ where the panel is always visible */}
+      <button
+        type="button"
+        onClick={() => setMobileOpen((v) => !v)}
+        className="flex w-full items-center justify-between p-3 md:hidden"
+        aria-expanded={mobileOpen}
+      >
+        <div className="flex items-center gap-2">
+          <Clock className="h-4 w-4 text-gray-500" aria-hidden="true" />
+          <span className="text-sm font-semibold text-gray-900">
+            Unscheduled ({rows.length})
+          </span>
+        </div>
+        {mobileOpen ? (
+          <ChevronUp className="h-4 w-4 text-gray-400" aria-hidden="true" />
+        ) : (
+          <ChevronDown className="h-4 w-4 text-gray-400" aria-hidden="true" />
+        )}
+      </button>
+
+      {/* Panel body — always visible on md+; toggled on smaller screens */}
+      <div className={`${mobileOpen ? 'block' : 'hidden'} md:block`}>
       <div className="border-b border-gray-200 p-3 space-y-2">
-        <div className="flex items-center justify-between">
+        <div className="hidden md:flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Clock className="h-4 w-4 text-gray-500" aria-hidden="true" />
             <h3 className="text-sm font-semibold text-gray-900">Unscheduled Jobs</h3>
@@ -158,6 +183,7 @@ export default function UnscheduledQueue({
           )
         })}
       </div>
+      </div>{/* end panel body */}
     </div>
   )
 }

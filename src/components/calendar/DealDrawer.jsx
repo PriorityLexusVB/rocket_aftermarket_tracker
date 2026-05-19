@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import X from 'lucide-react/dist/esm/icons/x.js'
 import Loader2 from 'lucide-react/dist/esm/icons/loader-2.js'
 import jobService from '@/services/jobService'
@@ -194,7 +195,7 @@ export default function DealDrawer({ open, deal, onClose, onStatusChange }) {
 
   const jobParts = Array.isArray(deal?.job_parts) ? deal.job_parts : []
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-[60]">
       <div
         role="presentation"
@@ -362,6 +363,7 @@ export default function DealDrawer({ open, deal, onClose, onStatusChange }) {
           </div>
         </div>
       </aside>
-    </div>
+    </div>,
+    document.body
   )
 }

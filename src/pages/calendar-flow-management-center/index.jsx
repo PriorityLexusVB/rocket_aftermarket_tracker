@@ -41,6 +41,10 @@ import { calendarQueryMatches } from '@/utils/calendarQueryMatch'
 
 const LOAD_TIMEOUT_MS = 15000
 
+// Display heuristic for vendor lane capacity bar. Per-vendor capacity is not
+// stored in the vendors table schema, so this is a fixed UI ceiling.
+const VENDOR_LANE_DAILY_CAPACITY = 7
+
 // FIX P1-7: next_promised_iso is a computed DB column written by dealCRUD.js
 // (see dealCRUD.js lines ~640, ~847) whenever a deal is created/updated.
 // It is the canonical "next promised date" aggregated from line items.
@@ -213,20 +217,25 @@ const CalendarFlowManagementCenter = ({
     const date = new Date(currentDate)
     switch (viewMode) {
       case 'day':
-        date?.setHours(0, 0, 0, 0)
+        // Anchor to noon to avoid UTC-boundary off-by-one at ET midnight
+        date?.setHours(12, 0, 0, 0)
         return date
-      case 'week':
+      case 'week': {
         const dayOfWeek = date?.getDay()
         const diffToMonday = (dayOfWeek + 6) % 7
         date?.setDate(date?.getDate() - diffToMonday) // Monday start
-        date?.setHours(0, 0, 0, 0)
+        // Anchor to noon to avoid UTC-boundary off-by-one at ET midnight
+        date?.setHours(12, 0, 0, 0)
         return date
+      }
       case 'month':
         date?.setDate(1) // First day of the month
-        date?.setHours(0, 0, 0, 0)
+        // Anchor to noon to avoid UTC-boundary off-by-one at ET midnight
+        date?.setHours(12, 0, 0, 0)
         return date
       default:
-        date?.setHours(0, 0, 0, 0)
+        // Anchor to noon to avoid UTC-boundary off-by-one at ET midnight
+        date?.setHours(12, 0, 0, 0)
         return date
     }
   }, [currentDate, viewMode])
@@ -715,7 +724,9 @@ const CalendarFlowManagementCenter = ({
         })
         await loadCalendarData()
         triggerMicroFlash(draggedJob?.id)
-        toast?.success?.('Updated vendor')
+        toast?.success?.(
+          'Vendor assigned — drop the card on a Week-view time slot to set the appointment time.'
+        )
         return
       }
 
@@ -1218,7 +1229,7 @@ const CalendarFlowManagementCenter = ({
             d?.setDate(d?.getDate() + dayIndex)
             return d
           })
-    const timeSlots = Array.from({ length: 10 }, (_, i) => 8 + i) // 8AM to 6PM
+    const timeSlots = Array.from({ length: 12 }, (_, i) => 7 + i) // 7AM to 6PM
     const HOUR_SLOT_PX = 180
     const PX_PER_MINUTE = HOUR_SLOT_PX / 60
     const DROP_MINUTE_INCREMENT = 5
@@ -1380,7 +1391,7 @@ const CalendarFlowManagementCenter = ({
           const allDayVendorJobs = allDayJobs?.filter((job) => job?.vendor_id === vendor?.id)
           const vendorJobsCombined = [...(allDayVendorJobs || []), ...(vendorJobs || [])]
           const capacity = vendorJobsCombined?.length
-          const maxCapacity = 7 // Default capacity
+          const maxCapacity = VENDOR_LANE_DAILY_CAPACITY
 
           return (
             <div key={vendor?.id} className="bg-orange-50 rounded-lg p-4">

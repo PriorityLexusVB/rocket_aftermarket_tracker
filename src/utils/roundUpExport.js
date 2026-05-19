@@ -22,9 +22,19 @@ const BDC_HEADERS = [
 ]
 
 // Maps a product to one of the 4 BDC boolean buckets, or 'PACKAGE' for any
-// brand that's not one of the core categories (EverNew, FILM, etc.).
+// product that's not one of the core categories (EverNew, FILM, etc.).
+// Classifies PRIMARILY by op_code — the stable canonical identifier
+// (EXT/INT/WS/RG, and EN* → PACKAGE) — and only falls back to a
+// case-insensitive name/brand substring match for products lacking an op_code.
 function classifyProduct(product) {
   if (!product) return null
+  const opCode = String(product.op_code || '').trim().toUpperCase()
+  if (opCode === 'EXT') return 'EXTERIOR'
+  if (opCode === 'INT') return 'INTERIOR'
+  if (opCode === 'WS') return 'WINDSHIELD'
+  if (opCode === 'RG') return 'RG'
+  if (opCode.startsWith('EN')) return 'PACKAGE'
+  // Fallback: case-insensitive name/brand match for products with no op_code.
   const name = String(product.name || '').toLowerCase()
   const brand = String(product.brand || '').toLowerCase()
   if (name.includes('exterior')) return 'EXTERIOR'
@@ -102,7 +112,9 @@ export function jobToBdcRow(job) {
   const sales = firstNameUpper(repName)
 
   return {
-    DATE: fmtDate(job?.scheduled_start_time || job?.created_at),
+    DATE: fmtDate(
+      job?.scheduled_start_time || job?.promised_date || job?.created_at
+    ),
     CUSTOMER: customer,
     VEHICLE: vehicle,
     EXTERIOR: exterior,
@@ -132,11 +144,12 @@ async function fetchExportableJobs(start, end) {
       job_number,
       title,
       scheduled_start_time,
+      promised_date,
       created_at,
       assigned_to,
       vehicle:vehicles!left ( owner_name, make, model, year, stock_number ),
       assigned_profile:user_profiles!jobs_assigned_to_fkey ${profileFrag},
-      job_parts ( quantity_used, unit_price, total_price, product:products ( name, brand, category, unit_price, cost ) )
+      job_parts ( quantity_used, unit_price, total_price, product:products ( name, brand, category, op_code, unit_price, cost ) )
     `)
     .gte('scheduled_start_time', startIso)
     .lte('scheduled_start_time', endIso)
