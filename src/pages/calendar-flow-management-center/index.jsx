@@ -1294,7 +1294,15 @@ const CalendarFlowManagementCenter = ({
                 {viewMode === 'day' && (() => {
                   const gridMin = timeSlots[0]
                   const gridMax = timeSlots[timeSlots.length - 1]
-                  const outOfGridJobs = (dayJobs || []).filter((job) => {
+                  // dayJobs only contains vendor/off-site jobs (filteredJobs).
+                  // Pull in-house (on-site) jobs for this day from the parallel
+                  // filteredOnSiteJobs state — otherwise on-site early/late jobs
+                  // are invisible to this banner AND to the time-grid.
+                  const dayOnSiteJobs = (filteredOnSiteJobs || []).filter((job) => {
+                    const jobDate = new Date(job?.scheduled_start_time)
+                    return jobDate?.toDateString() === dayDate?.toDateString()
+                  })
+                  const outOfGridJobs = [...(dayJobs || []), ...dayOnSiteJobs].filter((job) => {
                     const h = new Date(job?.scheduled_start_time)?.getHours?.()
                     return typeof h === 'number' && (h < gridMin || h > gridMax)
                   })
