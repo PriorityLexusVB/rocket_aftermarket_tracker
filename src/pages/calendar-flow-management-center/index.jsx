@@ -215,27 +215,27 @@ const CalendarFlowManagementCenter = ({
 
   const getViewStartDate = useCallback(() => {
     const date = new Date(currentDate)
+    // Range START must be the start of the local day. setHours(0,0,0,0) on a
+    // local Date then toISOString() converts to the correct UTC instant
+    // (midnight EDT -> 04:00Z). Anchoring to noon made the day query window
+    // noon->noon and hid every morning job.
     switch (viewMode) {
       case 'day':
-        // Anchor to noon to avoid UTC-boundary off-by-one at ET midnight
-        date?.setHours(12, 0, 0, 0)
+        date?.setHours(0, 0, 0, 0)
         return date
       case 'week': {
         const dayOfWeek = date?.getDay()
         const diffToMonday = (dayOfWeek + 6) % 7
         date?.setDate(date?.getDate() - diffToMonday) // Monday start
-        // Anchor to noon to avoid UTC-boundary off-by-one at ET midnight
-        date?.setHours(12, 0, 0, 0)
+        date?.setHours(0, 0, 0, 0)
         return date
       }
       case 'month':
         date?.setDate(1) // First day of the month
-        // Anchor to noon to avoid UTC-boundary off-by-one at ET midnight
-        date?.setHours(12, 0, 0, 0)
+        date?.setHours(0, 0, 0, 0)
         return date
       default:
-        // Anchor to noon to avoid UTC-boundary off-by-one at ET midnight
-        date?.setHours(12, 0, 0, 0)
+        date?.setHours(0, 0, 0, 0)
         return date
     }
   }, [currentDate, viewMode])
@@ -247,7 +247,8 @@ const CalendarFlowManagementCenter = ({
         date?.setDate(date?.getDate() + 1)
         return date
       case 'week':
-        date?.setDate(date?.getDate() + 6) // Monday to Saturday
+        // End-exclusive: start of next Monday, so all of Mon-Sat is covered.
+        date?.setDate(date?.getDate() + 7)
         return date
       case 'month':
         // End-exclusive: first day of next month
