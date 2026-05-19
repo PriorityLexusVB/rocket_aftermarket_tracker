@@ -3,7 +3,7 @@
 > Per-repo memory file. The repo's single source of truth for "where is this project."
 > Rewrite to current truth each working session — do NOT append session logs.
 
-**Last updated:** 2026-05-19 · **By:** WORK PC / Claude · **HEAD:** `7166183`
+**Last updated:** 2026-05-19 · **By:** WORK PC / Claude · **HEAD:** `dc94155`
 
 ---
 
@@ -19,7 +19,7 @@ pnpm 10.15.0, Node 20. Hosted on Vercel.
 ## Current state — is it live?
 - Deployed: yes — Vercel: **https://rocket-aftermarket-tracker.vercel.app**
 - Last shipped: Wave XXIII — launch-readiness pass (2026-05-19)
-- Build/CI: green on HEAD `7166183`. ALL workflows green incl. supabase-migrate
+- Build/CI: green on HEAD `dc94155`. ALL workflows green incl. supabase-migrate
   (migration history reconciled). Build ~7s. Dependency audit: 0 vulnerabilities.
 - Live-verified 2026-05-19: app mounts, login works, unified Calendar shell renders,
   Board shows scheduled jobs, DealDrawer opens, month/week views work, zero console
@@ -44,15 +44,17 @@ pnpm 10.15.0, Node 20. Hosted on Vercel.
   ebay-deletion-webhook/deal-hunter are NOT rocket's). The 3 RLS-disabled advisor
   ERRORs belong to that app, not rocket.
 
-## RECOMMENDED polish (verified live, NOT launch blockers)
-- Day Board grid renders 7AM-6PM only — a job scheduled before 7AM (seed job 80158
-  @ 5AM) is returned by the RPC but not shown on the day grid (IS visible on Month).
-  Consider an out-of-grid-hours indicator. Pre-existing.
-- Env/build badge ("ENV PROD …watsue / build <sha>") floats clipped at the right
-  viewport edge — consider hiding in production or repositioning.
-- Vendor-lane drop shows a "Time TBD" badge but no toast (badge communicates it).
-- Round-Up overlay covers its own header toggle button (close via the modal's X).
-- 7 pre-existing eslint unused-var warnings in untouched files (don't fail CI).
+## ✅ Polish closed in XXIII-G + XXIII-H (live-verified)
+- Out-of-grid-hours indicator: indigo banner "N job(s) scheduled outside 7AM-6PM"
+  above the 7AM row on the day Board, View button opens DealDrawer. Scans both
+  vendor and on-site jobs.
+- Env/build badge hidden in production (gated with import.meta.env.PROD).
+- RoundUpModal: ESC + click-outside backdrop close (the header toggle is no
+  longer a trap when the modal is open).
+- Vendor-lane drop: toast + Time TBD badge on the queue-to-lane path (code path
+  verified; live drag-drop is data-shape-blocked — needs a seed job with no
+  vendor/promise/time to truly verify, but the path is wired).
+- Lint warnings: down to 2 intentional react-hooks/exhaustive-deps (not bugs).
 
 ## Open loops (close or kill before new builds)
 - [ ] **Twilio Trust Hub Brand registration** — ~10 min Rob manual action in Twilio console
