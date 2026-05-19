@@ -12,27 +12,13 @@ const STATUS_TEMPLATE_MAP = {
   in_progress: 'Work In Progress',
   completed: 'Service Complete',
 }
-function hasSchedulableLineItems(lineItems = []) {
-  return (lineItems || []).some((it) => {
-    if (!it?.requires_scheduling) return false
-    const hasPromisedDate = !!it?.promised_date
-    const hasTimes = !!(
-      it?.scheduled_start_time ||
-      it?.scheduled_end_time ||
-      it?.scheduledStartTime ||
-      it?.scheduledEndTime
-    )
-    return hasPromisedDate || hasTimes
-  })
-}
-
 /**
  * @deprecated Coordinator must explicitly call scheduleJob(). Remove after verifying no callers need auto-upgrade.
  *
  * Previously auto-flipped job status to 'scheduled' when line items had a promised_date,
  * bypassing coordinator review entirely. Now neutralized — always returns currentStatus unchanged.
  */
-function maybeAutoUpgradeJobStatusToScheduled(currentStatus, _lineItems) {
+function maybeAutoUpgradeJobStatusToScheduled(currentStatus) {
   return currentStatus
 }
 // Typed schemas from Drizzle + Zod (Section 20)

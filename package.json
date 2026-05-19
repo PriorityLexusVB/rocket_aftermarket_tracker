@@ -76,7 +76,7 @@
     "verify": "pnpm -s guard:client-env && pnpm -s guard:instructions && pnpm -s lint && pnpm -s typecheck && pnpm -s test",
     "start": "vite",
     "start:runner": "node scripts/runVite.js",
-    "build": "vite build --sourcemap",
+    "build": "vite build",
     "preview": "vite preview",
     "serve": "vite preview",
     "postinstall": "pnpm list supabase > /dev/null 2>&1 && pnpm rebuild supabase || echo 'Skipping supabase rebuild (not installed)'",

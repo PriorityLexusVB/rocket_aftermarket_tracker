@@ -31,8 +31,6 @@ import {
   applyReturnedAtIsNullFilter,
   loanerAssignmentsHasReturnedAt,
   setLoanerAssignmentsReturnedAtCapability,
-  loanerAssignmentsHasDealerId,
-  setLoanerAssignmentsDealerIdCapability,
   jobsHasNextPromisedIso,
   setJobsNextPromisedIsoCapability,
   jobsJobStatusSupportsDraft,
@@ -46,8 +44,6 @@ import {
   setJobPartsVendorRelAvailable,
   disableJobPartsVendorIdCapability,
   incrementFallbackTelemetry,
-  getOrgContext,
-  mapPermissionError,
 } from './dealHelpers.js'
 
 import { mapFormToDb, computeEarliestTimeWindow } from './dealMappers.js'
@@ -868,25 +864,13 @@ export async function getDeal(id) {
 }
 
 // CREATE: deal + job_parts
-function hasTimedLineItems(lineItems = []) {
-  return (lineItems || []).some((it) => {
-    if (!it?.requires_scheduling) return false
-    return !!(
-      it?.scheduled_start_time ||
-      it?.scheduled_end_time ||
-      it?.scheduledStartTime ||
-      it?.scheduledEndTime
-    )
-  })
-}
-
 /**
  * @deprecated Coordinator must explicitly call scheduleJob(). Remove after verifying no callers need auto-upgrade.
  *
  * Previously auto-flipped job status to 'scheduled' when timed line items were present,
  * bypassing coordinator review entirely. Now neutralized — always returns currentStatus unchanged.
  */
-function maybeAutoUpgradeJobStatusToScheduled(currentStatus, _normalizedLineItems) {
+function maybeAutoUpgradeJobStatusToScheduled(currentStatus) {
   return currentStatus
 }
 
