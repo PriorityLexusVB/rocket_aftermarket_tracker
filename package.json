@@ -49,7 +49,6 @@
     "drizzle-zod": "^0.8.3",
     "framer-motion": "^10.16.4",
     "lucide-react": "^0.574.0",
-    "next": "16.2.4",
     "qrcode": "^1.5.4",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
@@ -177,7 +176,6 @@
     "overrides": {
       "schema-utils>ajv": "^8.18.0",
       "esbuild": "0.25.12",
-      "next": "16.2.4",
       "@remix-run/router": "1.23.2",
       "tar": "7.5.8",
       "webpack": "^5.104.1",
@@ -186,8 +184,6 @@
       "serialize-javascript": ">=7.0.3",
       "tar@<=7.5.9": ">=7.5.10",
       "tar@<=7.5.10": ">=7.5.11",
-      "next@>=16.0.0-beta.0 <16.2.3": ">=16.2.4",
-      "next@>=16.0.1 <16.2.3": ">=16.2.4",
       "flatted@<=3.4.1": ">=3.4.2",
       "serialize-javascript@<7.0.5": ">=7.0.5",
       "brace-expansion@>=4.0.0 <5.0.5": ">=5.0.5",
@@ -196,7 +192,10 @@
       "yaml@>=2.0.0 <2.8.3": ">=2.8.3",
       "picomatch": ">=4.0.4",
       "follow-redirects": ">=1.16.0",
-      "postcss@<8.5.10": ">=8.5.10"
+      "postcss@<8.5.10": ">=8.5.10",
+      "fast-uri@<=3.1.1": ">=3.1.2",
+      "ws@>=8.0.0 <8.20.1": ">=8.20.1",
+      "brace-expansion@>=5.0.0 <5.0.6": ">=5.0.6"
     }
   },
   "packageManager": "pnpm@10.15.0"
