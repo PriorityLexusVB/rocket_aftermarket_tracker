@@ -1,4 +1,4 @@
-import React, { useState, useContext, useEffect, useRef } from 'react'
+import React, { useState, useContext, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AuthContext } from '../../../contexts/AuthContext'
 import { Button, Input, Checkbox } from '../../../components/ui'
@@ -27,21 +27,8 @@ const LoginForm = () => {
 
   const supabaseConfigured = !!isSupabaseConfigured?.()
 
-  const { signIn, user } = useContext(AuthContext)
+  const { signIn } = useContext(AuthContext)
   const navigate = useNavigate()
-  // loginSucceeded: set to true after a successful signIn call; cleared on error.
-  // Navigation is driven by the useEffect below so it only fires once user is
-  // confirmed truthy in AuthContext — no setTimeout guessing required.
-  const loginSucceededRef = useRef(false)
-
-  // Navigate to /deals once AuthContext confirms user is set after a login
-  // attempt. This replaces the old setTimeout(navigate, 100) race.
-  useEffect(() => {
-    if (loginSucceededRef.current && user) {
-      loginSucceededRef.current = false
-      navigate('/deals', { replace: true })
-    }
-  }, [user, navigate])
 
   const handleChange = (eOrValue, maybeEvent) => {
     if (typeof eOrValue === 'boolean') {
@@ -89,10 +76,10 @@ const LoginForm = () => {
       if (result?.success && (result?.data?.user || result?.data?.session?.user)) {
         localStorage.removeItem('lastAuthError')
         setError('')
-        // Signal the user-watcher effect to navigate once AuthContext propagates.
-        // isLoading is intentionally left true so the spinner persists until
-        // navigation fires — no flash of the login form after sign-in succeeds.
-        loginSucceededRef.current = true
+        // signIn() has already awaited getSession + profile load, so auth state
+        // is fully populated. Navigate directly — no setTimeout, no effect race.
+        // isLoading stays true; this component unmounts on the route change.
+        navigate('/deals', { replace: true })
       } else {
         setError(result?.error || 'Login failed. Please try again.')
         setIsLoading(false)
