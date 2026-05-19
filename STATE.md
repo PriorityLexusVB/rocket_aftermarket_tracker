@@ -3,7 +3,7 @@
 > Per-repo memory file. The repo's single source of truth for "where is this project."
 > Rewrite to current truth each working session — do NOT append session logs.
 
-**Last updated:** 2026-05-16 · **By:** HOME PC / Claude · **HEAD:** `7ca074a`
+**Last updated:** 2026-05-19 · **By:** WORK PC / Claude · **HEAD:** `e615f38`
 
 ---
 
@@ -17,53 +17,63 @@ Storage) backend. Twilio SMS via Supabase edge functions (`processOutbox`, `twil
 pnpm 10.15.0, Node 20. Hosted on Vercel.
 
 ## Current state — is it live?
-- Deployed: yes — Vercel (production URL `<unknown — confirm Vercel project URL>`)
-- Last shipped: Wave XXII-G — clarity-auditor RECOMMENDEDs cleared (2026-05-03)
-- Build/CI: green on HEAD `7ca074a`. Build ~6s, vendor-icons 22.00 kB.
-- Auto-deploy: Vercel native GitHub integration on push to `main`. (Note: the
-  `deploy-vercel.yml` workflow is `workflow_dispatch`/manual — the auto path is
-  Vercel's own git integration, not that workflow.)
+- Deployed: yes — Vercel: **https://rocket-aftermarket-tracker.vercel.app**
+- Last shipped: Wave XXIII — launch-readiness pass (2026-05-19)
+- Build/CI: green on HEAD `e615f38`. Build ~6s. Full dependency audit: 0 vulnerabilities.
+- Live-verified 2026-05-19: app mounts, login works, unified Calendar shell renders,
+  zero console errors at https://rocket-aftermarket-tracker.vercel.app
+- Auto-deploy: Vercel native GitHub integration on push to `main`.
 
 ## What works (trustworthy)
-- Calendar Board (week/month, job cards, overdue ring, location pills)
-- Flow Management Center — VendorLaneView lanes, UnscheduledQueue, RoundUpModal
-- Active Appointments deal sheet with bulk ops
-- Dashboard — GP profit rows, overdue counts
-- Round-Up CSV/Copy export (matches BDC tracking workbook format)
+- Unified Calendar shell (Board / Calendar / List) + Deal Drawer — now ON in
+  production via committed `.env.production` feature flags.
+- Calendar Board, Flow Management Center (VendorLaneView, UnscheduledQueue, RoundUpModal)
+- Active Appointments deal sheet with bulk ops; Dashboard GP rows / overdue counts
+- Round-Up CSV/Copy export — classifies products by op_code (RG/EXT/INT/WS/EN)
 - Test suite: 1073/1073 passing (1 known flaky — `dealsPage.completeAutoReturnsLoaner`,
   re-run clears)
 
 ## What is NOT trustworthy yet
-- Twilio SMS outbound is built but **not production-registered** — Trust Hub Brand
-  registration is incomplete (see open loops). Outbound SMS may not deliver until done.
-- 1 flaky test masks no known bug but is not a clean signal — treat as noise, monitor.
-- Production Vercel URL not recorded here — confirm before relying on it.
+- Twilio SMS outbound is built + edge functions deployed (`processOutbox` v5,
+  `twilioInbound` v6 ACTIVE) but **not production-registered** — Trust Hub Brand
+  registration incomplete. Outbound SMS will not deliver until done.
+- Production Supabase project `ogjtmtndgiqqdtwatsue` is SHARED with an unrelated
+  eBay/deal-hunter app (tables brand_rules/size_rules/found_items + edge functions
+  ebay-deletion-webhook/deal-hunter are NOT rocket's). The 3 RLS-disabled advisor
+  ERRORs belong to that app, not rocket.
 
 ## Open loops (close or kill before new builds)
 - [ ] **Twilio Trust Hub Brand registration** — ~10 min Rob manual action in Twilio console
-- [ ] **PR #340** (Dependabot 26-bump, tar CVE) — recommend close
-- [ ] **2 stale Dependabot alerts** (postcss + vite) — dismiss as Already Fixed
-- [ ] Deferred sense-check items (advisory, not blockers): dual calendar nav conflict
-      (shell bar + in-page arrows); legacy-mode gradient header on Active Appointments;
-      unlabeled "RG" column in Sheet View
+- [ ] Lint: 15 unused-var warnings (dealCRUD.js, jobService.js) — leftover from the
+      P1-2 auto-upgrade neutralization. Cosmetic; does not fail CI.
+- [ ] Dependabot PRs #341 (fast-uri) / #342 (npm-minor group) — #341 now moot
+      (fast-uri overridden directly); review/close.
 
 ## Credentials / access needed
-- Supabase — have it; project keys in `.env` (test + prod via `sb:link` scripts).
+- Supabase — project `ogjtmtndgiqqdtwatsue`; keys in `.env.local` + `sb:link` scripts.
   Canonical encrypted copy: `OneDrive/claude-sync/env-vault/`
 - Twilio — have account; Trust Hub Brand registration still pending (open loop above)
-- Vercel — connected; deploy uses `VERCEL_TOKEN` / `VERCEL_ORG_ID` / `VERCEL_PROJECT_ID`
-  GitHub secrets for the manual workflow
+- Vercel — connected; project `prj_Rk63GLIJMparBL7LDJsOkAW8rm4k`
 
 ## Next 3 actions
 1. Rob completes Twilio Trust Hub Brand registration (~10 min) — unblocks SMS delivery
-2. Close PR #340 and dismiss the 2 stale Dependabot alerts (postcss + vite)
-3. Record the production Vercel URL into this file (replace `<unknown — confirm>`)
+2. Optional: clear the 15 lint warnings + close Dependabot PRs
+3. Browser-walk the live deploy as a coordinator once Vercel updates
 
 ## Decisions log (newest first)
-- 2026-05-03 — Rename PromisedQueue → UnscheduledQueue (Wave XXII-E) — canonical vocab
-- 2026-05-03 — Location vocab frozen: In-House / Off-Site / Split Work (internal key `Mixed`)
-- 2026-05-03 — vite 5.4 → 7.3.2 major bump (Wave XIX) — closes last moderate vuln
-- 2026-05-02 — Revoke baseline anon writes on 6 internal tables (Wave XVIII-A) — RLS hardening
+- 2026-05-19 — Wave XXIII launch pass (XXIII-A..D): removed unused `next` dep
+  (.npmrc auto-install-peers=false) — 17 vulns -> 0, fixes red CI;
+  `.env.production` committed to turn the unified Calendar shell ON in prod;
+  migration 20260519000001 NOTIFY pgrst reload (fixes rls-drift-nightly);
+  calendar month-boundary, vendor-lane feedback, responsive UnscheduledQueue,
+  DealDrawer portal, Round-Up op_code classifier fixed.
+  XXIII-C: fixed blank prod page — vendor-chunk circular import (React core
+  was split across vendor-react/router/redux; now one chunk).
+  XXIII-D: fixed stuck login spinner — signIn() sets user internally, so the
+  effect-based navigation never re-fired; now navigates directly after signIn.
+- 2026-05-03 — Rename PromisedQueue → UnscheduledQueue (Wave XXII-E)
+- 2026-05-03 — Location vocab frozen: In-House / Off-Site / Split Work (key `Mixed`)
+- 2026-05-03 — vite 5.4 → 7.3.2 major bump (Wave XIX)
 
 ---
 _Update at the end of every session that changed the project._
