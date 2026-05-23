@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterAll } from 'vitest'
 
 // Mock supabase client used by dealService
 vi.mock('@/lib/supabase', () => {
@@ -475,6 +475,15 @@ describe('dealService loaner actions', () => {
       loaner_number: 'L-123',
     })
     expect(lastInsert[0]).not.toHaveProperty('org_id')
+  })
+
+  // Reset module registry after this describe block so that subsequent test files
+  // that use vi.mock('@/lib/supabase') get a fresh module cache. The vi.resetModules()
+  // calls in beforeEach above are scoped to this describe's lifecycle — without this
+  // afterAll, the cleared registry persists into later test files and breaks their
+  // vi.mocked(supabase.from) assertions (they resolve [] instead of rejecting).
+  afterAll(() => {
+    vi.resetModules()
   })
 })
 

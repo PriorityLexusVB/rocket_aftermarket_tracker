@@ -11,6 +11,7 @@ import { getDealFinancials } from '@/utils/dealKpis'
 import { useAuth } from '@/contexts/AuthContext'
 import { handleAuthError, isTechNoiseMessage } from '@/lib/authErrorHandler'
 import { isOverdue } from '@/lib/time'
+import { supabase } from '@/lib/supabase'
 
 const SIMPLE_AGENDA_ENABLED =
   String(import.meta.env.VITE_SIMPLE_CALENDAR || '').toLowerCase() === 'true'
@@ -78,6 +79,7 @@ const DashboardPage = () => {
   const [openClaims, setOpenClaims] = useState(null)
   const [openOppSummary, setOpenOppSummary] = useState(null)
   const [openOppByJobId, setOpenOppByJobId] = useState({})
+  const [crossDayOverdueCount, setCrossDayOverdueCount] = useState(0)
 
   const refresh = useCallback(async () => {
     try {
@@ -85,7 +87,7 @@ const DashboardPage = () => {
       setError(null)
       setOpenOppByJobId({})
 
-      const [jobsTodayRes, jobsThroughTomorrowRes, jobsMtdRes, deals, claimsStats, oppSummary] =
+      const [jobsTodayRes, jobsThroughTomorrowRes, jobsMtdRes, deals, claimsStats, oppSummary, overdueCountRes] =
         await Promise.all([
           calendarService.getJobsByDateRange(startOfToday(), endOfToday(), {
             orgId: orgId || null,
@@ -99,6 +101,12 @@ const DashboardPage = () => {
           getAllDeals(),
           claimsService.getClaimsStats(orgId || null),
           getOpenOpportunitySummary().catch(() => null),
+          supabase
+            .from('jobs')
+            .select('id', { count: 'exact', head: true })
+            .lt('promised_date', startOfToday().toISOString())
+            .not('job_status', 'in', '(completed,cancelled,canceled,no_show)')
+            .catch(() => null),
         ])
 
       const jobsToday = Array.isArray(jobsTodayRes?.data) ? jobsTodayRes.data : []
@@ -125,6 +133,7 @@ const DashboardPage = () => {
       setMtdDeals(mappedMtdDeals)
       setOpenClaims(Number.isFinite(openClaimsCount) ? openClaimsCount : null)
       setOpenOppSummary(oppSummary && typeof oppSummary === 'object' ? oppSummary : null)
+      setCrossDayOverdueCount(Number(overdueCountRes?.count) || 0)
     } catch (e) {
       console.error('[dashboard] load failed', e)
       // If this is a real auth failure (stale JWT, etc.), redirect to /auth.
@@ -142,6 +151,7 @@ const DashboardPage = () => {
       setMtdDeals([])
       setOpenClaims(null)
       setOpenOppSummary(null)
+      setCrossDayOverdueCount(0)
     } finally {
       setLoading(false)
     }
@@ -256,8 +266,12 @@ const DashboardPage = () => {
       const deal = todayDeals.find((d) => d?.id === job?.id) || null
       return { kind: 'overdue', job, deal, count: todayOverdue.length }
     }
+    // Branch 2: no overdue jobs on today's schedule, but there are overdue jobs from prior days
+    if (todayJobs.length === 0 && crossDayOverdueCount > 0) {
+      return { kind: 'cross-day', count: crossDayOverdueCount }
+    }
     return null
-  }, [todayJobs, todayDeals])
+  }, [todayJobs, todayDeals, crossDayOverdueCount])
 
   const money0 = useMemo(
     () =>
@@ -415,6 +429,50 @@ const DashboardPage = () => {
                         className="px-3 py-2 rounded bg-rose-600 text-white hover:bg-rose-700 text-sm font-medium transition-colors"
                       >
                         Open Deal
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )
+            })() : topPriority?.kind === 'cross-day' ? (() => {
+              const { count } = topPriority
+              return (
+                <div className="mb-6 rounded-xl border border-amber-300 bg-amber-50 p-4 shadow-sm">
+                  <div className="flex items-start gap-3">
+                    <div className="rounded-full bg-amber-100 p-2 shrink-0">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-5 w-5 text-amber-600"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        aria-hidden="true"
+                      >
+                        <circle cx="12" cy="12" r="10" />
+                        <polyline points="12 6 12 12 16 14" />
+                      </svg>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[10px] font-mono uppercase tracking-wide text-amber-700">
+                        Catch up
+                      </div>
+                      <h2 className="mt-0.5 text-lg font-semibold text-amber-900 truncate">
+                        {count} {count === 1 ? 'job' : 'jobs'} overdue from prior days
+                      </h2>
+                      <div className="mt-0.5 text-sm text-amber-800 truncate">
+                        Today&apos;s board is clear — work the Overdue Inbox.
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => navigate('/overdue')}
+                        className="px-3 py-2 rounded bg-amber-600 text-white hover:bg-amber-700 text-sm font-medium transition-colors"
+                      >
+                        Open Overdue Inbox
                       </button>
                     </div>
                   </div>
