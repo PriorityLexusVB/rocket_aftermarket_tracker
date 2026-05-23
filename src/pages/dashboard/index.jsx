@@ -104,14 +104,18 @@ const DashboardPage = () => {
           getOpenOpportunitySummary().catch(() => null),
           // PostgrestFilterBuilder is thenable but NOT a Promise — it has `.then`
           // but no `.catch`. Wave XXVII shipped this with `.catch(() => null)`
-          // which threw "be.from(...).select(...).lt(...).not(...).catch is not
-          // a function" on EVERY dashboard load (live since 1dd3a44).
-          // Use the dual-handler `.then(success, failure)` form instead.
+          // which threw a TypeError on EVERY dashboard load (live since 1dd3a44).
+          // Wave XXIX-C fixed the .catch but exposed a SECOND Wave XXVII bug:
+          // the not-in list included `canceled` (American spelling) and
+          // `no_show` — NEITHER of those is a valid `job_status` enum value.
+          // The valid enum is: pending, in_progress, completed, cancelled (BR),
+          // scheduled, quality_check, delivered, draft. PostgREST returned 400
+          // on every dashboard load. Wave XXIX-E uses only valid done-states.
           supabase
             .from('jobs')
             .select('id', { count: 'exact', head: true })
             .lt('promised_date', startOfToday().toISOString())
-            .not('job_status', 'in', '(completed,cancelled,canceled,no_show)')
+            .not('job_status', 'in', '(completed,cancelled,delivered)')
             .then((r) => r, () => null),
         ])
 
