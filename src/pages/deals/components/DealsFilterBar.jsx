@@ -26,7 +26,7 @@ const DealsFilterBar = ({
         { value: 'All', label: 'All' },
         { value: 'Open', label: 'Open' },
         { value: 'Draft', label: 'Draft' },
-        { value: 'Pending', label: 'Needs Work (time TBD)' },
+        { value: 'Pending', label: 'Pending Work' },
         { value: 'Scheduled', label: 'Scheduled' },
         { value: 'Active', label: 'Active' },
         { value: 'Completed', label: 'Completed' },
