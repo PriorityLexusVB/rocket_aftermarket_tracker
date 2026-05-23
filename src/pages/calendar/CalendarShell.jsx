@@ -593,13 +593,13 @@ export default function CalendarShell() {
                       value={dateInputValue}
                       onChange={handleDateInput}
                       className="h-8 rounded-md border border-input bg-background px-2 text-xs text-foreground"
-                      aria-label="Jump to date"
+                      aria-label="Jump to date (mobile menu)"
                     />
                     <select
                       value={clampedRange}
                       onChange={handleRangeChange}
                       className="h-8 rounded-md border border-input bg-background px-2 text-xs text-foreground"
-                      aria-label="Select date range"
+                      aria-label="Select date range (mobile menu)"
                     >
                       {rangeOptions.map((option) => (
                         <option key={option.value} value={option.value}>
@@ -614,7 +614,7 @@ export default function CalendarShell() {
                       type="text"
                       placeholder="Search stock/customer/phone"
                       className="h-8 w-full rounded-md border border-input bg-background pl-8 pr-2 text-xs text-foreground placeholder:text-muted-foreground"
-                      aria-label="Search calendar"
+                      aria-label="Search calendar (mobile menu)"
                       value={searchValue}
                       onChange={(event) => setSearchValue(event.target.value)}
                     />
