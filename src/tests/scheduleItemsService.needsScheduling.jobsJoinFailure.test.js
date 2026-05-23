@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi, afterAll } from 'vitest'
 
 function makeChainableQuery() {
   const q = {
@@ -14,6 +14,24 @@ function makeChainableQuery() {
 }
 
 describe('scheduleItemsService.getNeedsSchedulingPromiseItems', () => {
+  // Wave XXIX hardening: this test uses `vi.doMock` for several modules
+  // (dealService, supabase, jobService, calendarService). Those registrations
+  // persist in vitest's mock registry across files under `pool: 'threads'
+  // + singleThread: true`. The next alphabetical test file
+  // (`dealService.relationshipError.test.js`) imports `getAllDeals` from
+  // `@/services/dealService` and used to inherit the thin doMock factory
+  // here (which only exposes `getCapabilities`) — causing intermittent
+  // ~10% suite-level fails on relationshipError's 3 tests. Restoring the
+  // module registry after this describe closes that bleed-through.
+  afterAll(() => {
+    vi.doUnmock('@/lib/supabase')
+    vi.doUnmock('@/lib/supabase/safeSelect')
+    vi.doUnmock('@/services/dealService')
+    vi.doUnmock('@/services/jobService')
+    vi.doUnmock('@/services/calendarService')
+    vi.resetModules()
+  })
+
   it('returns empty items even if jobsJoin candidate query fails', async () => {
     vi.resetModules()
 

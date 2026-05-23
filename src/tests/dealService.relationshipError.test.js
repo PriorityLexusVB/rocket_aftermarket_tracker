@@ -1,15 +1,26 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
-// Mock supabase module before importing dealService
-vi.mock('@/lib/supabase', () => ({
+// Wave XXIX hardening: `vi.mock` with an inline factory creates fresh
+// `vi.fn()` instances every time the factory runs. Under `pool: 'threads'
+// + singleThread: true`, ANY other test file's `vi.resetModules()` causes
+// vitest to re-run the factory, producing NEW mock instances that the
+// `import { supabase }` reference below no longer matches. Result: this
+// file's `vi.mocked(supabase.from).mockReturnValue(...)` configures the
+// OLD instance; the real getAllDeals call uses the NEW instance with
+// no mock implementation, returning [] instead of throwing. Same root
+// cause that Wave XXVIII v2 fixed for dealsPage.completeAutoReturnsLoaner
+// via the same `vi.hoisted` pattern.
+const supabaseMock = vi.hoisted(() => ({
   supabase: {
     from: vi.fn(),
   },
 }))
 
+vi.mock('@/lib/supabase', () => supabaseMock)
+
 // Import after mocking
 import { getAllDeals } from '@/services/dealService'
-import { supabase } from '@/lib/supabase'
+const { supabase } = supabaseMock
 
 describe('dealService - relationship error handling', () => {
   beforeEach(() => {
