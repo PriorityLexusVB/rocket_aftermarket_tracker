@@ -37,6 +37,7 @@ import {
 } from './components/DealPresentational'
 import DealsKpiRow from './components/DealsKpiRow'
 import DealsFilterBar from './components/DealsFilterBar'
+import { getWorkTagLabel } from '@/utils/workTags'
 
 // Extracted helpers
 import {
@@ -1217,7 +1218,7 @@ export default function DealsPage() {
                                 <span
                                   key={label}
                                   className="inline-flex items-center rounded-full 0 px-2 py-0.5 text-[11px] font-medium text-foreground"
-                                  title={label}
+                                  title={getWorkTagLabel(label) || label}
                                 >
                                   {label}
                                 </span>
@@ -1249,12 +1250,15 @@ export default function DealsPage() {
 
                               return (
                                 <>
-                                  <Pill className="tabular-nums whitespace-nowrap">
-                                    S {formatMoney0OrDash(fin.sale)} / C{' '}
+                                  <Pill className="tabular-nums whitespace-nowrap" title="Sale price / Cost">
+                                    Sale {formatMoney0OrDash(fin.sale)} · Cost{' '}
                                     {formatMoney0OrDash(fin.cost)}
                                   </Pill>
-                                  <Pill className={`tabular-nums whitespace-nowrap ${profitClass}`}>
-                                    P {formatMoney0OrDash(fin.profit)}
+                                  <Pill
+                                    className={`tabular-nums whitespace-nowrap ${profitClass}`}
+                                    title="Gross profit"
+                                  >
+                                    Profit {formatMoney0OrDash(fin.profit)}
                                   </Pill>
                                 </>
                               )

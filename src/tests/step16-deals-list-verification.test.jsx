@@ -425,15 +425,18 @@ describe('Step 16: Deals List Screen Verification', () => {
 
     await waitFor(() => {
       const row1 = screen?.getByTestId('deal-row-job-001')
-      expect(within(row1)?.getByText('S $850 / C $725'))?.toBeInTheDocument()
+      // Labels switched from cryptic "S $X / C $X" to plain "Sale $X · Cost $X"
+      // (Wave XXV-C — sense-check flagged the abbreviations as unintelligible
+      // on desktop). Whitespace + bullet character tolerated via regex.
+      expect(within(row1)?.getByText(/Sale\s*\$850\s*·\s*Cost\s*\$725/))?.toBeInTheDocument()
       // Profit is computed as Sale - Cost (850 - 724.50 = 125.50 -> $126)
-      expect(within(row1)?.getAllByText('P $126')?.length)?.toBeGreaterThan(0)
+      expect(within(row1)?.getAllByText(/Profit\s*\$126/)?.length)?.toBeGreaterThan(0)
 
       const row2 = screen?.getByTestId('deal-row-job-002')
       // 1200.50 -> $1,201 (money0)
-      expect(within(row2)?.getByText('S $1,201 / C $1,020'))?.toBeInTheDocument()
+      expect(within(row2)?.getByText(/Sale\s*\$1,201\s*·\s*Cost\s*\$1,020/))?.toBeInTheDocument()
       // 1200.50 - 1020.25 = 180.25 -> $180
-      expect(within(row2)?.getAllByText('P $180')?.length)?.toBeGreaterThan(0)
+      expect(within(row2)?.getAllByText(/Profit\s*\$180/)?.length)?.toBeGreaterThan(0)
     })
 
     console.log('✅ Per-deal financials display: Sale vs Cost with Profit')

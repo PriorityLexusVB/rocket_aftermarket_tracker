@@ -41,7 +41,7 @@ const DealsKpiRow = ({ kpis }) => (
       </div>
 
       {/* Profit */}
-      <div className="bg-card p-6 rounded-xl border border-border shadow-sm">
+      <div className={`bg-card p-6 rounded-xl border border-border shadow-sm ${kpis?.profit === '' || kpis?.profit == null ? 'opacity-60' : ''}`}>
         <div className="flex items-center">
           <div className="p-3 rounded-lg bg-accent/50 mr-4">
             <Icon name="TrendingUp" size={24} className="text-foreground" />
@@ -60,7 +60,7 @@ const DealsKpiRow = ({ kpis }) => (
       </div>
 
       {/* Margin */}
-      <div className="bg-card p-6 rounded-xl border border-border shadow-sm">
+      <div className={`bg-card p-6 rounded-xl border border-border shadow-sm ${kpis?.margin === '' || kpis?.margin == null ? 'opacity-60' : ''}`}>
         <div className="flex items-center">
           <div className="p-3 rounded-lg bg-accent/50 mr-4">
             <Icon name="Percent" size={24} className="text-foreground" />
