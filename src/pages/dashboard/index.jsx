@@ -102,12 +102,17 @@ const DashboardPage = () => {
           getAllDeals(),
           claimsService.getClaimsStats(orgId || null),
           getOpenOpportunitySummary().catch(() => null),
+          // PostgrestFilterBuilder is thenable but NOT a Promise — it has `.then`
+          // but no `.catch`. Wave XXVII shipped this with `.catch(() => null)`
+          // which threw "be.from(...).select(...).lt(...).not(...).catch is not
+          // a function" on EVERY dashboard load (live since 1dd3a44).
+          // Use the dual-handler `.then(success, failure)` form instead.
           supabase
             .from('jobs')
             .select('id', { count: 'exact', head: true })
             .lt('promised_date', startOfToday().toISOString())
             .not('job_status', 'in', '(completed,cancelled,canceled,no_show)')
-            .catch(() => null),
+            .then((r) => r, () => null),
         ])
 
       const jobsToday = Array.isArray(jobsTodayRes?.data) ? jobsTodayRes.data : []
