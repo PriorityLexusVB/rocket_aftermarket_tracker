@@ -374,7 +374,7 @@ export const SheetViewTable = ({ deals = [], onRowClick }) => {
             <th className="px-3 py-2 text-left font-semibold">Additional Package</th>
             <th className="px-3 py-2 text-right font-semibold">Price</th>
             <th className="px-3 py-2 text-right font-semibold">Cost</th>
-            <th className="px-3 py-2 text-right font-semibold">Gross</th>
+            <th className="px-3 py-2 text-right font-semibold">Profit</th>
             <th className="px-3 py-2 text-left font-semibold">Sales</th>
             <th className="px-3 py-2 text-left font-semibold">Tracking</th>
           </tr>

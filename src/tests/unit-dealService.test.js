@@ -395,6 +395,10 @@ describe('dealService loaner actions', () => {
   let supabaseFresh
 
   beforeEach(async () => {
+    // Restore any spies from the previous test so they don't carry over.
+    // (vi.spyOn calls from saveLoanerAssignment tests would otherwise accumulate.)
+    vi.restoreAllMocks()
+
     if (typeof sessionStorage !== 'undefined') {
       sessionStorage.removeItem('cap_loanerAssignmentsOrgId')
     }

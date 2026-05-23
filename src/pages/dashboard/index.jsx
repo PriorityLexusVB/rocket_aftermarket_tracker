@@ -243,6 +243,22 @@ const DashboardPage = () => {
     [refresh]
   )
 
+  const topPriority = useMemo(() => {
+    const todayOverdue = todayJobs
+      .filter((j) => isOverdue(j?.next_promised_iso || j?.promised_date))
+      .sort((a, b) => {
+        const ap = Date.parse(a?.next_promised_iso || a?.promised_date || '') || 0
+        const bp = Date.parse(b?.next_promised_iso || b?.promised_date || '') || 0
+        return ap - bp
+      })
+    if (todayOverdue.length > 0) {
+      const job = todayOverdue[0]
+      const deal = todayDeals.find((d) => d?.id === job?.id) || null
+      return { kind: 'overdue', job, deal, count: todayOverdue.length }
+    }
+    return null
+  }, [todayJobs, todayDeals])
+
   const money0 = useMemo(
     () =>
       new Intl.NumberFormat('en-US', {
@@ -340,6 +356,71 @@ const DashboardPage = () => {
 
         <div className="mt-8 grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_340px] gap-6">
           <div className="min-w-0">
+            {topPriority?.kind === 'overdue' ? (() => {
+              const { job, count } = topPriority
+              const rawDate = job?.next_promised_iso || job?.promised_date
+              const promisedDate = rawDate ? new Date(rawDate) : null
+              const promisedLabel =
+                promisedDate && !Number.isNaN(promisedDate.getTime())
+                  ? promisedDate.toLocaleDateString('en-US', {
+                      weekday: 'short',
+                      month: 'short',
+                      day: 'numeric',
+                    }) +
+                    (promisedDate.getHours() !== 0 || promisedDate.getMinutes() !== 0
+                      ? ' ' +
+                        promisedDate.toLocaleTimeString('en-US', {
+                          hour: 'numeric',
+                          minute: '2-digit',
+                        })
+                      : '')
+                  : null
+              return (
+                <div className="mb-6 rounded-xl border border-rose-300 bg-rose-50 p-4 shadow-sm">
+                  <div className="flex items-start gap-3">
+                    <div className="rounded-full bg-rose-100 p-2 shrink-0">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-5 w-5 text-rose-600"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        aria-hidden="true"
+                      >
+                        <circle cx="12" cy="12" r="10" />
+                        <line x1="12" y1="8" x2="12" y2="12" />
+                        <line x1="12" y1="16" x2="12.01" y2="16" />
+                      </svg>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[10px] font-mono uppercase tracking-wide text-rose-700">
+                        Most urgent ·{' '}
+                        {count > 1 ? `${count} overdue today` : '1 overdue today'}
+                      </div>
+                      <h2 className="mt-0.5 text-lg font-semibold text-rose-900 truncate">
+                        {job?.customer_name || job?.vehicle?.owner_name || job?.title || 'Overdue job'}
+                      </h2>
+                      <div className="mt-0.5 text-sm text-rose-800 truncate">
+                        {job?.vehicle_info || '—'}
+                        {promisedLabel ? ` · Promised ${promisedLabel}` : ''}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => navigate(`/deals/${job?.id}/edit`)}
+                        className="px-3 py-2 rounded bg-rose-600 text-white hover:bg-rose-700 text-sm font-medium transition-colors"
+                      >
+                        Open Deal
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )
+            })() : null}
             <div className="rounded-xl border bg-white shadow-sm">
               <div className="flex items-center justify-between gap-4 p-4 border-b">
                 <div>

@@ -52,7 +52,15 @@ export function parseCalendarDateParam(value) {
   const d = Number(m[3])
   if (!y || !mo || !d) return null
   const dt = new Date(y, mo - 1, d, 12, 0, 0, 0)
-  return Number.isNaN(dt.getTime()) ? null : dt
+  if (Number.isNaN(dt.getTime())) return null
+  // Guard against wildly out-of-range dates (e.g. ?date=2099-13-99).
+  // Anything more than 5 years from today falls back to today.
+  const nowYear = new Date().getFullYear()
+  if (Math.abs(dt.getFullYear() - nowYear) > 5) {
+    console.warn('[calendar] invalid date param, fell back to today', str)
+    return null
+  }
+  return dt
 }
 
 export function normalizeCalendarView(view) {

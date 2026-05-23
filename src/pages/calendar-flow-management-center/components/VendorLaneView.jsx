@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import Building2 from 'lucide-react/dist/esm/icons/building-2.js'
 import Clock from 'lucide-react/dist/esm/icons/clock.js'
 import Car from 'lucide-react/dist/esm/icons/car.js'
@@ -6,7 +6,7 @@ import Calendar from 'lucide-react/dist/esm/icons/calendar.js'
 import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle.js'
 import { formatTime, isOverdue, getStatusBadge } from '../../../lib/time'
 import { formatEtDateLabel } from '@/utils/scheduleDisplay'
-import { getJobLocationType } from '@/utils/locationType'
+import { isJobOnSite, getJobLocationType } from '@/utils/locationType'
 import { getWorkTagLabel, MAX_WORK_TAGS_VISIBLE } from '@/utils/workTags'
 
 // Default daily slot count per vendor lane. Pulled from BDC's standard
@@ -21,7 +21,8 @@ const VendorLaneView = ({ vendors, jobs, onJobClick, onDrop, draggedJob }) => {
     // the dot in UnscheduledQueue.jsx.
     const locType = getJobLocationType(job) // 'In-House' | 'Off-Site' | 'Mixed' | null
     const isMixed = locType === 'Mixed'
-    const isOnSite = locType === 'In-House' || (locType == null && !job?.vendor_id)
+    // isJobOnSite is the canonical location-display check (mirrors JobDrawer F5 fix, Wave XXV)
+    const isOnSite = locType === 'Mixed' ? false : isJobOnSite(job)
     const chipBg = isMixed ? 'bg-blue-50' : isOnSite ? 'bg-green-50' : 'bg-amber-50'
     const chipBorder = isMixed ? 'border-blue-200' : isOnSite ? 'border-green-200' : 'border-amber-200'
     const chipHoverBorder = isMixed ? 'hover:border-blue-300' : isOnSite ? 'hover:border-green-300' : 'hover:border-amber-300'
@@ -59,8 +60,14 @@ const VendorLaneView = ({ vendors, jobs, onJobClick, onDrop, draggedJob }) => {
         `}
         onClick={() => onJobClick?.(job)}
       >
-        {/* Status stripe */}
-        <div className={`absolute left-0 top-0 bottom-0 w-1 ${statusColor} rounded-l-lg`} />
+        {/* Status stripe — pulses on overdue active jobs to surface urgency */}
+        <div
+          className={`absolute left-0 top-0 bottom-0 w-1 ${statusColor} rounded-l-lg${
+            overdue && ['pending', 'new', 'scheduled'].includes(rawStatus)
+              ? ' animate-pulse'
+              : ''
+          }`}
+        />
 
         {/* Main content */}
         <div className="ml-2 min-w-0">
@@ -155,10 +162,36 @@ const VendorLaneView = ({ vendors, jobs, onJobClick, onDrop, draggedJob }) => {
     }
   }
 
+  // Per-lane drag-active counters. Counter pattern avoids dragLeave misfires
+  // when the pointer crosses child elements inside the drop zone.
+  const [onSiteDragCount, setOnSiteDragCount] = useState(0)
+  // Vendor drag counts keyed by vendor id
+  const [vendorDragCounts, setVendorDragCounts] = useState({})
+
+  const onSiteDragging = onSiteDragCount > 0
+  const isVendorDragging = (vendorId) => (vendorDragCounts[vendorId] || 0) > 0
+
+  const handleVendorDragEnter = (vendorId) =>
+    setVendorDragCounts((prev) => ({ ...prev, [vendorId]: (prev[vendorId] || 0) + 1 }))
+  const handleVendorDragLeave = (vendorId) =>
+    setVendorDragCounts((prev) => ({ ...prev, [vendorId]: Math.max(0, (prev[vendorId] || 0) - 1) }))
+  const handleVendorDrop = (vendorId, location) => {
+    setVendorDragCounts((prev) => ({ ...prev, [vendorId]: 0 }))
+    onDrop?.(vendorId, location)
+  }
+
   return (
     <div className="space-y-6 p-6">
       {/* On-Site Lane */}
-      <div className="bg-green-50 rounded-lg border border-green-200">
+      <div
+        className={`bg-green-50 rounded-lg border transition-all duration-150 ${
+          onSiteDragging
+            ? 'border-indigo-300 ring-2 ring-indigo-300 ring-offset-2 bg-indigo-50/30'
+            : 'border-green-200'
+        }`}
+        onDragEnter={() => setOnSiteDragCount((c) => c + 1)}
+        onDragLeave={() => setOnSiteDragCount((c) => Math.max(0, c - 1))}
+      >
         <div className="p-4 border-b border-green-200">
           <div className="flex items-center justify-between">
             <div className="flex items-center">
@@ -183,7 +216,7 @@ const VendorLaneView = ({ vendors, jobs, onJobClick, onDrop, draggedJob }) => {
         <div
           className="p-4 min-h-[120px] grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3"
           onDragOver={(e) => e?.preventDefault()}
-          onDrop={() => onDrop?.(null, 'on_site')}
+          onDrop={() => { setOnSiteDragCount(0); onDrop?.(null, 'on_site') }}
         >
           {(() => {
             const onSiteJobs = jobs?.filter((job) => !job?.vendor_id || job?.location === 'on_site') || []
@@ -218,7 +251,16 @@ const VendorLaneView = ({ vendors, jobs, onJobClick, onDrop, draggedJob }) => {
         const capacity = getVendorCapacity(vendor?.id)
 
         return (
-          <div key={vendor?.id} className="bg-orange-50 rounded-lg border border-orange-200">
+          <div
+            key={vendor?.id}
+            className={`bg-orange-50 rounded-lg border transition-all duration-150 ${
+              isVendorDragging(vendor?.id)
+                ? 'border-indigo-300 ring-2 ring-indigo-300 ring-offset-2 bg-indigo-50/30'
+                : 'border-orange-200'
+            }`}
+            onDragEnter={() => handleVendorDragEnter(vendor?.id)}
+            onDragLeave={() => handleVendorDragLeave(vendor?.id)}
+          >
             <div className="p-4 border-b border-orange-200">
               <div className="flex items-center justify-between">
                 <div className="flex items-center">
@@ -229,6 +271,23 @@ const VendorLaneView = ({ vendors, jobs, onJobClick, onDrop, draggedJob }) => {
                       <Building2 className="h-3 w-3 mr-1" />
                       {vendor?.specialty} • Off-Site
                     </div>
+                    {/* Capacity bar — visual load indicator per vendor lane */}
+                    {(() => {
+                      const pct = Math.min(100, Math.round((capacity?.scheduled / DEFAULT_VENDOR_CAPACITY) * 100))
+                      const barColor =
+                        pct < 70 ? 'bg-green-500' : pct < 100 ? 'bg-amber-500' : 'bg-red-500'
+                      return (
+                        <div
+                          className="h-1 mt-2 rounded-full overflow-hidden bg-gray-200 w-32"
+                          title="Estimated capacity (default: 7 — update in Admin when per-vendor capacity ships)"
+                        >
+                          <div
+                            className={`h-full transition-all duration-200 ${barColor}`}
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                      )
+                    })()}
                   </div>
                 </div>
                 <div className="text-right">
@@ -258,7 +317,7 @@ const VendorLaneView = ({ vendors, jobs, onJobClick, onDrop, draggedJob }) => {
             <div
               className="p-4 min-h-[120px] grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3"
               onDragOver={(e) => e?.preventDefault()}
-              onDrop={() => onDrop?.(vendor?.id, 'off_site')}
+              onDrop={() => handleVendorDrop(vendor?.id, 'off_site')}
             >
               {vendorJobs?.map(renderEventChip)}
 

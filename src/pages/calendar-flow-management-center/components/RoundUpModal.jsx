@@ -1,7 +1,9 @@
-import React, { useState, useMemo, useEffect } from 'react'
+import React, { useState, useMemo, useEffect, useCallback } from 'react'
 import X from 'lucide-react/dist/esm/icons/x.js'
 import Download from 'lucide-react/dist/esm/icons/download.js'
 import Copy from 'lucide-react/dist/esm/icons/copy.js'
+import ChevronDown from 'lucide-react/dist/esm/icons/chevron-down.js'
+import ChevronUp from 'lucide-react/dist/esm/icons/chevron-up.js'
 import FileText from 'lucide-react/dist/esm/icons/file-text.js'
 import Calendar from 'lucide-react/dist/esm/icons/calendar.js'
 import Clock from 'lucide-react/dist/esm/icons/clock.js'
@@ -116,7 +118,43 @@ const RoundUpModal = ({
   const [selectedJobs, setSelectedJobs] = useState(new Set())
   const [exportBusy, setExportBusy] = useState(null) // 'copy' | 'csv' | null
   const [mounted, setMounted] = useState(false)
+  // Vendor section collapse state — key is `${groupName}::${vendorName}`, default expanded
+  const [collapsedVendors, setCollapsedVendors] = useState(new Set())
   const toast = useToast()
+
+  const toggleVendorCollapse = useCallback((key) => {
+    setCollapsedVendors((prev) => {
+      const next = new Set(prev)
+      if (next.has(key)) {
+        next.delete(key)
+      } else {
+        next.add(key)
+      }
+      return next
+    })
+  }, [])
+
+  const copyVendorJobs = useCallback(
+    async (vendorName, vendorJobs) => {
+      if (!navigator?.clipboard?.writeText) {
+        toast?.error?.("Couldn't access clipboard.")
+        return
+      }
+      const text = vendorJobs
+        .map((job) => {
+          const stock = job?.job_number?.split('-')?.pop() || '—'
+          const customer = job?.customer_name || job?.vehicle?.owner_name || '—'
+          const timeStr = job?.scheduled_start_time
+            ? `${formatTime(job.scheduled_start_time)}–${formatTime(job.scheduled_end_time)}`
+            : 'Unscheduled'
+          return `Stock: ${stock} · Customer: ${customer} · Time: ${timeStr}`
+        })
+        .join('\n')
+      await navigator.clipboard.writeText(text)
+      toast?.info?.(`Copied ${vendorName} — ${vendorJobs.length} job${vendorJobs.length === 1 ? '' : 's'}`)
+    },
+    [toast],
+  )
 
   useEffect(() => {
     if (!isOpen) { setMounted(false); return }
@@ -356,17 +394,47 @@ const RoundUpModal = ({
           </div>
         )}
 
-        {/* Vendor Jobs */}
-        {Object.entries(groupData?.vendors || {})?.map(([vendorName, vendorJobs]) => (
-          <div key={vendorName} className="mb-6">
-            <div className="flex items-center mb-3">
-              <div className="w-3 h-3 bg-amber-500 rounded-full mr-2"></div>
-              <h4 className="font-medium text-amber-900 dark:text-amber-300">{vendorName}</h4>
-              <span className="ml-2 text-sm text-muted-foreground">({vendorJobs?.length} jobs)</span>
+        {/* Vendor Jobs — collapse + per-vendor copy */}
+        {Object.entries(groupData?.vendors || {})?.map(([vendorName, vendorJobs]) => {
+          const collapseKey = `${groupName}::${vendorName}`
+          const isCollapsed = collapsedVendors.has(collapseKey)
+          return (
+            <div key={vendorName} className="mb-6">
+              <div className="flex items-center mb-3 group">
+                <div className="w-3 h-3 bg-amber-500 rounded-full mr-2 flex-shrink-0"></div>
+                <button
+                  type="button"
+                  className="flex items-center gap-1.5 text-left flex-1 min-w-0"
+                  onClick={() => toggleVendorCollapse(collapseKey)}
+                  aria-expanded={!isCollapsed}
+                  aria-label={`${isCollapsed ? 'Expand' : 'Collapse'} ${vendorName}`}
+                >
+                  <h4 className="font-medium text-amber-900 dark:text-amber-300">{vendorName}</h4>
+                  <span className="text-sm text-muted-foreground">({vendorJobs?.length} jobs)</span>
+                  {isCollapsed ? (
+                    <ChevronDown className="h-3.5 w-3.5 text-muted-foreground ml-1 flex-shrink-0" />
+                  ) : (
+                    <ChevronUp className="h-3.5 w-3.5 text-muted-foreground ml-1 flex-shrink-0" />
+                  )}
+                </button>
+                {/* Per-vendor clipboard copy */}
+                <button
+                  type="button"
+                  title={`Copy ${vendorName} jobs`}
+                  className="ml-2 p-1 rounded hover:bg-amber-100 text-amber-700 opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex-shrink-0"
+                  onClick={() => copyVendorJobs(vendorName, vendorJobs)}
+                >
+                  <Copy className="h-3.5 w-3.5" />
+                </button>
+              </div>
+              {!isCollapsed && (
+                <div className="bg-amber-50 dark:bg-amber-950/30 rounded-lg p-4">
+                  {vendorJobs?.map(renderJobRow)}
+                </div>
+              )}
             </div>
-            <div className="bg-amber-50 dark:bg-amber-950/30 rounded-lg p-4">{vendorJobs?.map(renderJobRow)}</div>
-          </div>
-        ))}
+          )
+        })}
       </div>
     )
   }
