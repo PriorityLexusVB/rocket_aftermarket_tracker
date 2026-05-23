@@ -284,6 +284,9 @@ const Routes = () => {
                 }
               />
 
+              {/* Short-URL alias — nav label is "Loaners"; the bookmarkable path matches. */}
+              <Route path="/loaners" element={<Navigate to="/loaner-management-drawer" replace />} />
+
               {/* Claims Management - Internal only */}
               <Route
                 path="/claims-management-center"

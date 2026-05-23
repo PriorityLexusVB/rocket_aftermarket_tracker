@@ -2,7 +2,6 @@ import React, { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import BrandHeader from './components/BrandHeader'
 import LoginForm from './components/LoginForm'
-import SecurityBadges from './components/SecurityBadges'
 import SystemInfo from './components/SystemInfo'
 
 const AuthenticationPortal = () => {
@@ -45,7 +44,6 @@ const AuthenticationPortal = () => {
               <BrandHeader />
             </div>
             <LoginForm />
-            <SecurityBadges />
 
             <div className="mt-6 rounded-xl border border-border bg-card p-4 text-center">
               <h3 className="text-sm font-medium text-foreground">Customer Claims</h3>

@@ -382,11 +382,16 @@ const JobDrawer = ({ job, isOpen, onClose, onStatusUpdate }) => {
                   }`}
                 ></div>
                 <div>
+                  {job?.job_number && (
+                    <div className="text-[10px] font-mono uppercase tracking-wide text-gray-400">
+                      Job {job.job_number}
+                    </div>
+                  )}
                   <h2 id="job-drawer-title" className="text-xl font-semibold text-gray-900">
-                    {job?.job_number}
+                    {job?.title || job?.vehicle_info || `Job ${job?.job_number || ''}`}
                   </h2>
                   <div className="text-sm text-gray-600 flex items-center mt-1">
-                    {job?.vehicle_info}
+                    {job?.title ? job?.vehicle_info : null}
                     <span
                       className={`
                       ml-3 px-2 py-1 rounded-full text-xs font-medium

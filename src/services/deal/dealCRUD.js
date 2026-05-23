@@ -167,8 +167,25 @@ async function selectJoinedDealById(id) {
     }
     break
   }
-  if (lastError) throw new Error(`Failed to load deal: ${lastError.message}`)
-  throw new Error('Failed to load deal: unknown error')
+  if (lastError) {
+    // Sanitize known Postgres / PostgREST error shapes — never forward raw
+    // DB text to the UI (was leaking `invalid input syntax for type uuid: "foobar"`
+    // when /deals/<bad-uuid>/edit was hit).
+    const code = lastError?.code || ''
+    const msg = String(lastError?.message || '')
+    if (code === '22P02' || /invalid input syntax for type uuid/i.test(msg)) {
+      throw new Error('Deal not found — that link is invalid.')
+    }
+    if (
+      code === 'PGRST116' ||
+      /Cannot coerce.*single JSON object/i.test(msg) ||
+      /0 rows/i.test(msg)
+    ) {
+      throw new Error('Deal not found — it may have been deleted.')
+    }
+    throw new Error('Failed to load deal. Please refresh and try again.')
+  }
+  throw new Error('Failed to load deal. Please refresh and try again.')
 }
 
 // Helper: Attach or create vehicle by stock number when vehicle_id is missing

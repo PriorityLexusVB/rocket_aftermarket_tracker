@@ -563,16 +563,16 @@ const Navbar = () => {
               <div className="p-6">
                 {/* User Profile Section */}
                 <div className="flex items-center space-x-4 p-4 bg-card rounded-xl mb-6">
-                  <div className="w-12 h-12 bg-accent/25 rounded-xl flex items-center justify-center">
+                  <div className="w-12 h-12 bg-accent/25 rounded-xl flex items-center justify-center shrink-0">
                     <User className="w-6 h-6 text-foreground" />
                   </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-foreground">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-foreground truncate">
                       {userProfile?.full_name || user?.email?.split('@')?.[0] || 'User'}
                     </p>
-                    <p className="text-xs text-muted-foreground">{user?.email}</p>
+                    <p className="text-xs text-muted-foreground truncate" title={user?.email}>{user?.email}</p>
                     {userProfile?.role && (
-                      <p className="text-xs text-muted-foreground capitalize font-medium">
+                      <p className="text-xs text-muted-foreground capitalize font-medium truncate">
                         {userProfile?.role}
                       </p>
                     )}
