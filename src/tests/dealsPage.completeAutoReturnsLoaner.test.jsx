@@ -5,13 +5,25 @@ import userEvent from '@testing-library/user-event'
 import { BrowserRouter } from 'react-router-dom'
 
 import DealsPage from '../pages/deals/index.jsx'
-import * as dealService from '../services/dealService'
 
-vi.mock('../services/dealService', () => ({
+// Wave XXVIII v2 fix: previously the inline `vi.mock(...)` factory created
+// fresh `vi.fn()` instances every time it ran. With `pool: 'threads' +
+// singleThread: true`, another test file's `vi.resetModules()` could
+// trigger a re-evaluation of this factory mid-suite, producing a NEW
+// `getAllDeals` mock instance that no longer carried the
+// `.mockResolvedValue(...)` configured in beforeEach. Result: ~15%
+// flake rate where `DealsPage` rendered with no deals, no Complete
+// button appeared, and `findByLabelText('Complete job')` timed out.
+//
+// `vi.hoisted` runs ONCE before any imports and returns a stable object
+// whose `vi.fn()` references survive factory re-evaluation.
+const dealServiceMocks = vi.hoisted(() => ({
   deleteDeal: vi.fn(),
   getAllDeals: vi.fn(),
   markLoanerReturned: vi.fn(),
 }))
+
+vi.mock('../services/dealService', () => dealServiceMocks)
 
 const updateStatusMock = vi.fn()
 vi.mock('@/services/jobService', () => ({
@@ -63,7 +75,7 @@ describe('DealsPage - complete auto-returns loaner', () => {
 
     updateStatusMock.mockResolvedValue({ data: null, error: null })
 
-    dealService.getAllDeals.mockResolvedValue([
+    dealServiceMocks.getAllDeals.mockResolvedValue([
       {
         id: 'job-1',
         job_number: 'JOB-001',
@@ -78,8 +90,8 @@ describe('DealsPage - complete auto-returns loaner', () => {
       },
     ])
 
-    dealService.markLoanerReturned.mockResolvedValue(true)
-    dealService.deleteDeal.mockResolvedValue(true)
+    dealServiceMocks.markLoanerReturned.mockResolvedValue(true)
+    dealServiceMocks.deleteDeal.mockResolvedValue(true)
   })
 
   it('calls markLoanerReturned before completing', async () => {
@@ -95,7 +107,7 @@ describe('DealsPage - complete auto-returns loaner', () => {
     await user.click(completeBtn)
 
     await waitFor(() => {
-      expect(dealService.markLoanerReturned).toHaveBeenCalledWith('loaner-1')
+      expect(dealServiceMocks.markLoanerReturned).toHaveBeenCalledWith('loaner-1')
       expect(updateStatusMock).toHaveBeenCalledWith(
         'job-1',
         'completed',
@@ -103,7 +115,7 @@ describe('DealsPage - complete auto-returns loaner', () => {
       )
     })
 
-    const returnOrder = dealService.markLoanerReturned.mock.invocationCallOrder?.[0]
+    const returnOrder = dealServiceMocks.markLoanerReturned.mock.invocationCallOrder?.[0]
     const completeOrder = updateStatusMock.mock.invocationCallOrder?.[0]
     expect(returnOrder).toBeTypeOf('number')
     expect(completeOrder).toBeTypeOf('number')
