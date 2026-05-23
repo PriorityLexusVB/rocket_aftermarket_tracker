@@ -113,7 +113,10 @@ describe('OverdueInbox', () => {
     await user.click(screen.getByText('JOB-1001'))
 
     expect(await screen.findByRole('dialog')).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: /Deal JOB-1001/i })).toBeInTheDocument()
+    // Wave XXV-D: DealDrawer hero now leads with customer_name; job number
+    // moved to a small label above the H2.
+    expect(screen.getByRole('heading', { name: /Ada Lovelace/i })).toBeInTheDocument()
+    expect(screen.getByText(/Deal · Job # JOB-1001/i)).toBeInTheDocument()
   })
 
   it('marks complete using existing service path and removes row', async () => {

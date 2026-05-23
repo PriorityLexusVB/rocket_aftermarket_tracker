@@ -20,7 +20,10 @@ describe('DealDrawer', () => {
   it('renders when open and shows title', () => {
     render(<DealDrawer open deal={sampleDeal} onClose={() => {}} />)
     expect(screen.getByRole('dialog')).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: /Deal JOB-123/i })).toBeInTheDocument()
+    // Wave XXV-D: hero now leads with customer name (the human identity).
+    // Job number "Deal · Job # JOB-123" is rendered as a small label above.
+    expect(screen.getByRole('heading', { name: /Test Customer/i })).toBeInTheDocument()
+    expect(screen.getByText(/Deal · Job # JOB-123/i)).toBeInTheDocument()
   })
 
   it('wires aria-labelledby to the title', () => {
@@ -28,7 +31,7 @@ describe('DealDrawer', () => {
     const dialog = screen.getByRole('dialog')
     const labelledBy = dialog.getAttribute('aria-labelledby')
     expect(labelledBy).toBeTruthy()
-    const title = screen.getByRole('heading', { name: /Deal JOB-123/i })
+    const title = screen.getByRole('heading', { name: /Test Customer/i })
     expect(title).toHaveAttribute('id', labelledBy)
   })
 

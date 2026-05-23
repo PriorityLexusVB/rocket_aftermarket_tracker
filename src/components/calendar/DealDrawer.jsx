@@ -8,8 +8,21 @@ import jobService from '@/services/jobService'
 
 function getDealTitle(deal) {
   if (!deal) return 'Deal Details'
-  const identifier = deal?.job_number || deal?.id || ''
-  return identifier ? `Deal ${identifier}` : 'Deal Details'
+  // Hero should lead with customer / vehicle (the human identity), not the
+  // database job_number. Identifier is rendered separately as a small label.
+  return (
+    deal?.customer_name ||
+    deal?.customerName ||
+    deal?.vehicle?.owner_name ||
+    deal?.title ||
+    deal?.vehicle_description ||
+    'Deal Details'
+  )
+}
+
+function getDealIdentifierLabel(deal) {
+  const id = deal?.job_number || deal?.id || ''
+  return id ? `Deal · Job # ${id}` : ''
 }
 
 function getFocusableElements(container) {
@@ -84,6 +97,7 @@ export default function DealDrawer({ open, deal, onClose, onStatusChange }) {
   }, [open])
 
   const title = useMemo(() => getDealTitle(deal), [deal])
+  const identifierLabel = useMemo(() => getDealIdentifierLabel(deal), [deal])
   const dealId = deal?.id
   const dealStatus = String(deal?.job_status || deal?.status || '').toLowerCase()
 
@@ -220,8 +234,13 @@ export default function DealDrawer({ open, deal, onClose, onStatusChange }) {
       >
         {/* ── header ── */}
         <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3 md:px-6 md:py-4">
-          <div className="space-y-1">
-            <h2 id="deal-drawer-title" className="text-lg font-semibold text-slate-900">
+          <div className="space-y-1 min-w-0">
+            {identifierLabel && (
+              <div className="text-[10px] font-mono uppercase tracking-wide text-slate-400">
+                {identifierLabel}
+              </div>
+            )}
+            <h2 id="deal-drawer-title" className="text-lg font-semibold text-slate-900 truncate">
               {title}
             </h2>
             <StatusBadge status={dealStatus} />
