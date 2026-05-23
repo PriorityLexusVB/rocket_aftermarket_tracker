@@ -7,7 +7,7 @@ import { money0, pct1 } from '../../../lib/format'
 
 const DealsKpiRow = ({ kpis }) => (
   <div className="mb-6" data-testid="kpi-row">
-    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4">
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
       {/* Active Jobs */}
       <div className="bg-card p-6 rounded-xl border border-border shadow-sm">
         <div className="flex items-center">
