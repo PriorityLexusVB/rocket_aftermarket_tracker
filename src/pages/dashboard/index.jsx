@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { openCalendar } from '@/lib/navigation/calendarNavigation'
 import AppLayout from '@/components/layouts/AppLayout'
@@ -6,7 +6,7 @@ import { calendarService } from '@/services/calendarService'
 import { jobService } from '@/services/jobService'
 import { claimsService } from '@/services/claimsService'
 import { getAllDeals } from '@/services/dealService'
-import { getOpenOpportunitySummary, listByJobId } from '@/services/opportunitiesService'
+import { getOpenOpportunitySummary, listOpenCountsByJobIds } from '@/services/opportunitiesService'
 import { getDealFinancials } from '@/utils/dealKpis'
 import { useAuth } from '@/contexts/AuthContext'
 import { handleAuthError, isTechNoiseMessage } from '@/lib/authErrorHandler'
@@ -79,6 +79,7 @@ const DashboardPage = () => {
   const [openClaims, setOpenClaims] = useState(null)
   const [openOppSummary, setOpenOppSummary] = useState(null)
   const [openOppByJobId, setOpenOppByJobId] = useState({})
+  const openOppByJobIdRef = useRef({})
   const [crossDayOverdueCount, setCrossDayOverdueCount] = useState(0)
 
   const refresh = useCallback(async () => {
@@ -161,31 +162,21 @@ const DashboardPage = () => {
     refresh()
   }, [refresh])
 
+  // Keep the ref current so the bulk-fetch effect can read the latest map
+  // without listing it as a dependency (which would cause a fetch loop).
+  useEffect(() => {
+    openOppByJobIdRef.current = openOppByJobId
+  }, [openOppByJobId])
+
   useEffect(() => {
     let alive = true
     const ids = todayJobs.map((j) => j?.id).filter(Boolean)
-    const missing = ids.filter((id) => openOppByJobId[id] == null)
+    const missing = ids.filter((id) => openOppByJobIdRef.current[id] == null)
     if (!missing.length) return () => {}
     ;(async () => {
-      const results = await Promise.all(
-        missing.map(async (id) => {
-          try {
-            const rows = await listByJobId(id)
-            const openCount = (Array.isArray(rows) ? rows : []).filter(
-              (row) => (row?.status || 'open') === 'open'
-            ).length
-            return [id, openCount]
-          } catch {
-            return [id, 0]
-          }
-        })
-      )
+      const counts = await listOpenCountsByJobIds(missing)
       if (!alive) return
-      setOpenOppByJobId((prev) => {
-        const next = { ...prev }
-        for (const [id, count] of results) next[id] = count
-        return next
-      })
+      setOpenOppByJobId((prev) => ({ ...prev, ...counts }))
     })()
     return () => { alive = false }
   }, [todayJobs])

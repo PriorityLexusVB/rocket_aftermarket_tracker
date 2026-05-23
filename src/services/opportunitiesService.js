@@ -115,8 +115,35 @@ export async function getOpenOpportunitySummary() {
   }
 }
 
+/**
+ * Bulk-fetch open opportunity counts for multiple job IDs in a single query.
+ * Replaces the N+1 loop in the dashboard where one query fired per job.
+ *
+ * @param {string[]} jobIds
+ * @returns {Promise<Record<string, number>>} map of job_id → open count (0 if absent)
+ */
+export async function listOpenCountsByJobIds(jobIds) {
+  if (!Array.isArray(jobIds) || jobIds.length === 0) return {}
+  const { data, error } = await supabase
+    .from('deal_opportunities')
+    .select('job_id, status')
+    .in('job_id', jobIds)
+    .eq('status', 'open')
+  if (error) {
+    console.warn('[opportunities] listOpenCountsByJobIds failed:', error)
+    return {}
+  }
+  const counts = {}
+  for (const row of (data || [])) {
+    if (!row?.job_id) continue
+    counts[row.job_id] = (counts[row.job_id] || 0) + 1
+  }
+  return counts
+}
+
 export const opportunitiesService = {
   listByJobId,
+  listOpenCountsByJobIds,
   createOpportunity,
   updateOpportunity,
   deleteOpportunity,

@@ -10,8 +10,6 @@ import Phone from 'lucide-react/dist/esm/icons/phone.js'
 import MapPin from 'lucide-react/dist/esm/icons/map-pin.js'
 import Building2 from 'lucide-react/dist/esm/icons/building-2.js'
 import Package from 'lucide-react/dist/esm/icons/package.js'
-import MessageSquare from 'lucide-react/dist/esm/icons/message-square.js'
-import Camera from 'lucide-react/dist/esm/icons/camera.js'
 import Copy from 'lucide-react/dist/esm/icons/copy.js'
 import Eye from 'lucide-react/dist/esm/icons/eye.js'
 import Play from 'lucide-react/dist/esm/icons/play.js'
@@ -26,7 +24,6 @@ import { useToast } from '@/components/ui/ToastProvider'
 
 const JobDrawer = ({ job, isOpen, onClose, onStatusUpdate }) => {
   const [activeTab, setActiveTab] = useState('details')
-  const [notes, setNotes] = useState('')
   const [jobNumberCopied, setJobNumberCopied] = useState(false)
   const closeButtonRef = useRef(null)
   const navigate = useNavigate()
@@ -307,52 +304,6 @@ const JobDrawer = ({ job, isOpen, onClose, onStatusUpdate }) => {
             </div>
           </div>
         </div>
-      </div>
-    </div>
-  )
-
-  const renderTimelineTab = () => (
-    <div className="space-y-4">
-      <div>
-        <h4 className="font-medium text-gray-900 mb-3">Recent Updates</h4>
-        <div className="space-y-3">
-          <div className="border-l-4 border-blue-400 pl-4 py-2">
-            <div className="text-sm font-medium text-gray-900">Job Created</div>
-            <div className="text-xs text-gray-500">
-              {new Date(job?.created_at)?.toLocaleString()}
-            </div>
-          </div>
-
-          {job?.updated_at && job?.updated_at !== job?.created_at && (
-            <div className="border-l-4 border-yellow-400 pl-4 py-2">
-              <div className="text-sm font-medium text-gray-900">Last Updated</div>
-              <div className="text-xs text-gray-500">
-                {new Date(job?.updated_at)?.toLocaleString()}
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      <div>
-        <h4 className="font-medium text-gray-900 mb-3">Add Note</h4>
-        <textarea
-          value={notes}
-          onChange={(e) => setNotes(e?.target?.value)}
-          placeholder="Add a note about this job..."
-          className="w-full h-24 border border-gray-300 rounded-lg p-3 text-sm"
-        />
-        <span className="text-xs text-gray-400 italic">Note saving not yet available</span>
-      </div>
-    </div>
-  )
-
-  const renderPhotosTab = () => (
-    <div className="space-y-4">
-      <div className="text-center py-8 text-gray-500">
-        <Camera className="h-8 w-8 mx-auto mb-3 text-gray-400" />
-        <div className="text-sm">No photos uploaded yet</div>
-        <span className="text-xs text-gray-400 italic">Photo uploads not yet available</span>
       </div>
     </div>
   )

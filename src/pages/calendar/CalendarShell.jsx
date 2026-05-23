@@ -100,6 +100,10 @@ export default function CalendarShell() {
   const [roundUpJobs, setRoundUpJobs] = useState([])
   const [roundUpLoading, setRoundUpLoading] = useState(false)
   const toast = useToast()
+  // Stable ref so the roundUp effect can call toast without listing it as a
+  // dep (toast identity could change on provider remount, causing a re-fetch).
+  const toastRef = useRef(toast)
+  useEffect(() => { toastRef.current = toast }, [toast])
 
   const {
     view,
@@ -244,7 +248,7 @@ export default function CalendarShell() {
         if (cancelled) return
         console.error('[CalendarShell] roundUp fetch failed', err)
         setRoundUpJobs([])
-        toast?.error?.("Couldn't load Round-Up data. Please try again.")
+        toastRef.current?.error?.("Couldn't load Round-Up data. Please try again.")
       })
       .finally(() => {
         if (!cancelled) setRoundUpLoading(false)

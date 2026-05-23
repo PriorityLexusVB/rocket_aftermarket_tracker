@@ -57,12 +57,10 @@ export default defineConfig({
             return 'vendor-react'
           if (id.includes('@supabase')) return 'vendor-supabase'
           if (id.includes('lucide-react')) return 'vendor-icons'
-          if (id.includes('recharts') || id.includes('/d3-') || id.includes('victory-')) return 'vendor-charts'
           if (id.includes('framer-motion')) return 'vendor-animation'
           if (id.includes('react-hook-form') || id.includes('@hookform') || /[\\/]zod[\\/]/.test(id))
             return 'vendor-forms'
           if (id.includes('date-fns')) return 'vendor-date'
-          if (id.includes('drizzle-')) return 'vendor-drizzle'
         },
       },
     },
