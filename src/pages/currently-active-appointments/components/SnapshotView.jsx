@@ -863,8 +863,17 @@ export default function SnapshotView() {
       split.overdueRecent.length === 0 &&
       split.overdueOld.length === 0 &&
       split.unscheduledInProgress.length === 0 ? (
-        <div role="status" aria-live="polite" className="text-muted-foreground">
-          No appointments in this range.
+        <div role="status" aria-live="polite" className="text-muted-foreground space-y-2">
+          <p>No appointments in this range.</p>
+          <p className="text-xs">
+            This view shows scheduled / in-progress jobs only. Looking for{' '}
+            <a
+              href="/overdue"
+              className="font-medium text-foreground underline underline-offset-2 hover:text-primary"
+            >
+              jobs that missed their promised date?
+            </a>
+          </p>
         </div>
       ) : null}
 

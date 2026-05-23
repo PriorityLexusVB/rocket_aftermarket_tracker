@@ -88,10 +88,21 @@ const EditDealModal = ({ isOpen, dealId, deal: initialDeal, onClose, onSuccess }
       <div className="bg-white rounded-xl w-full max-w-4xl max-h-[95vh] flex flex-col overflow-hidden shadow-xl">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b bg-slate-50 flex-shrink-0">
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900">Edit Deal</h2>
-            <p className="text-sm text-gray-600 mt-1">
-              {dealData?.job_number ? `Job # ${dealData.job_number}` : 'Update deal information'}
+          <div className="min-w-0">
+            {dealData?.job_number && (
+              <div className="text-[10px] font-mono uppercase tracking-wide text-gray-400">
+                Edit Deal · Job # {dealData.job_number}
+              </div>
+            )}
+            <h2 className="text-xl font-semibold text-gray-900 truncate">
+              {dealData?.customer_name ||
+                dealData?.customerName ||
+                dealData?.vehicle_info ||
+                'Edit Deal'}
+            </h2>
+            <p className="text-sm text-gray-600 mt-1 truncate">
+              {dealData?.vehicle_info ||
+                (dealData?.job_number ? '' : 'Update deal information')}
             </p>
           </div>
           <button
