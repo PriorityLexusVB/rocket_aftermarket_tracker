@@ -4,6 +4,7 @@
 
 import { supabase } from '@/lib/supabase'
 import { buildUserProfileSelectFragment, resolveUserProfileName } from './userProfileName'
+import { etStartOfDay, etEndOfDay } from './etDateBoundaries'
 
 const BDC_HEADERS = [
   'DATE',
@@ -134,8 +135,11 @@ export function jobToBdcRow(job) {
 // Vehicle is a left join (uses `!left`) so jobs missing a vehicle FK still appear
 // — keeps export count consistent with what RoundUpModal renders.
 async function fetchExportableJobs(start, end) {
-  const startIso = start instanceof Date ? start.toISOString() : start
-  const endIso = end instanceof Date ? end.toISOString() : end
+  // Use ET-aware day boundaries so jobs at 23:45 ET (03:45Z next day) are not dropped.
+  const startDate = start instanceof Date ? start : new Date(start)
+  const endDate = end instanceof Date ? end : new Date(end)
+  const startIso = etStartOfDay(startDate).toISOString()
+  const endIso = etEndOfDay(endDate).toISOString()
   const profileFrag = buildUserProfileSelectFragment()
   const { data, error } = await supabase
     .from('jobs')

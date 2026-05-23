@@ -1068,12 +1068,14 @@ const CalendarSchedulingCenter = ({
           </div>
           <div className="grid grid-cols-7 gap-1">
 
-            {days.map((dayDate) => {
+            {days.map((dayDate, dayColIndex) => {
               const dayKey = dayDate?.toDateString?.()
               const isToday = dayKey === todayKey
               const isInMonth =
                 dayDate?.getFullYear?.() === monthStart.getFullYear() &&
                 dayDate?.getMonth?.() === monthStart.getMonth()
+              // Flip popover to the left for the last 2 columns to prevent viewport-edge overflow.
+              const popoverAlign = dayColIndex >= 5 ? 'left' : 'right'
 
               const jumpToDay = () => {
                 if (unifiedShellEnabled) {
@@ -1313,6 +1315,7 @@ const CalendarSchedulingCenter = ({
                               id={popoverId}
                               title={titleWithNumber}
                               lines={popoverLines}
+                              align={popoverAlign}
                             />
                           ) : null}
                         </button>

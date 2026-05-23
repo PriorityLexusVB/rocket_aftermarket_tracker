@@ -52,7 +52,8 @@ export default function DebugAuthPage() {
     const m = String(supabaseUrl || '').match(/^https:\/\/([a-z0-9]+)\.supabase\.co\/?$/i)
     return m?.[1] || null
   })()
-  const isKnownProdRef = supabaseUrlRef === 'ogjtmtndgiqqdtwatsue'
+  const _knownProdRef = typeof __PROD_SUPABASE_REF__ !== 'undefined' ? __PROD_SUPABASE_REF__ : ''
+  const isKnownProdRef = _knownProdRef.length > 0 && supabaseUrlRef === _knownProdRef
 
   useEffect(() => {
     let mounted = true

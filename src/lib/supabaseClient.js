@@ -8,7 +8,8 @@ const anon = import.meta.env?.VITE_SUPABASE_ANON_KEY
 if (import.meta.env?.DEV) {
   const m = String(url || '').match(/^https:\/\/([a-z0-9]+)\.supabase\.co\/?$/i)
   const ref = m?.[1] || null
-  if (ref === 'ogjtmtndgiqqdtwatsue') {
+  const _knownProdRef = typeof __PROD_SUPABASE_REF__ !== 'undefined' ? __PROD_SUPABASE_REF__ : ''
+  if (_knownProdRef.length > 0 && ref === _knownProdRef) {
     // Do not throw; just warn loudly.
     console.error(
       '[supabaseClient] DEV ENV WARNING: VITE_SUPABASE_URL is pointed at the known production project ref.'

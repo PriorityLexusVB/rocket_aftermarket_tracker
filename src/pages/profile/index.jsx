@@ -1,16 +1,64 @@
 import React from 'react'
 import AppLayout from '../../components/layouts/AppLayout'
+import { useAuth } from '../../contexts/AuthContext'
+import useTenant from '../../hooks/useTenant'
 
 export default function ProfileSettings() {
+  const { user, userProfile, signOut } = useAuth()
+  const { orgId } = useTenant()
+
+  const email = user?.email || userProfile?.email || '—'
+  const name =
+    userProfile?.full_name ||
+    userProfile?.name ||
+    user?.email?.split('@')?.[0] ||
+    '—'
+  const role = userProfile?.role || '—'
+
+  const handleSignOut = async () => {
+    try {
+      await signOut?.()
+    } catch (err) {
+      console.error('[ProfileSettings] sign-out error:', err)
+    }
+  }
+
   return (
     <AppLayout>
-      <div className="max-w-3xl mx-auto p-4">
-        <h1 className="text-2xl font-semibold mb-2">Profile Settings</h1>
-        <p className="text-slate-600 mb-6">Manage your account details and preferences.</p>
-        <div className="rounded border border-slate-200 p-4 bg-white">
-          <p className="text-sm text-slate-500">
-            This is a placeholder page. We can expose user profile fields from `useAuth()` here.
-          </p>
+      <div className="max-w-lg mx-auto p-4">
+        <h1 className="text-2xl font-semibold mb-6">Account</h1>
+
+        <div className="rounded-xl border border-border bg-card shadow-sm divide-y divide-border">
+          <div className="px-4 py-3">
+            <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Name</p>
+            <p className="text-sm font-medium text-foreground">{name}</p>
+          </div>
+          <div className="px-4 py-3">
+            <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Email</p>
+            <p className="text-sm font-medium text-foreground">{email}</p>
+          </div>
+          <div className="px-4 py-3">
+            <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Role</p>
+            <p className="text-sm font-medium text-foreground capitalize">{role}</p>
+          </div>
+          {orgId && (
+            <div className="px-4 py-3">
+              <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
+                Organization
+              </p>
+              <p className="text-sm font-medium text-foreground font-mono text-xs">{orgId}</p>
+            </div>
+          )}
+        </div>
+
+        <div className="mt-6">
+          <button
+            type="button"
+            onClick={handleSignOut}
+            className="w-full rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-foreground hover:bg-muted transition-colors"
+          >
+            Sign Out
+          </button>
         </div>
       </div>
     </AppLayout>

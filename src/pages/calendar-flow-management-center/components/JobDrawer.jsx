@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { isJobOnSite } from '@/utils/locationType'
 import X from 'lucide-react/dist/esm/icons/x.js'
 import Car from 'lucide-react/dist/esm/icons/car.js'
 import Calendar from 'lucide-react/dist/esm/icons/calendar.js'
@@ -63,9 +64,9 @@ const JobDrawer = ({ job, isOpen, onClose, onStatusUpdate }) => {
       return
     }
 
-    // Fallback: send user to deal edit where line items/times can be adjusted.
+    // Fallback: send user to the board calendar with this job auto-focused for rescheduling.
     onClose?.()
-    navigate(`/deals/${job?.id}/edit`)
+    navigate(`/calendar-flow-management-center?focus=${job?.id}`)
   }, [job?.id, navigate, onClose, useAgenda])
 
   const handleCopyJobNumber = useCallback(async () => {
@@ -241,15 +242,15 @@ const JobDrawer = ({ job, isOpen, onClose, onStatusUpdate }) => {
         <h4 className="font-medium text-gray-900 mb-3">Location & Scheduling</h4>
         <div className="bg-gray-50 rounded-lg p-4 space-y-3">
           <div className="flex items-center">
-            {job?.vendor_id ? (
-              <>
-                <Building2 className="h-4 w-4 text-orange-500 mr-2" />
-                <span className="text-sm">Off-Site @ {job?.vendor_name}</span>
-              </>
-            ) : (
+            {isJobOnSite(job) ? (
               <>
                 <MapPin className="h-4 w-4 text-green-500 mr-2" />
                 <span className="text-sm">In-House</span>
+              </>
+            ) : (
+              <>
+                <Building2 className="h-4 w-4 text-orange-500 mr-2" />
+                <span className="text-sm">Off-Site @ {job?.vendor_name}</span>
               </>
             )}
           </div>

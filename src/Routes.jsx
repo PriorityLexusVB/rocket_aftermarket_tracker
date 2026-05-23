@@ -141,14 +141,16 @@ const Routes = () => {
                   </ProtectedRoute>
                 }
               />
-              <Route
-                path="/debug-auth"
-                element={
-                  <ProtectedRoute>
-                    <DebugAuthPage />
-                  </ProtectedRoute>
-                }
-              />
+              {import.meta.env.DEV && (
+                <Route
+                  path="/debug-auth"
+                  element={
+                    <ProtectedRoute>
+                      <DebugAuthPage />
+                    </ProtectedRoute>
+                  }
+                />
+              )}
 
               {/* Advanced Management Centers */}
               <Route

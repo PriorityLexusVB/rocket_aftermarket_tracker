@@ -67,7 +67,8 @@ if (isTest) {
     return m?.[1] || null
   }
   const urlRef = inferProjectRefFromUrl(supabaseUrl)
-  const isKnownProdRef = urlRef === 'ogjtmtndgiqqdtwatsue'
+  const _knownProdRef = typeof __PROD_SUPABASE_REF__ !== 'undefined' ? __PROD_SUPABASE_REF__ : ''
+  const isKnownProdRef = _knownProdRef.length > 0 && urlRef === _knownProdRef
   if (import.meta?.env?.DEV && isKnownProdRef) {
     console.error(
       '[Supabase] DEV ENV WARNING: VITE_SUPABASE_URL is pointed at the known production project ref.'

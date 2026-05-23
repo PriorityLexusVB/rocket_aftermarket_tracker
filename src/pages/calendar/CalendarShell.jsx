@@ -18,13 +18,12 @@ import RoundUpModal from '@/pages/calendar-flow-management-center/components/Rou
 import { useToast } from '@/components/ui/ToastProvider'
 import { calendarService } from '@/services/calendarService'
 import {
-  startOfDay,
-  endOfDay,
   startOfWeek,
   endOfWeek,
   startOfMonth,
   endOfMonth,
 } from 'date-fns'
+import { etStartOfDay, etEndOfDay } from '@/utils/etDateBoundaries'
 import CalendarLegend from '@/components/calendar/CalendarLegend'
 import {
   buildCalendarSearchParams,
@@ -204,9 +203,15 @@ export default function CalendarShell() {
 
   useEffect(() => {
     if (!allowedRanges.has(range)) {
-      updateParams({ range: clampedRange })
+      // ?range=day deep-link on board/list view — honor it by switching to board view
+      // (the calendar grid sub-view has no day mode; board supports day natively).
+      if (range === 'day' && resolvedView === 'calendar') {
+        updateParams({ view: 'board', range: 'day' })
+      } else {
+        updateParams({ range: clampedRange })
+      }
     }
-  }, [allowedRanges, range, clampedRange, updateParams])
+  }, [allowedRanges, range, clampedRange, resolvedView, updateParams])
 
   useEffect(() => {
     if (resolvedView === 'calendar' && (clampedRange === 'day' || clampedRange === 'week' || clampedRange === 'month')) {
@@ -223,7 +228,9 @@ export default function CalendarShell() {
         ? { start: startOfWeek(baseDate, { weekStartsOn: 1 }), end: endOfWeek(baseDate, { weekStartsOn: 1 }) }
         : roundUpType === 'monthly'
           ? { start: startOfMonth(baseDate), end: endOfMonth(baseDate) }
-          : { start: startOfDay(baseDate), end: endOfDay(baseDate) }
+          // Use ET-aware day boundaries so late-evening jobs (23:45 ET = 03:45Z next day)
+          // are not silently dropped from the daily round-up query.
+          : { start: etStartOfDay(baseDate), end: etEndOfDay(baseDate) }
 
     setRoundUpLoading(true)
     calendarService
@@ -385,6 +392,7 @@ export default function CalendarShell() {
             </div>
 
             <div className="flex min-w-0 flex-wrap items-center justify-start gap-2 sm:gap-3 xl:justify-end">
+              {/* Nav controls — always visible */}
               <div className="inline-flex items-center gap-2 rounded-lg border border-border bg-muted/40 px-2 py-1">
                 <button
                   type="button"
@@ -415,131 +423,7 @@ export default function CalendarShell() {
                 <span className="text-sm font-medium text-foreground">{dateLabel}</span>
               </div>
 
-              <input
-                type="date"
-                value={dateInputValue}
-                onChange={handleDateInput}
-                className="h-8 rounded-md border border-input bg-background px-2 text-xs text-foreground"
-                aria-label="Jump to date"
-                title="Jump to a specific date"
-              />
-
-              <select
-                value={clampedRange}
-                onChange={handleRangeChange}
-                className="h-8 rounded-md border border-input bg-background px-2 text-xs text-foreground"
-                aria-label="Select date range"
-              >
-                {rangeOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-
-              <div className="relative min-w-[220px]">
-                <Search className="pointer-events-none absolute left-2 top-2 h-4 w-4 text-muted-foreground" />
-                <input
-                  type="text"
-                  placeholder="Search stock/customer/phone"
-                  className="h-8 w-56 max-w-full rounded-md border border-input bg-background pl-8 pr-2 text-xs text-foreground placeholder:text-muted-foreground"
-                  aria-label="Search calendar"
-                  value={searchValue}
-                  onChange={(event) => setSearchValue(event.target.value)}
-                />
-              </div>
-
-              <details className="group relative">
-                <summary
-                  className="flex cursor-pointer list-none items-center rounded-md border border-border bg-background px-2 py-1 text-xs text-foreground"
-                  title="Search tips"
-                >
-                  Help
-                </summary>
-                <div className="absolute right-0 z-30 mt-2 w-64 rounded-lg border border-border bg-popover p-3 text-xs text-popover-foreground shadow-lg">
-                  <div className="font-semibold text-foreground">Search tips</div>
-                  <div className="mt-2 space-y-1">
-                    <div>Matches job number, customer, phone, vehicle, and notes.</div>
-                    <div>Search applies across Board, Calendar, and List views.</div>
-                  </div>
-                </div>
-              </details>
-
-              <details className="group relative">
-                <summary className="flex cursor-pointer list-none items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-xs text-foreground">
-                  <Filter className="h-4 w-4" /> Filters
-                </summary>
-                <div className="absolute right-0 z-30 mt-2 w-56 rounded-lg border border-border bg-popover p-3 text-xs text-popover-foreground shadow-lg">
-                  <label
-                    className="block text-[11px] font-semibold text-muted-foreground"
-                    htmlFor="calendar-location-filter"
-                  >
-                    Location
-                  </label>
-                  <select
-                    id="calendar-location-filter"
-                    className="mt-2 h-8 w-full rounded-md border border-input bg-background px-2 text-xs text-foreground"
-                    value={locationFilter || 'All'}
-                    onChange={handleLocationChange}
-                  >
-                    {LOCATION_FILTER_OPTIONS.map((opt) => (
-                      <option key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </details>
-
-              {/* Location type legend — always visible in header */}
-              <div className="hidden sm:flex items-center gap-2.5 rounded-md border border-border bg-background px-2 py-1 text-[11px] text-muted-foreground" aria-label="Location legend">
-                <span className="flex items-center gap-1" title="In-House — work stays on the lot">
-                  <span className="inline-block h-2.5 w-2.5 rounded-full bg-green-500 shrink-0" aria-hidden="true" />
-                  In-House
-                </span>
-                <span className="flex items-center gap-1" title="Off-Site — sent to an outside vendor">
-                  <span className="inline-block h-2.5 w-2.5 rounded-full bg-amber-500 shrink-0" aria-hidden="true" />
-                  Off-Site
-                </span>
-                <span className="flex items-center gap-1" title="Split Work — some parts in-house, some at a vendor">
-                  <span className="inline-block h-2.5 w-2.5 rounded-full bg-blue-500 shrink-0" aria-hidden="true" />
-                  Split Work
-                </span>
-              </div>
-
-              <details className="group relative">
-                <summary
-                  className="flex cursor-pointer list-none items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-xs text-muted-foreground"
-                  title="Status & location color legend"
-                >
-                  <Info className="h-4 w-4" />
-                  <span className="hidden sm:inline">Legend</span>
-                </summary>
-                <div className="absolute right-0 z-30 mt-2 w-52 rounded-lg border border-border bg-popover p-3 text-xs text-popover-foreground shadow-lg">
-                  <CalendarLegend compact showStatuses />
-                </div>
-              </details>
-
-              <button
-                type="button"
-                onClick={() => navigate('/overdue')}
-                className="inline-flex items-center gap-2 rounded-md border border-border bg-background px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-muted"
-              >
-                Overdue
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setRoundUpType('daily')
-                  setShowRoundUp(true)
-                }}
-                title="End-of-day deal summary — Daily/Weekly/Monthly export to Excel/CSV"
-                className="inline-flex items-center gap-2 rounded-md border border-border bg-background px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-muted"
-              >
-                <ClipboardList className="h-4 w-4" /> Round-Up
-              </button>
-
+              {/* New Deal — always visible */}
               <button
                 type="button"
                 onClick={() => navigate('/deals/new')}
@@ -548,24 +432,231 @@ export default function CalendarShell() {
                 <Plus className="h-4 w-4" /> New Deal
               </button>
 
-              <details className="group relative">
-                <summary
-                  className="flex cursor-pointer list-none items-center rounded-md border border-border bg-background p-2 text-muted-foreground"
-                  title="More actions"
-                  aria-label="More actions"
+              {/* Secondary controls: hidden on mobile, visible md+ */}
+              <div className="hidden md:contents">
+                <input
+                  type="date"
+                  value={dateInputValue}
+                  onChange={handleDateInput}
+                  className="h-8 rounded-md border border-input bg-background px-2 text-xs text-foreground"
+                  aria-label="Jump to date"
+                  title="Jump to a specific date"
+                />
+
+                <select
+                  value={clampedRange}
+                  onChange={handleRangeChange}
+                  className="h-8 rounded-md border border-input bg-background px-2 text-xs text-foreground"
+                  aria-label="Select date range"
                 >
-                  <MoreVertical className="h-4 w-4" />
-                </summary>
-                <div className="absolute right-0 z-30 mt-2 w-44 rounded-lg border border-border bg-popover p-2 text-xs text-popover-foreground shadow-lg">
-                  <button
-                    type="button"
-                    className="flex w-full items-center gap-2 rounded px-2 py-1 text-left hover:bg-muted"
-                    onClick={() => window.location.reload()}
-                    title="Reload the calendar"
+                  {rangeOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+
+                <div className="relative min-w-[220px]">
+                  <Search className="pointer-events-none absolute left-2 top-2 h-4 w-4 text-muted-foreground" />
+                  <input
+                    type="text"
+                    placeholder="Search stock/customer/phone"
+                    className="h-8 w-56 max-w-full rounded-md border border-input bg-background pl-8 pr-2 text-xs text-foreground placeholder:text-muted-foreground"
+                    aria-label="Search calendar"
+                    value={searchValue}
+                    onChange={(event) => setSearchValue(event.target.value)}
+                  />
+                </div>
+
+                <details className="group relative">
+                  <summary
+                    className="flex cursor-pointer list-none items-center rounded-md border border-border bg-background px-2 py-1 text-xs text-foreground"
+                    title="Search tips"
                   >
-                    <RefreshCw className="h-3.5 w-3.5 shrink-0" />
-                    Refresh
-                  </button>
+                    Help
+                  </summary>
+                  <div className="absolute right-0 z-30 mt-2 w-64 rounded-lg border border-border bg-popover p-3 text-xs text-popover-foreground shadow-lg">
+                    <div className="font-semibold text-foreground">Search tips</div>
+                    <div className="mt-2 space-y-1">
+                      <div>Matches job number, customer, phone, vehicle, and notes.</div>
+                      <div>Search applies across Board, Calendar, and List views.</div>
+                    </div>
+                  </div>
+                </details>
+
+                <details className="group relative">
+                  <summary className="flex cursor-pointer list-none items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-xs text-foreground">
+                    <Filter className="h-4 w-4" /> Filters
+                  </summary>
+                  <div className="absolute right-0 z-30 mt-2 w-56 rounded-lg border border-border bg-popover p-3 text-xs text-popover-foreground shadow-lg">
+                    <label
+                      className="block text-[11px] font-semibold text-muted-foreground"
+                      htmlFor="calendar-location-filter"
+                    >
+                      Location
+                    </label>
+                    <select
+                      id="calendar-location-filter"
+                      className="mt-2 h-8 w-full rounded-md border border-input bg-background px-2 text-xs text-foreground"
+                      value={locationFilter || 'All'}
+                      onChange={handleLocationChange}
+                    >
+                      {LOCATION_FILTER_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </details>
+
+                {/* Location type legend */}
+                <div className="hidden sm:flex items-center gap-2.5 rounded-md border border-border bg-background px-2 py-1 text-[11px] text-muted-foreground" aria-label="Location legend">
+                  <span className="flex items-center gap-1" title="In-House — work stays on the lot">
+                    <span className="inline-block h-2.5 w-2.5 rounded-full bg-green-500 shrink-0" aria-hidden="true" />
+                    In-House
+                  </span>
+                  <span className="flex items-center gap-1" title="Off-Site — sent to an outside vendor">
+                    <span className="inline-block h-2.5 w-2.5 rounded-full bg-amber-500 shrink-0" aria-hidden="true" />
+                    Off-Site
+                  </span>
+                  <span className="flex items-center gap-1" title="Split Work — some parts in-house, some at a vendor">
+                    <span className="inline-block h-2.5 w-2.5 rounded-full bg-blue-500 shrink-0" aria-hidden="true" />
+                    Split Work
+                  </span>
+                </div>
+
+                <details className="group relative">
+                  <summary
+                    className="flex cursor-pointer list-none items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-xs text-muted-foreground"
+                    title="Status & location color legend"
+                  >
+                    <Info className="h-4 w-4" />
+                    <span className="hidden sm:inline">Legend</span>
+                  </summary>
+                  <div className="absolute right-0 z-30 mt-2 w-52 rounded-lg border border-border bg-popover p-3 text-xs text-popover-foreground shadow-lg">
+                    <CalendarLegend compact showStatuses />
+                  </div>
+                </details>
+
+                <button
+                  type="button"
+                  onClick={() => navigate('/overdue')}
+                  className="inline-flex items-center gap-2 rounded-md border border-border bg-background px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-muted"
+                >
+                  Overdue
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRoundUpType('daily')
+                    setShowRoundUp(true)
+                  }}
+                  title="End-of-day deal summary — Daily/Weekly/Monthly export to Excel/CSV"
+                  className="inline-flex items-center gap-2 rounded-md border border-border bg-background px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-muted"
+                >
+                  <ClipboardList className="h-4 w-4" /> Round-Up
+                </button>
+
+                <details className="group relative">
+                  <summary
+                    className="flex cursor-pointer list-none items-center rounded-md border border-border bg-background p-2 text-muted-foreground"
+                    title="More actions"
+                    aria-label="More actions"
+                  >
+                    <MoreVertical className="h-4 w-4" />
+                  </summary>
+                  <div className="absolute right-0 z-30 mt-2 w-44 rounded-lg border border-border bg-popover p-2 text-xs text-popover-foreground shadow-lg">
+                    <button
+                      type="button"
+                      className="flex w-full items-center gap-2 rounded px-2 py-1 text-left hover:bg-muted"
+                      onClick={() => window.location.reload()}
+                      title="Reload the calendar"
+                    >
+                      <RefreshCw className="h-3.5 w-3.5 shrink-0" />
+                      Refresh
+                    </button>
+                  </div>
+                </details>
+              </div>
+
+              {/* Mobile-only "More" disclosure: exposes secondary controls below the nav row */}
+              <details className="md:hidden group relative w-full">
+                <summary className="flex cursor-pointer list-none items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-xs text-foreground">
+                  <MoreVertical className="h-4 w-4" /> More
+                </summary>
+                <div className="mt-2 flex flex-col gap-2 rounded-lg border border-border bg-popover p-3 shadow-lg z-30">
+                  <div className="flex flex-wrap gap-2">
+                    <input
+                      type="date"
+                      value={dateInputValue}
+                      onChange={handleDateInput}
+                      className="h-8 rounded-md border border-input bg-background px-2 text-xs text-foreground"
+                      aria-label="Jump to date"
+                    />
+                    <select
+                      value={clampedRange}
+                      onChange={handleRangeChange}
+                      className="h-8 rounded-md border border-input bg-background px-2 text-xs text-foreground"
+                      aria-label="Select date range"
+                    >
+                      {rangeOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="relative">
+                    <Search className="pointer-events-none absolute left-2 top-2 h-4 w-4 text-muted-foreground" />
+                    <input
+                      type="text"
+                      placeholder="Search stock/customer/phone"
+                      className="h-8 w-full rounded-md border border-input bg-background pl-8 pr-2 text-xs text-foreground placeholder:text-muted-foreground"
+                      aria-label="Search calendar"
+                      value={searchValue}
+                      onChange={(event) => setSearchValue(event.target.value)}
+                    />
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <select
+                      id="calendar-location-filter-mobile"
+                      className="h-8 rounded-md border border-input bg-background px-2 text-xs text-foreground"
+                      value={locationFilter || 'All'}
+                      onChange={handleLocationChange}
+                    >
+                      {LOCATION_FILTER_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => navigate('/overdue')}
+                      className="inline-flex items-center gap-2 rounded-md border border-border bg-background px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-muted"
+                    >
+                      Overdue
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setRoundUpType('daily')
+                        setShowRoundUp(true)
+                      }}
+                      className="inline-flex items-center gap-2 rounded-md border border-border bg-background px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-muted"
+                    >
+                      <ClipboardList className="h-4 w-4" /> Round-Up
+                    </button>
+                    <button
+                      type="button"
+                      className="inline-flex items-center gap-2 rounded-md border border-border bg-background px-2 py-1.5 text-xs text-muted-foreground hover:bg-muted"
+                      onClick={() => window.location.reload()}
+                    >
+                      <RefreshCw className="h-3.5 w-3.5 shrink-0" /> Refresh
+                    </button>
+                  </div>
                 </div>
               </details>
             </div>

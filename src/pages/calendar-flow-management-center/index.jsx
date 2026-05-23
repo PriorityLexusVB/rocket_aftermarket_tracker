@@ -247,8 +247,11 @@ const CalendarFlowManagementCenter = ({
         date?.setDate(date?.getDate() + 1)
         return date
       case 'week':
-        // End-exclusive: start of next Monday, so all of Mon-Sat is covered.
-        date?.setDate(date?.getDate() + 7)
+        // End-exclusive: Sunday-start-of-week so all of Mon-Sat is covered.
+        // Render columns are Mon-Sat (renderWeekView weekDays array); query must match.
+        // If Sunday becomes a workday for Priority Lexus aftermarket, flip this to +7
+        // AND extend renderWeekView to a 7-column grid in the same commit.
+        date?.setDate(date?.getDate() + 6)
         return date
       case 'month':
         // End-exclusive: first day of next month
@@ -412,9 +415,11 @@ const CalendarFlowManagementCenter = ({
       setOriginalJobs(vendorJobs)
       setOriginalOnSiteJobs(onSiteJobs)
 
-      // Promise-only needs-scheduling queue for this view window (include overdue)
-      const needsStart = new Date(startDate)
-      needsStart?.setDate(needsStart?.getDate() - 365)
+      // Promise-only needs-scheduling queue: anchor lookback to today (not the view
+      // start date) so very old overdue items are always visible regardless of which
+      // future month the user is viewing.
+      const needsStart = new Date()
+      needsStart.setDate(needsStart.getDate() - 365)
       const needsRes = await withTimeout(
         getNeedsSchedulingPromiseItems({
           orgId,
@@ -779,7 +784,31 @@ const CalendarFlowManagementCenter = ({
 
       triggerMicroFlash(draggedJob?.id)
       loadCalendarData()
-      toast?.success?.('Scheduled')
+
+      // Non-blocking conflict check: warn if this vendor+time overlaps another job.
+      if (vendorId) {
+        try {
+          const conflicts = await calendarService?.getVendorConflictDetails?.(
+            vendorId,
+            startTime.toISOString(),
+            endTime.toISOString(),
+            draggedJob?.id
+          )
+          if (conflicts?.length > 0) {
+            const first = conflicts[0]
+            toast?.warning?.(
+              `Heads up — conflicts with ${first?.job_number || `job #${first?.id}`} for ${first?.title || 'another job'}`
+            )
+          } else {
+            toast?.success?.('Scheduled')
+          }
+        } catch {
+          // Conflict check is advisory; don't surface errors to the user.
+          toast?.success?.('Scheduled')
+        }
+      } else {
+        toast?.success?.('Scheduled')
+      }
     } catch (error) {
       console.error('Error updating vendor:', error)
       toast?.error?.(error?.message || 'Failed to update vendor')
@@ -1290,14 +1319,12 @@ const CalendarFlowManagementCenter = ({
                     <div className="space-y-2">{dayNoTimeJobs?.map(renderEventChip)}</div>
                   </div>
                 )}
-                {/* Out-of-grid-hours banner (day view only) */}
-                {viewMode === 'day' && (() => {
+                {/* Out-of-grid-hours banner (day and week view) */}
+                {(() => {
                   const gridMin = timeSlots[0]
                   const gridMax = timeSlots[timeSlots.length - 1]
-                  // dayJobs only contains vendor/off-site jobs (filteredJobs).
-                  // Pull in-house (on-site) jobs for this day from the parallel
-                  // filteredOnSiteJobs state — otherwise on-site early/late jobs
-                  // are invisible to this banner AND to the time-grid.
+                  // Include both vendor/off-site jobs (dayJobs) and in-house (on-site)
+                  // jobs for this day, so early/late on-site jobs are not silently dropped.
                   const dayOnSiteJobs = (filteredOnSiteJobs || []).filter((job) => {
                     const jobDate = new Date(job?.scheduled_start_time)
                     return jobDate?.toDateString() === dayDate?.toDateString()
@@ -1313,15 +1340,38 @@ const CalendarFlowManagementCenter = ({
                         <Clock className="mt-0.5 h-4 w-4 shrink-0" />
                         <div className="min-w-0">
                           <span className="font-semibold">
-                            {outOfGridJobs.length} job{outOfGridJobs.length !== 1 ? 's' : ''} scheduled outside 7AM–6PM
+                            {outOfGridJobs.length} job{outOfGridJobs.length !== 1 ? 's' : ''} outside 7AM–6PM
+                            {viewMode === 'week' && outOfGridJobs.length > 1 ? ' • switch to Day view to see all' : ''}
                           </span>
-                          <button
-                            type="button"
-                            onClick={() => activateDeal(outOfGridJobs[0])}
-                            className="ml-2 inline-flex items-center rounded border border-indigo-300 bg-white px-2 py-0.5 text-xs font-medium text-indigo-900 hover:bg-indigo-100"
-                          >
-                            View
-                          </button>
+                          {outOfGridJobs.length === 1 ? (
+                            <button
+                              type="button"
+                              onClick={() => activateDeal(outOfGridJobs[0])}
+                              className="ml-2 inline-flex items-center rounded border border-indigo-300 bg-white px-2 py-0.5 text-xs font-medium text-indigo-900 hover:bg-indigo-100"
+                            >
+                              View
+                            </button>
+                          ) : (
+                            <div className="mt-1 flex flex-wrap gap-1">
+                              {outOfGridJobs.map((job) => {
+                                const jobTime = new Date(job?.scheduled_start_time)
+                                const timeStr = Number.isNaN(jobTime?.getTime?.())
+                                  ? '?'
+                                  : jobTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+                                return (
+                                  <button
+                                    key={job?.id}
+                                    type="button"
+                                    onClick={() => activateDeal(job)}
+                                    className="inline-flex items-center rounded border border-indigo-300 bg-white px-2 py-0.5 text-xs font-medium text-indigo-900 hover:bg-indigo-100"
+                                    title={job?.title || String(job?.id)}
+                                  >
+                                    {timeStr}{job?.title ? ` • ${job.title}` : ''}
+                                  </button>
+                                )
+                              })}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -1399,7 +1449,7 @@ const CalendarFlowManagementCenter = ({
   const renderVendorLanes = () => {
     const allDayJobs = needsSchedulingJobsForView || []
     const allDayOnSiteJobs = allDayJobs.filter((job) => isJobOnSite(job))
-    const onSiteJobs = filteredJobs?.filter((job) => isJobOnSite(job))
+    const onSiteJobs = filteredOnSiteJobs?.filter((job) => isJobOnSite(job))
     const onSiteCombined = [...(allDayOnSiteJobs || []), ...(onSiteJobs || [])]
     const vendorsToShow = showEmptyLanes
       ? vendors

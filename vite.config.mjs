@@ -7,6 +7,11 @@ export default defineConfig({
   define: {
     __BUILD_SHA__: JSON.stringify(process.env.VERCEL_GIT_COMMIT_SHA || process.env.GITHUB_SHA || ''),
     __BUILD_TIME__: JSON.stringify(new Date().toISOString()),
+    // Prod Supabase project ref used as a dev-mode tripwire. In production this
+    // resolves to an empty string (VITE_PROD_SUPABASE_REF is not set in prod env),
+    // removing the literal from the prod bundle. Set it in .env.development to
+    // enable the tripwire check locally.
+    __PROD_SUPABASE_REF__: JSON.stringify(process.env.VITE_PROD_SUPABASE_REF || ''),
   },
   plugins: [
     react(),

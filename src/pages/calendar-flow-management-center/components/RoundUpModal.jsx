@@ -367,7 +367,7 @@ const RoundUpModal = ({
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-50 overflow-hidden" role="dialog" aria-modal="true">
+    <div className="fixed inset-0 z-50 overflow-hidden" role="dialog" aria-modal="true" aria-labelledby="roundup-modal-title">
       <div
         className="absolute inset-0 bg-black/50"
         onClick={(e) => {
@@ -382,7 +382,7 @@ const RoundUpModal = ({
               <div className="flex items-center">
                 <Download className="h-5 w-5 text-muted-foreground mr-3" />
                 <div>
-                  <h2 className="text-xl font-semibold text-foreground">
+                  <h2 id="roundup-modal-title" className="text-xl font-semibold text-foreground">
                     {ROUND_UP_LABEL[type].title} Round-Up
                   </h2>
                   <p className="text-sm text-muted-foreground">{ROUND_UP_LABEL[type].subtitle}</p>

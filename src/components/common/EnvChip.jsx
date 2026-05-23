@@ -1,7 +1,8 @@
 import React from 'react'
 import { isTest } from '../../lib/env'
 
-const PROD_REF = 'ogjtmtndgiqqdtwatsue'
+// Injected at build time via vite define. Empty string in prod builds (no literal in bundle).
+const PROD_REF = typeof __PROD_SUPABASE_REF__ !== 'undefined' ? __PROD_SUPABASE_REF__ : ''
 
 const getSupabaseRef = (supabaseUrl) => {
   if (!supabaseUrl) return { ref: '', suffix: '' }
