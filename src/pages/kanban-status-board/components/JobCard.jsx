@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import Calendar from 'lucide-react/dist/esm/icons/calendar.js'
 import User from 'lucide-react/dist/esm/icons/user.js'
 import Wrench from 'lucide-react/dist/esm/icons/wrench.js'
@@ -43,6 +43,7 @@ const ServiceLocationTag = ({ jobParts }) => {
 }
 
 const JobCard = ({ job, isOverdue = false, onDragStart, onDragEnd, onClick }) => {
+  const [dragging, setDragging] = useState(false)
   const getPriorityColor = (priority) => {
     const colors = {
       low: 'border-green-500 bg-green-50',
@@ -87,13 +88,15 @@ const JobCard = ({ job, isOverdue = false, onDragStart, onDragEnd, onClick }) =>
     <div
       className={`
         bg-white rounded-lg border-2 p-3 shadow-sm cursor-pointer
-        hover:shadow-md transition-all duration-200
+        hover:shadow-md transition-[box-shadow,border-color,transform,opacity] duration-150 ease-out
         ${isOverdue ? 'border-red-300 bg-red-50' : 'border-gray-200'}
         hover:border-blue-300
+        ${dragging ? 'scale-[0.97] shadow-lg opacity-75' : ''}
       `}
       draggable
-      onDragStart={onDragStart}
-      onDragEnd={onDragEnd}
+      data-dragging={dragging}
+      onDragStart={(e) => { setDragging(true); onDragStart?.(e) }}
+      onDragEnd={(e) => { setDragging(false); onDragEnd?.(e) }}
       onClick={onClick}
     >
       {/* Header with priority and overdue indicator */}

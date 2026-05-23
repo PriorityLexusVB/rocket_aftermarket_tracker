@@ -7,6 +7,22 @@ import { useToast } from '@/components/ui/ToastProvider'
 import { handleAuthError, isTechNoiseMessage } from '@/lib/authErrorHandler'
 
 const EXCLUDED_STATUSES = new Set(['completed', 'cancelled', 'canceled', 'draft'])
+
+const LOCATION_LABELS = {
+  off_site: 'Off-Site',
+  in_house: 'In-House',
+  split_work: 'Split Work',
+}
+
+const STATUS_LABELS = {
+  in_progress: 'In Progress',
+  pending: 'Pending',
+  scheduled: 'Scheduled',
+  completed: 'Completed',
+  cancelled: 'Cancelled',
+  no_show: 'No-Show',
+  quality_check: 'Quality Check',
+}
 const OVERDUE_CANDIDATE_FIELDS = [
   'next_promised_iso',
   'promised_date',
@@ -302,8 +318,8 @@ export default function OverdueInbox() {
                             ) : null}
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-foreground">{status}</td>
-                        <td className="px-4 py-3 text-foreground">{location}</td>
+                        <td className="px-4 py-3 text-foreground">{STATUS_LABELS[status] || status}</td>
+                        <td className="px-4 py-3 text-foreground">{LOCATION_LABELS[location] || location}</td>
                         <td className="px-4 py-3 text-foreground">{formatDateTime(job?.updated_at)}</td>
                         <td className="px-4 py-3 font-medium text-red-700">{formatOverdueBy(overdueDateValue)}</td>
                         <td className="px-4 py-3 text-right">

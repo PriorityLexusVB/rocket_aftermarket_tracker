@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import X from 'lucide-react/dist/esm/icons/x.js'
 import Loader2 from 'lucide-react/dist/esm/icons/loader-2.js'
@@ -75,6 +75,13 @@ export default function DealDrawer({ open, deal, onClose, onStatusChange }) {
 
   const [actionLoading, setActionLoading] = useState(false)
   const [actionError, setActionError] = useState(null)
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    if (!open) { setMounted(false); return }
+    const id = requestAnimationFrame(() => setMounted(true))
+    return () => cancelAnimationFrame(id)
+  }, [open])
 
   const title = useMemo(() => getDealTitle(deal), [deal])
   const dealId = deal?.id
@@ -201,7 +208,7 @@ export default function DealDrawer({ open, deal, onClose, onStatusChange }) {
         role="presentation"
         aria-hidden="true"
         data-testid="deal-drawer-backdrop"
-        className="absolute inset-0 bg-black/40"
+        className={`absolute inset-0 bg-black/40 transition-opacity duration-150 ${mounted ? 'opacity-100' : 'opacity-0'}`}
         onClick={() => onClose?.()}
       />
       <aside
@@ -209,7 +216,7 @@ export default function DealDrawer({ open, deal, onClose, onStatusChange }) {
         role="dialog"
         aria-modal="true"
         aria-labelledby="deal-drawer-title"
-        className="absolute right-0 top-16 h-[calc(100%-4rem)] w-full max-w-xl overflow-hidden bg-white shadow-xl md:top-0 md:h-full flex flex-col"
+        className={`absolute right-0 top-16 h-[calc(100%-4rem)] w-full max-w-xl overflow-hidden bg-white shadow-xl md:top-0 md:h-full flex flex-col transition-transform duration-150 ease-out ${mounted ? 'translate-x-0' : 'translate-x-full'}`}
       >
         {/* ── header ── */}
         <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3 md:px-6 md:py-4">

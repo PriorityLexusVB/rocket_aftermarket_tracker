@@ -329,7 +329,7 @@ const Navbar = () => {
                   <div className="absolute right-0 mt-2 w-80 bg-card rounded-lg shadow-lg border border-border py-2 z-50 max-h-96 overflow-y-auto text-foreground">
                     <div className="px-4 py-3 border-b border-border">
                       <div className="flex items-center justify-between">
-                        <h3 className="text-sm font-medium text-foreground">Recent Activity</h3>
+                        <h3 className="text-sm font-medium text-foreground">Notifications &amp; Activity</h3>
                         {notificationLoading && (
                           <div className="text-xs text-muted-foreground">Loading...</div>
                         )}

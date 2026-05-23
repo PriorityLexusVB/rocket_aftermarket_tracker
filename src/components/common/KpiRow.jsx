@@ -29,11 +29,11 @@ const KpiRow = ({ active, revenue, profit, margin, pending }) => {
   }
 
   const Item = ({ label, value, suffix = '' }) => (
-    <div className="kpi bg-white/5 border border-white/10 rounded-xl p-4">
-      <div className="label text-xs text-gray-400 font-semibold uppercase tracking-wide mb-1">
+    <div className="kpi bg-card border border-border rounded-xl p-4">
+      <div className="label text-xs text-muted-foreground font-semibold uppercase tracking-wide mb-1">
         {label}
       </div>
-      <div className="value text-2xl font-bold text-gray-100 tabular-nums">
+      <div className="value text-2xl font-bold text-foreground tabular-nums">
         {sanitizeValue(value)}
         {suffix}
       </div>

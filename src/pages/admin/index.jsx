@@ -939,10 +939,10 @@ const AdminPage = () => {
   if (loading) {
     return (
       <AppLayout>
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="min-h-screen bg-background flex items-center justify-center">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-gray-600">Loading admin panel...</p>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Loading admin panel...</p>
           </div>
         </div>
       </AppLayout>
@@ -952,12 +952,12 @@ const AdminPage = () => {
   if (error) {
     return (
       <AppLayout>
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-          <div className="max-w-md w-full bg-white rounded-lg shadow p-6">
+        <div className="min-h-screen bg-background flex items-center justify-center">
+          <div className="max-w-md w-full bg-card rounded-lg shadow border border-border p-6">
             <div className="text-center">
               <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-              <h2 className="text-xl font-bold text-gray-800 mb-2">Admin Panel Error</h2>
-              <p className="text-gray-600 mb-6">{error}</p>
+              <h2 className="text-xl font-bold text-foreground mb-2">Admin Panel Error</h2>
+              <p className="text-muted-foreground mb-6">{error}</p>
 
               <div className="space-y-4">
                 <UIButton
@@ -970,7 +970,7 @@ const AdminPage = () => {
 
                 <UIButton
                   onClick={debugAuthState}
-                  className="w-full bg-gray-600 hover:bg-gray-700 text-white"
+                  className="w-full bg-muted hover:bg-muted/80 text-foreground"
                 >
                   Debug Connection
                 </UIButton>
@@ -984,7 +984,7 @@ const AdminPage = () => {
               </div>
 
               {debugInfo?.showDebug && (
-                <div className="mt-6 p-4 bg-gray-100 rounded-lg text-left text-sm">
+                <div className="mt-6 p-4 bg-muted rounded-lg text-left text-sm">
                   <h3 className="font-semibold mb-2">Debug Information:</h3>
                   <div className="space-y-1 font-mono text-xs">
                     <div>Auth User: {debugInfo?.authUser?.email || 'None'}</div>
@@ -1010,12 +1010,12 @@ const AdminPage = () => {
   // Main admin interface
   return (
     <AppLayout>
-      <div className="min-h-screen bg-gray-50 pt-20">
+      <div className="min-h-screen bg-background pt-20">
         <div className="max-w-7xl mx-auto px-4 py-8">
           {/* Admin Header */}
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Admin Panel</h1>
-            <p className="text-gray-600">
+            <h1 className="text-3xl font-bold text-foreground mb-2">Admin Panel</h1>
+            <p className="text-muted-foreground">
               Complete administrative management for Priority Automotive Tracker
             </p>
 
@@ -1046,8 +1046,8 @@ const AdminPage = () => {
           </div>
 
           {/* Data Status Summary */}
-          <div className="mb-8 p-4 bg-white border border-gray-200 rounded-lg">
-            <h3 className="text-lg font-semibold text-gray-900 mb-3">Current Data Status</h3>
+          <div className="mb-8 p-4 bg-card border border-border rounded-lg">
+            <h3 className="text-lg font-semibold text-foreground mb-3">Current Data Status</h3>
             <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
               <div>
                 <span className="font-medium">User Accounts:</span>
@@ -1092,7 +1092,7 @@ const AdminPage = () => {
 
           {/* Tab Navigation */}
           <div className="mb-8">
-            <nav className="flex overflow-x-auto border-b border-gray-200 gap-1 pb-px">
+            <nav className="flex overflow-x-auto border-b border-border gap-1 pb-px">
               {tabs?.map((tab) => {
                 const Icon = tab?.icon
                 let count = 0
@@ -1109,8 +1109,8 @@ const AdminPage = () => {
                     onClick={() => setActiveTab(tab?.id)}
                     className={`flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap shrink-0 ${
                       activeTab === tab?.id
-                        ? 'border-blue-500 text-blue-600'
-                        : 'border-transparent text-gray-500 hover:text-gray-700'
+                        ? 'border-primary text-primary'
+                        : 'border-transparent text-muted-foreground hover:text-foreground'
                     }`}
                   >
                     <Icon className="w-5 h-5" />
@@ -1118,7 +1118,7 @@ const AdminPage = () => {
                     {count !== null && (
                       <span
                         className={`ml-1 px-2 py-1 text-xs rounded-full ${
-                          count > 0 ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-500'
+                          count > 0 ? 'bg-green-100 text-green-800' : 'bg-muted text-muted-foreground'
                         }`}
                       >
                         {count}
@@ -1131,7 +1131,7 @@ const AdminPage = () => {
           </div>
 
           {/* Tab Content - RESTORED WORKING FUNCTIONALITY */}
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="bg-card rounded-lg shadow border border-border p-6">
             {activeTab === 'userAccounts' && (
               <UserAccountsTab
                 userAccounts={userAccounts}

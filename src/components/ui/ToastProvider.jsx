@@ -55,7 +55,7 @@ export function ToastProvider({ children }) {
           <div
             key={t.id}
             className={[
-              'px-3 py-2 rounded shadow text-sm',
+              'px-3 py-2 rounded shadow text-sm animate-[slideInDown_180ms_ease-out_forwards]',
               t.variant === 'error' && 'bg-red-600 text-white',
               t.variant === 'success' && 'bg-emerald-600 text-white',
               t.variant === 'info' && 'bg-slate-800 text-white',

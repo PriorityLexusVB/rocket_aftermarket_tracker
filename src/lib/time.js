@@ -190,13 +190,13 @@ export const getStatusBadge = (status) => {
       color: 'bg-blue-500',
     },
     in_progress: {
-      label: 'IP',
+      label: 'In Progress',
       bg: 'bg-yellow-100',
       textColor: 'text-yellow-800',
       color: 'bg-yellow-500',
     },
     quality_check: {
-      label: 'W/P',
+      label: 'Quality Check',
       bg: 'bg-purple-100',
       textColor: 'text-purple-800',
       color: 'bg-purple-500',
@@ -220,7 +220,7 @@ export const getStatusBadge = (status) => {
       color: 'bg-red-500',
     },
     no_show: {
-      label: 'NS',
+      label: 'No-Show',
       bg: 'bg-gray-100',
       textColor: 'text-gray-800',
       color: 'bg-gray-400',

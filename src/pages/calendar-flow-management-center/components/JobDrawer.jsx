@@ -22,6 +22,7 @@ import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle.js'
 import { formatTime, isOverdue, getStatusBadge } from '../../../lib/time'
 import { formatEtDateLabel } from '@/utils/scheduleDisplay'
 import { openCalendar } from '@/lib/navigation/calendarNavigation'
+import { useToast } from '@/components/ui/ToastProvider'
 
 const JobDrawer = ({ job, isOpen, onClose, onStatusUpdate }) => {
   const [activeTab, setActiveTab] = useState('details')
@@ -29,6 +30,7 @@ const JobDrawer = ({ job, isOpen, onClose, onStatusUpdate }) => {
   const [jobNumberCopied, setJobNumberCopied] = useState(false)
   const closeButtonRef = useRef(null)
   const navigate = useNavigate()
+  const toast = useToast()
 
   const useAgenda = useMemo(() => String(import.meta.env.VITE_SIMPLE_CALENDAR || '') === 'true', [])
 
@@ -61,13 +63,15 @@ const JobDrawer = ({ job, isOpen, onClose, onStatusUpdate }) => {
           focusId: job?.id,
         },
       })
+      toast?.info({ message: 'Drag the highlighted job to a new time slot, or click to edit.', duration: 5000 })
       return
     }
 
     // Fallback: send user to the board calendar with this job auto-focused for rescheduling.
     onClose?.()
     navigate(`/calendar-flow-management-center?focus=${job?.id}`)
-  }, [job?.id, navigate, onClose, useAgenda])
+    toast?.info({ message: 'Drag the highlighted job to a new time slot, or click to edit.', duration: 5000 })
+  }, [job?.id, navigate, onClose, toast, useAgenda])
 
   const handleCopyJobNumber = useCallback(async () => {
     const text = job?.job_number
@@ -142,8 +146,7 @@ const JobDrawer = ({ job, isOpen, onClose, onStatusUpdate }) => {
     () => [
       { id: 'details', label: 'Details', icon: Package },
       { id: 'customer', label: 'Customer', icon: User },
-      { id: 'timeline', label: 'Notes', icon: MessageSquare },
-      { id: 'photos', label: 'Photos', icon: Camera },
+      // Notes and Photos tabs hidden until persistence is wired — F14
     ],
     []
   )
@@ -499,8 +502,6 @@ const JobDrawer = ({ job, isOpen, onClose, onStatusUpdate }) => {
           <div className="flex-1 overflow-y-auto px-6 py-6">
             {activeTab === 'details' && renderDetailsTab()}
             {activeTab === 'customer' && renderCustomerTab()}
-            {activeTab === 'timeline' && renderTimelineTab()}
-            {activeTab === 'photos' && renderPhotosTab()}
           </div>
         </div>
       </div>

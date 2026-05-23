@@ -4,38 +4,8 @@ import Icon from '../../../components/AppIcon'
 const SystemInfo = () => {
   const currentYear = new Date()?.getFullYear()
 
-  const systemStats = [
-    {
-      label: 'Uptime',
-      value: '99.9%',
-      icon: 'Activity',
-    },
-    {
-      label: 'Response Time',
-      value: '<200ms',
-      icon: 'Zap',
-    },
-    {
-      label: 'Active Users',
-      value: '24/7',
-      icon: 'Users',
-    },
-  ]
-
   return (
     <div className="mt-8 space-y-6">
-      {/* System Statistics */}
-      <div className="grid grid-cols-3 gap-4">
-        {systemStats?.map((stat, index) => (
-          <div key={index} className="text-center p-3 bg-card border border-border rounded-lg">
-            <div className="flex items-center justify-center w-8 h-8 bg-primary/10 rounded-full mx-auto mb-2">
-              <Icon name={stat?.icon} size={16} className="text-primary" />
-            </div>
-            <p className="text-sm font-semibold text-foreground">{stat?.value}</p>
-            <p className="text-xs text-muted-foreground">{stat?.label}</p>
-          </div>
-        ))}
-      </div>
       {/* Support Information */}
       <div className="p-4 bg-muted/30 border border-border rounded-lg">
         <div className="flex items-start space-x-3">

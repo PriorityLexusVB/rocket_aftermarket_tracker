@@ -1139,10 +1139,7 @@ const CreateModal = ({ initialData, onClose, onSuccess, vendors, onSMSEnqueue })
           <div className="p-6 border-t-2 border-gray-200 bg-gray-50 flex-shrink-0 shadow-inner">
             <div className="flex justify-between items-center">
               <div className="text-sm text-gray-500">
-                <span className="text-red-500">*</span> Required fields |
-                <span className="text-green-600 font-medium">
-                  🔧 Scrolling Permanently Fixed 🔧 Deal # Added & Searchable
-                </span>
+                <span className="text-red-500">*</span> Required fields
               </div>
               <div className="flex space-x-3">
                 <button
@@ -1160,7 +1157,7 @@ const CreateModal = ({ initialData, onClose, onSuccess, vendors, onSMSEnqueue })
                   {loading && (
                     <div className="animate-spin rounded-full h-4 w-4 border-2 border-white"></div>
                   )}
-                  <span>{loading ? 'Saving Deal...' : '🔧 Save Deal'}</span>
+                  <span>{loading ? 'Saving Deal...' : 'Save Deal'}</span>
                 </button>
               </div>
             </div>

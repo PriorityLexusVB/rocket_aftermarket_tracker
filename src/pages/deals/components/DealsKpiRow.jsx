@@ -86,7 +86,7 @@ const DealsKpiRow = ({ kpis }) => (
           </div>
           <div>
             <h3 className="text-muted-foreground text-sm font-medium uppercase tracking-wide">
-              Needs Work (time TBD)
+              Pending Work
             </h3>
             <p className="text-foreground text-2xl font-bold">{kpis?.pending}</p>
           </div>
@@ -101,7 +101,7 @@ const DealsKpiRow = ({ kpis }) => (
           </div>
           <div>
             <h3 className="text-muted-foreground text-sm font-medium uppercase tracking-wide">
-              Units Sold
+              Products Sold
             </h3>
             <p className="text-foreground text-2xl font-bold">{kpis?.productsSold || 0}</p>
           </div>

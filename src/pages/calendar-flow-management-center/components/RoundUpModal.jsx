@@ -115,7 +115,14 @@ const RoundUpModal = ({
 }) => {
   const [selectedJobs, setSelectedJobs] = useState(new Set())
   const [exportBusy, setExportBusy] = useState(null) // 'copy' | 'csv' | null
+  const [mounted, setMounted] = useState(false)
   const toast = useToast()
+
+  useEffect(() => {
+    if (!isOpen) { setMounted(false); return }
+    const id = requestAnimationFrame(() => setMounted(true))
+    return () => cancelAnimationFrame(id)
+  }, [isOpen])
 
   // Reset selection state when the modal transitions to open so stale checkmarks
   // don't carry over from a prior open. Guard prevents a no-op re-render on first mount.
@@ -369,12 +376,12 @@ const RoundUpModal = ({
   return (
     <div className="fixed inset-0 z-50 overflow-hidden" role="dialog" aria-modal="true" aria-labelledby="roundup-modal-title">
       <div
-        className="absolute inset-0 bg-black/50"
+        className={`absolute inset-0 bg-black/50 transition-opacity duration-150 ${mounted ? 'opacity-100' : 'opacity-0'}`}
         onClick={(e) => {
           if (e.target === e.currentTarget) onClose?.()
         }}
       ></div>
-      <div className="absolute right-0 top-0 h-full w-full max-w-6xl bg-card text-card-foreground shadow-xl">
+      <div className={`absolute right-0 top-0 h-full w-full max-w-6xl bg-card text-card-foreground shadow-xl transition-transform duration-150 ease-out ${mounted ? 'translate-x-0' : 'translate-x-full'}`}>
         <div className="flex flex-col h-full">
           {/* Header */}
           <div className="px-6 py-4 border-b border-border bg-card">
@@ -431,7 +438,11 @@ const RoundUpModal = ({
                   title="Copy as TSV (paste directly into Excel)"
                   className="flex items-center px-3 py-2 text-sm border border-input bg-background text-foreground rounded-lg hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <Copy className="h-4 w-4 mr-2" />
+                  {exportBusy === 'copy' ? (
+                    <RefreshCw className="h-3.5 w-3.5 animate-spin mr-1.5" />
+                  ) : (
+                    <Copy className="h-4 w-4 mr-2" />
+                  )}
                   {exportBusy === 'copy' ? 'Copying…' : 'Copy'}
                 </button>
                 <button
@@ -441,17 +452,12 @@ const RoundUpModal = ({
                   title="Download as CSV (BDC tracking format)"
                   className="flex items-center px-3 py-2 text-sm border border-input bg-background text-foreground rounded-lg hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <FileText className="h-4 w-4 mr-2" />
+                  {exportBusy === 'csv' ? (
+                    <RefreshCw className="h-3.5 w-3.5 animate-spin mr-1.5" />
+                  ) : (
+                    <FileText className="h-4 w-4 mr-2" />
+                  )}
                   {exportBusy === 'csv' ? 'Exporting…' : 'CSV'}
-                </button>
-                <button
-                  type="button"
-                  disabled
-                  title="PDF export — coming soon"
-                  className="flex items-center px-3 py-2 text-sm border border-border rounded-lg text-muted-foreground cursor-not-allowed"
-                >
-                  <Download className="h-4 w-4 mr-2" />
-                  PDF
                 </button>
               </div>
             </div>

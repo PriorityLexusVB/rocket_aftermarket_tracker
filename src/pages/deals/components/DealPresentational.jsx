@@ -31,7 +31,7 @@ export const StatusPill = ({ status }) => {
   const color = statusColors?.[status] || 'bg-accent/50 text-foreground'
   const displayStatus = status?.replace('_', ' ')?.toUpperCase() || 'UNKNOWN'
 
-  return <span className={`px-2 py-1 rounded text-xs font-medium ${color}`}>{displayStatus}</span>
+  return <span className={`px-2 py-1 rounded-full text-xs font-medium ${color}`}>{displayStatus}</span>
 }
 
 // ── LoanerBadge ─────────────────────────────────────────────────────
@@ -119,10 +119,10 @@ export const ServiceLocationTag = ({ jobParts }) => {
   if (hasOffSiteItems && hasOnSiteItems) {
     return (
       <div className="flex flex-col space-y-1">
-        <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-accent/50 text-foreground border border-border">
+        <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium border service-pill-offsite">
           Off-Site
         </span>
-        <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-accent/50 text-foreground border border-border">
+        <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium border service-pill-onsite">
           On-Site
         </span>
       </div>
@@ -131,14 +131,14 @@ export const ServiceLocationTag = ({ jobParts }) => {
 
   if (hasOffSiteItems) {
     return (
-      <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-accent/50 text-foreground border border-border">
+      <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium border service-pill-offsite">
         Off-Site
       </span>
     )
   }
 
   return (
-    <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-accent/50 text-foreground border border-border">
+    <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium border service-pill-onsite">
       On-Site
     </span>
   )

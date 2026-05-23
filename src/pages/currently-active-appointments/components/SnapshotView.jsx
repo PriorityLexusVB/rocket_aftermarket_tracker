@@ -750,7 +750,7 @@ export default function SnapshotView() {
 
       <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-foreground">Active Appointments (Snapshot)</h1>
+          <h1 className="text-xl font-semibold text-foreground">Active Appointments</h1>
           <div className="text-xs text-muted-foreground">
             Operations view: scheduled + controlled unscheduled
           </div>

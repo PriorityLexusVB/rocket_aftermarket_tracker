@@ -943,7 +943,7 @@ export default function DealsPage() {
     <div className="min-h-screen bg-background text-foreground">
       {/* ✅ FIXED: Ensure navbar is always visible */}
       <Navbar />
-      <div className="p-4 md:p-8 max-w-7xl mx-auto" style={{ paddingTop: '5rem' }}>
+      <div className="p-4 pb-24 md:p-8 md:pb-8 max-w-7xl mx-auto" style={{ paddingTop: '5rem' }}>
         {/* ✅ FIXED: Error display */}
         <ErrorAlert
           message={error || dropdownError}

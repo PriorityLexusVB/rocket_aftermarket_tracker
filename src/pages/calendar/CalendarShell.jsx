@@ -427,7 +427,7 @@ export default function CalendarShell() {
               <button
                 type="button"
                 onClick={() => navigate('/deals/new')}
-                className="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:opacity-90"
+                className="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
               >
                 <Plus className="h-4 w-4" /> New Deal
               </button>
@@ -510,22 +510,6 @@ export default function CalendarShell() {
                   </div>
                 </details>
 
-                {/* Location type legend */}
-                <div className="hidden sm:flex items-center gap-2.5 rounded-md border border-border bg-background px-2 py-1 text-[11px] text-muted-foreground" aria-label="Location legend">
-                  <span className="flex items-center gap-1" title="In-House — work stays on the lot">
-                    <span className="inline-block h-2.5 w-2.5 rounded-full bg-green-500 shrink-0" aria-hidden="true" />
-                    In-House
-                  </span>
-                  <span className="flex items-center gap-1" title="Off-Site — sent to an outside vendor">
-                    <span className="inline-block h-2.5 w-2.5 rounded-full bg-amber-500 shrink-0" aria-hidden="true" />
-                    Off-Site
-                  </span>
-                  <span className="flex items-center gap-1" title="Split Work — some parts in-house, some at a vendor">
-                    <span className="inline-block h-2.5 w-2.5 rounded-full bg-blue-500 shrink-0" aria-hidden="true" />
-                    Split Work
-                  </span>
-                </div>
-
                 <details className="group relative">
                   <summary
                     className="flex cursor-pointer list-none items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-xs text-muted-foreground"
@@ -542,6 +526,7 @@ export default function CalendarShell() {
                 <button
                   type="button"
                   onClick={() => navigate('/overdue')}
+                  title="View jobs that missed their promised delivery date"
                   className="inline-flex items-center gap-2 rounded-md border border-border bg-background px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-muted"
                 >
                   Overdue

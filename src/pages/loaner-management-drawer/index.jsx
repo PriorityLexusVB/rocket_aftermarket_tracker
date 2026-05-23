@@ -163,13 +163,13 @@ export default function LoanerManagementDrawer() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50 text-slate-900">
+      <div className="min-h-screen bg-background text-foreground">
         <Navbar />
         <div className="p-4 md:p-8" style={{ paddingTop: '5rem' }}>
           <div className="flex items-center justify-center py-12">
             <div className="text-center">
-              <Icon name="Loader" size={32} className="animate-spin mx-auto mb-4 text-slate-400" />
-              <div className="text-slate-600">Loading loaner management...</div>
+              <Icon name="Loader" size={32} className="animate-spin mx-auto mb-4 text-muted-foreground" />
+              <div className="text-muted-foreground">Loading loaner management...</div>
             </div>
           </div>
         </div>
@@ -178,7 +178,7 @@ export default function LoanerManagementDrawer() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900">
+    <div className="min-h-screen bg-background text-foreground">
       <Navbar />
       <div className="p-4 md:p-8 max-w-7xl mx-auto" style={{ paddingTop: '5rem' }}>
         {/* Error Display */}
@@ -206,8 +206,8 @@ export default function LoanerManagementDrawer() {
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Loaner Management</h1>
-            <p className="text-slate-600 mt-1">Track and manage loaner vehicle assignments</p>
+            <h1 className="text-2xl md:text-3xl font-bold text-foreground">Loaner Management</h1>
+            <p className="text-muted-foreground mt-1">Track and manage loaner vehicle assignments</p>
           </div>
         </div>
 
@@ -215,61 +215,61 @@ export default function LoanerManagementDrawer() {
         <div className="mb-8">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             {/* Available Loaners */}
-            <div className="bg-white p-6 rounded-xl border shadow-sm">
+            <div className="bg-card p-6 rounded-xl border border-border shadow-sm">
               <div className="flex items-center">
                 <div className="p-3 rounded-lg bg-green-100 mr-4">
                   <Icon name="Car" size={24} className="text-green-700" />
                 </div>
                 <div>
-                  <h3 className="text-slate-600 text-sm font-medium uppercase tracking-wide">
+                  <h3 className="text-muted-foreground text-sm font-medium uppercase tracking-wide">
                     Available
                   </h3>
-                  <p className="text-slate-900 text-2xl font-bold">{inventory?.available}</p>
+                  <p className="text-foreground text-2xl font-bold">{inventory?.available}</p>
                 </div>
               </div>
             </div>
 
             {/* Assigned Loaners */}
-            <div className="bg-white p-6 rounded-xl border shadow-sm">
+            <div className="bg-card p-6 rounded-xl border border-border shadow-sm">
               <div className="flex items-center">
                 <div className="p-3 rounded-lg bg-blue-100 mr-4">
                   <Icon name="Users" size={24} className="text-blue-700" />
                 </div>
                 <div>
-                  <h3 className="text-slate-600 text-sm font-medium uppercase tracking-wide">
+                  <h3 className="text-muted-foreground text-sm font-medium uppercase tracking-wide">
                     Assigned
                   </h3>
-                  <p className="text-slate-900 text-2xl font-bold">{inventory?.assigned}</p>
+                  <p className="text-foreground text-2xl font-bold">{inventory?.assigned}</p>
                 </div>
               </div>
             </div>
 
             {/* Overdue Returns */}
-            <div className="bg-white p-6 rounded-xl border shadow-sm">
+            <div className="bg-card p-6 rounded-xl border border-border shadow-sm">
               <div className="flex items-center">
                 <div className="p-3 rounded-lg bg-red-100 mr-4">
                   <Icon name="AlertTriangle" size={24} className="text-red-700" />
                 </div>
                 <div>
-                  <h3 className="text-slate-600 text-sm font-medium uppercase tracking-wide">
+                  <h3 className="text-muted-foreground text-sm font-medium uppercase tracking-wide">
                     Overdue
                   </h3>
-                  <p className="text-slate-900 text-2xl font-bold">{inventory?.overdue}</p>
+                  <p className="text-foreground text-2xl font-bold">{inventory?.overdue}</p>
                 </div>
               </div>
             </div>
 
             {/* Jobs Needing Loaners */}
-            <div className="bg-white p-6 rounded-xl border shadow-sm">
+            <div className="bg-card p-6 rounded-xl border border-border shadow-sm">
               <div className="flex items-center">
                 <div className="p-3 rounded-lg bg-purple-100 mr-4">
                   <Icon name="Clock" size={24} className="text-purple-700" />
                 </div>
                 <div>
-                  <h3 className="text-slate-600 text-sm font-medium uppercase tracking-wide">
+                  <h3 className="text-muted-foreground text-sm font-medium uppercase tracking-wide">
                     Pending
                   </h3>
-                  <p className="text-slate-900 text-2xl font-bold">{jobsNeedingLoaners?.length}</p>
+                  <p className="text-foreground text-2xl font-bold">{jobsNeedingLoaners?.length}</p>
                 </div>
               </div>
             </div>
@@ -299,17 +299,17 @@ export default function LoanerManagementDrawer() {
               {jobsNeedingLoaners?.map((job) => (
                 <div
                   key={job?.id}
-                  className="bg-white rounded-lg border p-4 flex flex-col md:flex-row md:items-center justify-between gap-4"
+                  className="bg-card rounded-lg border border-border p-4 flex flex-col md:flex-row md:items-center justify-between gap-4"
                 >
                   <div>
-                    <h4 className="font-medium text-slate-900">
+                    <h4 className="font-medium text-foreground">
                       {job?.job_number || job?.transactions?.[0]?.customer_name || '—'}
                     </h4>
-                    <p className="text-sm text-slate-600">
+                    <p className="text-sm text-muted-foreground">
                       Customer: {job?.transactions?.[0]?.customer_name || 'Unknown'}
                     </p>
                     {job?.transactions?.[0]?.customer_phone && (
-                      <p className="text-sm text-slate-500">
+                      <p className="text-sm text-muted-foreground">
                         Phone: {job?.transactions?.[0]?.customer_phone}
                       </p>
                     )}
@@ -318,7 +318,7 @@ export default function LoanerManagementDrawer() {
                     onClick={() => {
                       navigate(`/deals/${job?.id}/edit`)
                     }}
-                    className="bg-slate-900 hover:bg-slate-800 text-white h-11 px-6"
+                    className="bg-primary hover:bg-primary/90 text-primary-foreground h-11 px-6"
                   >
                     Open Deal
                   </Button>
@@ -329,27 +329,27 @@ export default function LoanerManagementDrawer() {
         )}
 
         {/* Active Loaner Assignments */}
-        <div className="bg-white rounded-lg border overflow-hidden shadow-sm">
-          <div className="p-6 border-b">
-            <h2 className="text-lg font-semibold text-slate-900">Active Loaner Assignments</h2>
-            <p className="text-sm text-slate-600 mt-1">
+        <div className="bg-card rounded-lg border border-border overflow-hidden shadow-sm">
+          <div className="p-6 border-b border-border">
+            <h2 className="text-lg font-semibold text-foreground">Active Loaner Assignments</h2>
+            <p className="text-sm text-muted-foreground mt-1">
               Track current and returned loaner vehicles
             </p>
           </div>
 
           {loaners?.length === 0 ? (
-            <div className="p-8 text-center text-slate-500">
+            <div className="p-8 text-center text-muted-foreground">
               {loanerAccessDenied ? (
                 <>
-                  <Icon name="Lock" size={48} className="mx-auto mb-4 text-slate-300" />
-                  <p className="font-medium text-slate-700">Permission denied</p>
+                  <Icon name="Lock" size={48} className="mx-auto mb-4 text-muted-foreground/50" />
+                  <p className="font-medium text-foreground">Permission denied</p>
                   <p className="text-sm mt-1">
                     You don&apos;t have permission to view loaners. Contact your administrator.
                   </p>
                 </>
               ) : (
                 <>
-                  <Icon name="Car" size={48} className="mx-auto mb-4 text-slate-300" />
+                  <Icon name="Car" size={48} className="mx-auto mb-4 text-muted-foreground/50" />
                   <p>No loaner vehicles available</p>
                 </>
               )}
@@ -357,68 +357,68 @@ export default function LoanerManagementDrawer() {
           ) : (
             <div className="overflow-x-auto">
               <table className="min-w-full">
-                <thead className="bg-slate-50">
+                <thead className="bg-muted/40">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                       Loaner #
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                       Customer
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                       Job
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                       Expected Return
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                       Status
                     </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">
                       Actions
                     </th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-slate-200">
+                <tbody className="bg-card divide-y divide-border">
                   {loaners?.map((assignment) => {
                     const status = getLoanerStatus(assignment)
                     const statusDisplay = getStatusDisplay(status)
 
                     return (
-                      <tr key={assignment?.id} className="hover:bg-slate-50">
+                      <tr key={assignment?.id} className="hover:bg-muted/40">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
-                            <Icon name="Car" size={16} className="text-slate-400 mr-2" />
-                            <span className="font-medium text-slate-900">
+                            <Icon name="Car" size={16} className="text-muted-foreground mr-2" />
+                            <span className="font-medium text-foreground">
                               #{assignment?.loaner_number}
                             </span>
                           </div>
                         </td>
                         <td className="px-6 py-4">
                           <div>
-                            <div className="font-medium text-slate-900">
+                            <div className="font-medium text-foreground">
                               {assignment?.jobs?.transactions?.[0]?.customer_name || 'Unknown'}
                             </div>
                             {assignment?.jobs?.transactions?.[0]?.customer_phone && (
-                              <div className="text-sm text-slate-500">
+                              <div className="text-sm text-muted-foreground">
                                 {assignment?.jobs?.transactions?.[0]?.customer_phone}
                               </div>
                             )}
                           </div>
                         </td>
                         <td className="px-6 py-4">
-                          <div className="text-sm text-slate-900">
+                          <div className="text-sm text-foreground">
                             {assignment?.jobs?.job_number ||
                               assignment?.jobs?.transactions?.[0]?.customer_name ||
                               'Unknown Job'}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-slate-900">
+                          <div className="text-sm text-foreground">
                             {formatDate(assignment?.eta_return_date)}
                           </div>
                           {assignment?.returned_at && (
-                            <div className="text-xs text-slate-500">
+                            <div className="text-xs text-muted-foreground">
                               Returned: {formatDate(assignment?.returned_at)}
                             </div>
                           )}

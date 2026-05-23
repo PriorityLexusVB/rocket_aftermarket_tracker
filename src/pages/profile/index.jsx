@@ -44,9 +44,10 @@ export default function ProfileSettings() {
           {orgId && (
             <div className="px-4 py-3">
               <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
-                Organization
+                Org ID
               </p>
-              <p className="text-sm font-medium text-foreground font-mono text-xs">{orgId}</p>
+              <p className="text-xs font-medium text-foreground font-mono">{orgId}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Internal identifier — contact your admin to change.</p>
             </div>
           )}
         </div>

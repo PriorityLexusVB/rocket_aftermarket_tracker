@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import Button from '../../../components/ui/Button'
 import Icon from '../../../components/ui/Icon'
 import ScheduleChip from '@/components/deals/ScheduleChip'
@@ -9,6 +9,13 @@ export default function DealDetailDrawer({ isOpen, onClose, deal, onComplete, on
   const [activeTab, setActiveTab] = useState('Customer')
   const [copied, setCopied] = useState('')
   const [statusBusy, setStatusBusy] = useState(false)
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    if (!isOpen) { setMounted(false); return }
+    const id = requestAnimationFrame(() => setMounted(true))
+    return () => cancelAnimationFrame(id)
+  }, [isOpen])
 
   const tabs = useMemo(
     () => [
@@ -195,8 +202,8 @@ export default function DealDetailDrawer({ isOpen, onClose, deal, onComplete, on
 
   return (
     <>
-      <div className="fixed inset-0 bg-black/50 z-50" onClick={onClose} />
-      <div className="fixed right-0 top-0 h-full w-full md:w-[520px] bg-white shadow-xl z-50 overflow-y-auto">
+      <div className={`fixed inset-0 bg-black/50 z-50 transition-opacity duration-150 ${mounted ? 'opacity-100' : 'opacity-0'}`} onClick={onClose} />
+      <div className={`fixed right-0 top-0 h-full w-full md:w-[520px] bg-white shadow-xl z-50 overflow-y-auto transition-transform duration-150 ease-out ${mounted ? 'translate-x-0' : 'translate-x-full'}`}>
         <div className="p-5 border-b bg-white sticky top-0 z-10">
           <div className="flex items-center justify-between">
             <div>
