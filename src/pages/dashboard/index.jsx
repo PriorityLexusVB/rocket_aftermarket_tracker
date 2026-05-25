@@ -405,7 +405,7 @@ const DashboardPage = () => {
             value={String(overdueData.count)}
             sublabel={
               overdueData.count > 0
-                ? `Oldest ${overdueData.oldestDays}d${overdueData.oldestDays >= 30 ? ' · check status' : ''}`
+                ? `Oldest ${overdueData.oldestDays}d · check status`
                 : 'All clear'
             }
             href={overdueData.count > 0 ? '/overdue' : null}

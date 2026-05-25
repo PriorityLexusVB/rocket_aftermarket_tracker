@@ -253,18 +253,22 @@ export default function DealDrawer({ open, deal, onClose, onStatusChange }) {
   // Previously only in JobDrawer (unreachable from chip). Confirmation prevents
   // an accidental status flip from a misplaced click.
   const handleNoShow = async () => {
-    // Wave XXX-S: ref guard catches rapid double-clicks BEFORE the confirm
-    // dialog so users can't accidentally fire two no-show requests.
     if (!dealId || actionInFlightRef.current) return
-    if (
-      typeof window !== 'undefined' &&
-      !window.confirm(
+    // Wave XXX-W: lock the ref BEFORE the confirm dialog opens. Verifier
+    // caught that 5 rapid clicks open 5 sequential confirms (because the
+    // ref wasn't set until AFTER confirm resolved). Now: first click locks
+    // the ref + opens the dialog; subsequent clicks return immediately
+    // because ref is true. Cancel resets the ref so the user can try again.
+    actionInFlightRef.current = true
+    const confirmed =
+      typeof window === 'undefined' ||
+      window.confirm(
         'Mark this job as No-Show? This updates the job status to No-Show — the customer did not show up. You can recover by rescheduling.'
       )
-    ) {
+    if (!confirmed) {
+      actionInFlightRef.current = false
       return
     }
-    actionInFlightRef.current = true
     setActionLoading(true)
     setActionError(null)
     try {
