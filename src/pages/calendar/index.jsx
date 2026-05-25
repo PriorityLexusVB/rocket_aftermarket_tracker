@@ -9,6 +9,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import {
   getNeedsSchedulingPromiseItems,
   getScheduledJobsByDateRange,
+  isOverdueJob,
 } from '@/services/scheduleItemsService'
 import { jobService } from '@/services/jobService'
 import { handleAuthError, isTechNoiseMessage } from '@/lib/authErrorHandler'
@@ -20,7 +21,6 @@ import { getEventColors } from '@/utils/calendarColors'
 import { getReopenTargetStatus } from '@/utils/jobStatusTimeRules'
 import { withTimeout } from '@/utils/promiseTimeout'
 import { useToast } from '@/components/ui/ToastProvider'
-import { isOverdue } from '@/lib/time'
 import {
   getCalendarDestination,
   trackCalendarNavigation,
@@ -500,10 +500,7 @@ const CalendarSchedulingCenter = ({
 
   // Change 2: overdue count used by the week view empty state banner
   const overdueCountForEmptyState = useMemo(
-    () =>
-      (jobs || []).filter((job) =>
-        isOverdue(job?.next_promised_iso || job?.promised_date || job?.promisedAt)
-      ).length,
+    () => (jobs || []).filter((job) => isOverdueJob(job)).length,
     [jobs]
   )
 
@@ -841,8 +838,7 @@ const CalendarSchedulingCenter = ({
                 })
 
                 const locMeta = getLocationMeta(job)
-                const promiseIso = job?.next_promised_iso || job?.promised_date || job?.promisedAt
-                const overdue = isOverdue(promiseIso)
+                const overdue = isOverdueJob(job)
                 return (
                   <div
                     key={job?.calendar_key || job?.id}
@@ -1102,9 +1098,7 @@ const CalendarSchedulingCenter = ({
                 (job) => job?.time_tbd === true || job?.schedule_state === 'scheduled_no_time'
               ).length
               const scheduledCount = Math.max((dayJobs?.length || 0) - promiseCount, 0)
-              const overdueCount = dayJobs.filter((job) =>
-                isOverdue(job?.next_promised_iso || job?.promised_date || job?.promisedAt)
-              ).length
+              const overdueCount = dayJobs.filter((job) => isOverdueJob(job)).length
 
               const visibleJobs = dayJobs?.slice?.(0, 4) || []
               const remainingCount = Math.max((dayJobs?.length || 0) - visibleJobs.length, 0)

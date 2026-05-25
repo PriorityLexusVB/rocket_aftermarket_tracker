@@ -4,6 +4,7 @@
 
 import { money0, titleCase, prettyPhone } from '../../../lib/format'
 import { toSafeDateForTimeZone } from '../../../utils/scheduleDisplay'
+import { getPromiseIso } from '../../../services/scheduleItemsService'
 
 // ── Formatting helpers ──────────────────────────────────────────────
 
@@ -66,24 +67,9 @@ export const getEtDayKey = (isoOrDate) => {
   }).format(d)
 }
 
-export const getDealPromiseIso = (deal) => {
-  const explicit = deal?.next_promised_iso
-  if (explicit) return explicit
-
-  try {
-    if (Array.isArray(deal?.job_parts)) {
-      const dates = deal.job_parts
-        .map((p) => p?.promised_date)
-        .filter(Boolean)
-        .sort()
-      return dates?.[0] || null
-    }
-  } catch {
-    // ignore
-  }
-
-  return null
-}
+// Thin wrapper around the canonical resolver in scheduleItemsService. Retains the
+// `getDealPromiseIso` export name so existing callers don't break.
+export const getDealPromiseIso = (deal) => getPromiseIso(deal)
 
 export const getPromiseDayKey = (deal) => {
   const iso = getDealPromiseIso(deal)

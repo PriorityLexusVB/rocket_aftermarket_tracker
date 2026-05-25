@@ -17,7 +17,8 @@ import CheckCircle from 'lucide-react/dist/esm/icons/check-circle.js'
 import XCircle from 'lucide-react/dist/esm/icons/x-circle.js'
 import RotateCcw from 'lucide-react/dist/esm/icons/rotate-ccw.js'
 import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle.js'
-import { formatTime, isOverdue, getStatusBadge } from '../../../lib/time'
+import { formatTime, getStatusBadge } from '../../../lib/time'
+import { getPromiseIso, isOverdueJob } from '@/services/scheduleItemsService'
 import { formatEtDateLabel } from '@/utils/scheduleDisplay'
 import { openCalendar } from '@/lib/navigation/calendarNavigation'
 import { useToast } from '@/components/ui/ToastProvider'
@@ -151,8 +152,8 @@ const JobDrawer = ({ job, isOpen, onClose, onStatusUpdate }) => {
   if (!isOpen || !job) return null
 
   const statusBadge = getStatusBadge(job?.job_status)
-  const promise = job?.next_promised_iso || job?.promised_date || job?.promisedAt || null
-  const overdue = isOverdue(promise)
+  const promise = getPromiseIso(job)
+  const overdue = isOverdueJob(job)
 
   const renderDetailsTab = () => (
     <div className="space-y-6">

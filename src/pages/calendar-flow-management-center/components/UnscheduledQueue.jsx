@@ -5,6 +5,7 @@ import ChevronUp from 'lucide-react/dist/esm/icons/chevron-up.js'
 import Clock from 'lucide-react/dist/esm/icons/clock.js'
 import RefreshCw from 'lucide-react/dist/esm/icons/refresh-cw.js'
 import { formatEtDateLabel } from '@/utils/scheduleDisplay'
+import { getPromiseIso } from '@/services/scheduleItemsService'
 import { getJobLocationType } from '@/utils/locationType'
 
 function getQueueLocationMeta(job) {
@@ -114,7 +115,7 @@ export default function UnscheduledQueue({
           const raw = job?.raw || job
           const isCompleted = String(raw?.job_status || '').toLowerCase() === 'completed'
           const isBusy = Boolean(isStatusInFlight?.(raw?.id))
-          const promise = raw?.next_promised_iso || raw?.promised_date || raw?.promisedAt || null
+          const promise = getPromiseIso(raw)
           const locMeta = getQueueLocationMeta(raw)
 
           return (

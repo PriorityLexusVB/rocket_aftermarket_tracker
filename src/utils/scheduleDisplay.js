@@ -1,3 +1,5 @@
+import { getPromiseIso } from '@/services/scheduleItemsService'
+
 const DEFAULT_TZ = 'America/New_York'
 
 export function getEtDayParts(isoOrDate, { timeZone = DEFAULT_TZ } = {}) {
@@ -184,8 +186,7 @@ export function getAppointmentScheduleDisplay(appointment, { timeZone = DEFAULT_
     null
   const scheduledEnd =
     appointment?.scheduled_end_time ?? appointment?.scheduledEnd ?? appointment?.appt_end ?? null
-  const promised =
-    appointment?.promised_date ?? appointment?.promisedAt ?? appointment?.next_promised_iso
+  const promised = getPromiseIso(appointment)
 
   if (scheduledStart && !isDateOnlyValue(scheduledStart)) {
     return {

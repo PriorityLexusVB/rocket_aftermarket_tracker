@@ -16,6 +16,8 @@ import {
   getNeedsSchedulingPromiseItems,
   getScheduledJobsByDateRange,
   getUnscheduledQueueItems,
+  getPromiseIso,
+  isOverdueJob,
 } from '@/services/scheduleItemsService'
 import { jobService } from '@/services/jobService'
 import { vendorService } from '../../services/vendorService'
@@ -26,7 +28,7 @@ import { useToast } from '@/components/ui/ToastProvider'
 import UnscheduledQueue from './components/UnscheduledQueue'
 import JobDrawer from './components/JobDrawer'
 import RoundUpModal from './components/RoundUpModal'
-import { formatTime, isOverdue, getStatusBadge } from '../../lib/time'
+import { formatTime, getStatusBadge } from '../../lib/time'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { formatEtDateLabel, toSafeDateForTimeZone } from '@/utils/scheduleDisplay'
 import { getReopenTargetStatus } from '@/utils/jobStatusTimeRules'
@@ -44,16 +46,6 @@ const LOAD_TIMEOUT_MS = 15000
 // Display heuristic for vendor lane capacity bar. Per-vendor capacity is not
 // stored in the vendors table schema, so this is a fixed UI ceiling.
 const VENDOR_LANE_DAILY_CAPACITY = 7
-
-// FIX P1-7: next_promised_iso is a computed DB column written by dealCRUD.js
-// (see dealCRUD.js lines ~640, ~847) whenever a deal is created/updated.
-// It is the canonical "next promised date" aggregated from line items.
-// promised_date / promisedAt are legacy field names kept for back-compat with
-// older environments that may not have the column yet.
-// Fallback chain: next_promised_iso (most up-to-date) → promised_date → promisedAt
-function getPromiseValue(job) {
-  return job?.next_promised_iso || job?.promised_date || job?.promisedAt || null
-}
 
 function toEtDateKey(input) {
   const d = toSafeDateForTimeZone(input)
@@ -292,8 +284,7 @@ const CalendarFlowManagementCenter = ({
         const raw = it?.raw
         if (!raw) return null
 
-        const promisedAt =
-          it?.promisedAt || raw?.next_promised_iso || raw?.promised_date || raw?.promisedAt || null
+        const promisedAt = it?.promisedAt || getPromiseIso(raw)
 
         return {
           ...raw,
@@ -323,18 +314,17 @@ const CalendarFlowManagementCenter = ({
     if (!viewDateKeys || viewDateKeys.size === 0) return []
 
     return filteredNeedsSchedulingJobs.filter((job) => {
-      const key = toEtDateKey(getPromiseValue(job))
+      const key = toEtDateKey(getPromiseIso(job))
       return !!(key && viewDateKeys.has(key))
     })
   }, [filteredNeedsSchedulingJobs, viewDateKeys])
 
   const overdueNeedsTimeCount = useMemo(() => {
-    return (filteredNeedsSchedulingJobs || []).filter((job) => isOverdue(getPromiseValue(job)))
-      .length
+    return (filteredNeedsSchedulingJobs || []).filter((job) => isOverdueJob(job)).length
   }, [filteredNeedsSchedulingJobs])
 
   const overdueNeedsTimeInView = useMemo(() => {
-    return (needsSchedulingJobsInView || []).filter((job) => isOverdue(getPromiseValue(job))).length
+    return (needsSchedulingJobsInView || []).filter((job) => isOverdueJob(job)).length
   }, [needsSchedulingJobsInView])
 
   const needsTimeOutsideViewCount = useMemo(() => {
@@ -352,7 +342,7 @@ const CalendarFlowManagementCenter = ({
 
   const needsSchedulingJobsForView = useMemo(() => {
     if (!showOverdueOnly) return needsSchedulingJobsInView
-    return (needsSchedulingJobsInView || []).filter((job) => isOverdue(getPromiseValue(job)))
+    return (needsSchedulingJobsInView || []).filter((job) => isOverdueJob(job))
   }, [needsSchedulingJobsInView, showOverdueOnly])
 
   const unscheduledItemsFiltered = useMemo(() => {
@@ -476,7 +466,7 @@ const CalendarFlowManagementCenter = ({
             },
             in_progress: () => job?.job_status === 'in_progress',
             overdue: () =>
-              isOverdue(job?.next_promised_iso || job?.promised_date || job?.promisedAt || null),
+              isOverdueJob(job),
             no_show: () => job?.job_status === 'no_show',
             completed: () => job?.job_status === 'completed',
           }
@@ -888,7 +878,7 @@ const CalendarFlowManagementCenter = ({
   }, [findNextScheduledJob, getViewEndDate])
 
   const resolvePromiseDate = useCallback((job) => {
-    const value = getPromiseValue(job)
+    const value = getPromiseIso(job)
     if (!value) return null
     const tzDate = toSafeDateForTimeZone(value)
     if (tzDate && !Number.isNaN(tzDate.getTime())) return tzDate
@@ -913,7 +903,7 @@ const CalendarFlowManagementCenter = ({
     (mode) => {
       const list =
         mode === 'overdue'
-          ? (filteredNeedsSchedulingJobs || []).filter((job) => isOverdue(getPromiseValue(job)))
+          ? (filteredNeedsSchedulingJobs || []).filter((job) => isOverdueJob(job))
           : filteredNeedsSchedulingJobs || []
       const nextDate = pickEarliestPromiseDate(list)
       if (!nextDate) return
@@ -952,7 +942,7 @@ const CalendarFlowManagementCenter = ({
 
         const dayKey = toEtDateKey(currentDate)
         const noTime = (needsSchedulingJobsForView || []).filter((job) => {
-          const k = toEtDateKey(getPromiseValue(job))
+          const k = toEtDateKey(getPromiseIso(job))
           return !!(dayKey && k && k === dayKey)
         })
 
@@ -1079,12 +1069,10 @@ const CalendarFlowManagementCenter = ({
         : 'hover:border-orange-300'
     const chipText = useUnifiedColors ? unifiedColors?.text || 'text-blue-900' : 'text-gray-900'
     const rawStatus = String(job?.job_status || '').toLowerCase()
-    const overdue = isOverdue(
-      job?.next_promised_iso || job?.promised_date || job?.promisedAt || null
-    )
+    const overdue = isOverdueJob(job)
 
     const hasTimeWindow = !!job?.scheduled_start_time
-    const promise = getPromiseValue(job)
+    const promise = getPromiseIso(job)
     const isPromiseOnly = !hasTimeWindow && !!promise
     const allDayLabel = promise ? `Time TBD • Due: ${formatEtDateLabel(promise)}` : 'Time TBD'
 
@@ -1292,7 +1280,7 @@ const CalendarFlowManagementCenter = ({
 
             const dayKey = toEtDateKey(dayDate)
             const dayNoTimeJobs = (needsSchedulingJobsForView || []).filter((job) => {
-              const k = toEtDateKey(getPromiseValue(job))
+              const k = toEtDateKey(getPromiseIso(job))
               return !!(dayKey && k && k === dayKey)
             })
 
@@ -1845,7 +1833,7 @@ const CalendarFlowManagementCenter = ({
             inProgress: locationFilteredJobs?.filter((j) => j?.job_status === 'in_progress')
               ?.length,
             overdue: [...locationFilteredJobs, ...locationFilteredNeedsScheduling]?.filter((j) =>
-              isOverdue(getPromiseValue(j))
+              isOverdueJob(j)
             )?.length,
             noShow: locationFilteredJobs?.filter((j) => j?.job_status === 'no_show')?.length,
             completed: locationFilteredJobs?.filter((j) => j?.job_status === 'completed')?.length,

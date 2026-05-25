@@ -14,6 +14,7 @@ import GitBranch from 'lucide-react/dist/esm/icons/git-branch.js'
 import CheckCircle from 'lucide-react/dist/esm/icons/check-circle.js'
 import RefreshCw from 'lucide-react/dist/esm/icons/refresh-cw.js'
 import { formatTime, getStatusBadge } from '../../../lib/time'
+import { getPromiseIso } from '@/services/scheduleItemsService'
 import { formatEtDateLabel } from '@/utils/scheduleDisplay'
 import { isJobOnSite, getJobLocationType } from '@/utils/locationType'
 import { useToast } from '@/components/ui/ToastProvider'
@@ -250,7 +251,7 @@ const RoundUpModal = ({
 
   const renderJobRow = (job) => {
     const statusBadge = getStatusBadge(job?.job_status)
-    const promise = job?.next_promised_iso || job?.promised_date || job?.promisedAt || null
+    const promise = getPromiseIso(job)
     const isCompleted = String(job?.job_status || '').toLowerCase() === 'completed'
 
     return (

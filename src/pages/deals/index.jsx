@@ -15,6 +15,7 @@ import { getReopenTargetStatus } from '@/utils/jobStatusTimeRules.js'
 import { calculateDealKPIs, getDealFinancials } from '../../utils/dealKpis'
 
 import { useDropdownData } from '../../hooks/useDropdownData'
+import { isOverdueJob } from '@/services/scheduleItemsService'
 import Navbar from '../../components/ui/Navbar'
 import { useAuth } from '../../contexts/AuthContext'
 import Button from '../../components/ui/Button'
@@ -1009,25 +1010,8 @@ export default function DealsPage() {
             {filters?.search && <span className="ml-2 text-blue-300">(filtered)</span>}
           </span>
           {(() => {
-            // Count overdue promises
-            const now = new Date()
-            const overdueCount =
-              sortedDeals?.filter((deal) => {
-                const promisedAt = deal?.next_promised_iso
-                if (!promisedAt) {
-                  // Check job_parts for fallback
-                  if (Array.isArray(deal?.job_parts)) {
-                    const dates = deal.job_parts.map((p) => p?.promised_date).filter(Boolean)
-                    if (dates.length > 0) {
-                      const earliest = dates.sort()[0]
-                      const dateStr = earliest.includes('T') ? earliest : `${earliest}T00:00:00Z`
-                      return new Date(dateStr) < now
-                    }
-                  }
-                  return false
-                }
-                return new Date(promisedAt) < now
-              })?.length || 0
+            // Count overdue promises (canonical: terminal statuses excluded by isOverdueJob)
+            const overdueCount = sortedDeals?.filter((deal) => isOverdueJob(deal))?.length || 0
 
             if (overdueCount > 0) {
               return (

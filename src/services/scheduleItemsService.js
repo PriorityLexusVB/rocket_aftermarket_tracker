@@ -4,6 +4,18 @@ import { getCapabilities } from '@/services/dealService'
 import { supabase } from '@/lib/supabase'
 import { safeSelect } from '@/lib/supabase/safeSelect'
 import { getEtDayUtcMs } from '@/utils/scheduleDisplay'
+import { isOverdue } from '@/lib/time'
+
+// Job statuses that cannot be "overdue" by definition — terminal/non-active states.
+// Used by isOverdueJob() so consumers don't have to inline this list.
+const TERMINAL_STATUSES = new Set([
+  'completed',
+  'cancelled',
+  'canceled',
+  'delivered',
+  'draft',
+  'no_show',
+])
 
 const MS_DAY = 24 * 60 * 60 * 1000
 
@@ -80,7 +92,21 @@ export function getEffectiveScheduleWindowFromJob(job) {
   return { start: null, end: null, source: 'none' }
 }
 
-function getPromiseIso(job) {
+/**
+ * Canonical promise-date resolver for a job-shaped object.
+ *
+ * Resolution order (mirrors getAllDeals attachment logic in dealCRUD.js):
+ *   1. job.next_promised_iso (computed/attached value when present)
+ *   2. job.promised_date (legacy field)
+ *   3. job.promisedAt (legacy field)
+ *   4. earliest job_parts[].promised_date (multi-line-item case)
+ *
+ * Date-only values are normalized to noon UTC so the calendar day stays stable
+ * across time zones.
+ *
+ * Returns an ISO string or null.
+ */
+export function getPromiseIso(job) {
   if (!job) return null
 
   const normalizePromiseIso = (v) => {
@@ -115,6 +141,25 @@ function getPromiseIso(job) {
   }
 
   return earliest
+}
+
+/**
+ * Canonical "is this job overdue?" check.
+ *
+ * Returns false for jobs in terminal statuses (completed/cancelled/delivered/
+ * draft/no_show) regardless of promise date — those are no longer actionable.
+ * For all other jobs, compares the canonical promise ISO (via getPromiseIso)
+ * against the supplied "now" (default: current time).
+ *
+ * Use this instead of inlining `isOverdue(job?.next_promised_iso || ...)` so
+ * terminal-status filtering stays consistent across surfaces.
+ */
+export function isOverdueJob(job, _now = new Date()) {
+  if (!job) return false
+  const status = String(job?.job_status || job?.status || '').toLowerCase()
+  if (TERMINAL_STATUSES.has(status)) return false
+  const promiseIso = getPromiseIso(job)
+  return isOverdue(promiseIso)
 }
 
 function safeMoneyAmount(job) {

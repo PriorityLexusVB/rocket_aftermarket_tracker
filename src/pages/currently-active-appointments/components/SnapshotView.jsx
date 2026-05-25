@@ -16,6 +16,7 @@ import {
   classifyScheduleState,
   getUnscheduledInProgressInHouseItems,
   getNeedsSchedulingPromiseItems,
+  getPromiseIso,
 } from '@/services/scheduleItemsService'
 
 const SIMPLE_CAL_ON = String(import.meta.env.VITE_SIMPLE_CALENDAR || '').toLowerCase() === 'true'
@@ -56,13 +57,13 @@ export function filterAndSort(jobs) {
   const rows = Array.isArray(jobs) ? jobs : []
   const filtered = rows.filter((j) => {
     if (!(j?.job_status === 'scheduled' || j?.job_status === 'in_progress')) return false
-    const promised = j?.next_promised_iso || j?.promised_date || j?.promisedAt || null
+    const promised = getPromiseIso(j)
     return !!(j?.scheduled_start_time || promised)
   })
 
   const effectiveDayMs = (j) => {
     const start = safeDate(j?.scheduled_start_time)
-    const promised = safeDate(j?.next_promised_iso || j?.promised_date || j?.promisedAt)
+    const promised = safeDate(getPromiseIso(j))
     const base = start || promised
     if (!base) return null
     return Date.UTC(base.getUTCFullYear(), base.getUTCMonth(), base.getUTCDate())
@@ -183,7 +184,7 @@ export function splitNeedsSchedulingItems(items, { now = new Date() } = {}) {
   const upcoming = []
 
   for (const it of list) {
-    const p = safeDate(it?.promisedAt || it?.raw?.next_promised_iso || it?.raw?.promised_date)
+    const p = safeDate(it?.promisedAt || getPromiseIso(it?.raw))
     if (!p) continue
     const pDayUtcMs =
       getEtDayUtcMs(p) ?? Date.UTC(p.getUTCFullYear(), p.getUTCMonth(), p.getUTCDate())
@@ -293,7 +294,7 @@ export default function SnapshotView() {
 
     // In scheduling UIs, a promised day without a time window is treated as scheduled (all-day).
     // Avoid showing confusing "Pending" badges for these rows.
-    const promised = item?.promisedAt || item?.raw?.next_promised_iso || item?.raw?.promised_date
+    const promised = item?.promisedAt || getPromiseIso(item?.raw)
     const hasTime = !!(item?.scheduledStart || item?.scheduledEnd)
     const isAllDayScheduled = !hasTime && !!promised
 

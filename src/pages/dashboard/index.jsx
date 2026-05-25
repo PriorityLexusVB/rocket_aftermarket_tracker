@@ -10,7 +10,7 @@ import { getOpenOpportunitySummary, listOpenCountsByJobIds } from '@/services/op
 import { getDealFinancials } from '@/utils/dealKpis'
 import { useAuth } from '@/contexts/AuthContext'
 import { handleAuthError, isTechNoiseMessage } from '@/lib/authErrorHandler'
-import { isOverdue } from '@/lib/time'
+import { getPromiseIso, isOverdueJob } from '@/services/scheduleItemsService'
 import { supabase } from '@/lib/supabase'
 
 const SIMPLE_AGENDA_ENABLED =
@@ -255,10 +255,10 @@ const DashboardPage = () => {
 
   const topPriority = useMemo(() => {
     const todayOverdue = todayJobs
-      .filter((j) => isOverdue(j?.next_promised_iso || j?.promised_date))
+      .filter((j) => isOverdueJob(j))
       .sort((a, b) => {
-        const ap = Date.parse(a?.next_promised_iso || a?.promised_date || '') || 0
-        const bp = Date.parse(b?.next_promised_iso || b?.promised_date || '') || 0
+        const ap = Date.parse(getPromiseIso(a) || '') || 0
+        const bp = Date.parse(getPromiseIso(b) || '') || 0
         return ap - bp
       })
     if (todayOverdue.length > 0) {
@@ -372,7 +372,7 @@ const DashboardPage = () => {
           <div className="min-w-0">
             {topPriority?.kind === 'overdue' ? (() => {
               const { job, count } = topPriority
-              const rawDate = job?.next_promised_iso || job?.promised_date
+              const rawDate = getPromiseIso(job)
               const promisedDate = rawDate ? new Date(rawDate) : null
               const promisedLabel =
                 promisedDate && !Number.isNaN(promisedDate.getTime())
@@ -584,7 +584,7 @@ const DashboardPage = () => {
                                 </div>
                               </div>
                               <div className="flex flex-wrap items-center gap-1 justify-end">
-                                {isOverdue(job?.next_promised_iso || job?.promised_date) ? (
+                                {isOverdueJob(job) ? (
                                   <Pill className="border-rose-300 bg-rose-50 text-rose-900">
                                     Overdue
                                   </Pill>

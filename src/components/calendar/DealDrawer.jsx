@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import X from 'lucide-react/dist/esm/icons/x.js'
 import Loader2 from 'lucide-react/dist/esm/icons/loader-2.js'
 import jobService from '@/services/jobService'
+import { getPromiseIso } from '@/services/scheduleItemsService'
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -112,7 +113,7 @@ export default function DealDrawer({ open, deal, onClose, onStatusChange }) {
 
   // promised date
   const promisedDisplay = useMemo(() => {
-    const raw = deal?.next_promised_iso || deal?.promised_date || deal?.promisedAt
+    const raw = getPromiseIso(deal)
     return raw ? formatDate(raw) : null
   }, [deal])
 

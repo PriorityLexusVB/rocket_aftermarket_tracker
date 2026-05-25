@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import Button from '../../../components/ui/Button'
 import Icon from '../../../components/ui/Icon'
 import ScheduleChip from '@/components/deals/ScheduleChip'
+import { getPromiseIso } from '@/services/scheduleItemsService'
 import { formatEtMonthDayYear } from '@/utils/scheduleDisplay'
 
 // Read-only Deal Detail Drawer with 8 tabs and quick actions
@@ -165,7 +166,10 @@ export default function DealDetailDrawer({ isOpen, onClose, deal, onComplete, on
               {!deal?.scheduled_start_time && !deal?.appt_start && '—'}
             </Section>
             <Section title="Next Promise">
-              {deal?.next_promised_iso ? formatEtMonthDayYear(deal.next_promised_iso) : '—'}
+              {(() => {
+                const iso = getPromiseIso(deal)
+                return iso ? formatEtMonthDayYear(iso) : '—'
+              })()}
             </Section>
           </>
         )

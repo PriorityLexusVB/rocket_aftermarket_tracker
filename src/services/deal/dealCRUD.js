@@ -31,8 +31,6 @@ import {
   applyReturnedAtIsNullFilter,
   loanerAssignmentsHasReturnedAt,
   setLoanerAssignmentsReturnedAtCapability,
-  jobsHasNextPromisedIso,
-  setJobsNextPromisedIsoCapability,
   jobsJobStatusSupportsDraft,
   setJobsJobStatusDraftCapability,
   JOB_PARTS_HAS_PER_LINE_TIMES,
@@ -292,10 +290,6 @@ async function attachOrCreateVehicleByStockNumber(
 // ✅ ENHANCED: Added schema preflight probe to detect missing columns before main query
 export async function getAllDeals() {
   try {
-    // Safe default: do NOT request jobs.next_promised_iso unless we already know it exists.
-    // This avoids an initial PostgREST 400 on environments where the column is absent.
-    let includeNextPromisedIso = jobsHasNextPromisedIso === true
-
     // STEP 1: Schema preflight probe - detect missing columns BEFORE building main select
     // This prevents initial 400 errors on environments missing scheduled_* or vendor_id
     if (JOB_PARTS_HAS_PER_LINE_TIMES || JOB_PARTS_VENDOR_ID_COLUMN_AVAILABLE) {
@@ -380,11 +374,13 @@ export async function getAllDeals() {
       const jobPartsFieldsVendor = `job_parts(${jobPartsCore}${jobPartsTimeFields}, ${productFields}${perLineVendorJoin2})`
       const jobPartsFieldsNoVendor = `job_parts(${jobPartsCore}${jobPartsTimeFields}, ${productFields})`
 
+      // NOTE: `next_promised_iso` is a CLIENT-COMPUTED field attached below to the
+      // returned deal object — it is not a real DB column on the `jobs` table. Never
+      // include it in the SELECT.
       const baseSelect = `
           id, dealer_id, created_at, job_status, service_type, color_code, title, job_number,
           customer_needs_loaner, assigned_to, delivery_coordinator_id, finance_manager_id,
           scheduled_start_time, scheduled_end_time,
-          ${includeNextPromisedIso ? 'next_promised_iso,' : ''}
           vehicle:vehicles(year, make, model, stock_number, owner_name, owner_email, owner_phone),
           vendor:vendors(id, name),
           ${salesConsultant},
@@ -403,7 +399,6 @@ export async function getAllDeals() {
       jobsError = result?.error
 
       if (!jobsError) {
-        if (includeNextPromisedIso) setJobsNextPromisedIsoCapability(true)
         if (jobStatusFilter.includes('draft')) setJobsJobStatusDraftCapability(true)
         // Mark capabilities successful on success
         // Only re-affirm vendor relationship capability if we actually used it in this attempt
@@ -455,16 +450,6 @@ export async function getAllDeals() {
         }
 
         const lower = msg.toLowerCase()
-
-        // Some environments don't have next_promised_iso on jobs yet.
-        if (includeNextPromisedIso && lower.includes('next_promised_iso')) {
-          warnSchema(
-            `[dealService:getAllDeals] Classified as ${errorCode}; next_promised_iso missing on jobs; retrying without it...`
-          )
-          setJobsNextPromisedIsoCapability(false)
-          includeNextPromisedIso = false
-          continue
-        }
 
         // Detect missing per-line time columns on job_parts and disable that capability
         if (

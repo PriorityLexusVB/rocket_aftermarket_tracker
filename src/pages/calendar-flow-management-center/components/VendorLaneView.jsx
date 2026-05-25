@@ -4,7 +4,8 @@ import Clock from 'lucide-react/dist/esm/icons/clock.js'
 import Car from 'lucide-react/dist/esm/icons/car.js'
 import Calendar from 'lucide-react/dist/esm/icons/calendar.js'
 import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle.js'
-import { formatTime, isOverdue, getStatusBadge } from '../../../lib/time'
+import { formatTime, getStatusBadge } from '../../../lib/time'
+import { getPromiseIso, isOverdueJob } from '@/services/scheduleItemsService'
 import { formatEtDateLabel } from '@/utils/scheduleDisplay'
 import { isJobOnSite, getJobLocationType } from '@/utils/locationType'
 import { getWorkTagLabel, MAX_WORK_TAGS_VISIBLE } from '@/utils/workTags'
@@ -27,8 +28,8 @@ const VendorLaneView = ({ vendors, jobs, onJobClick, onDrop, draggedJob }) => {
     const chipBorder = isMixed ? 'border-blue-200' : isOnSite ? 'border-green-200' : 'border-amber-200'
     const chipHoverBorder = isMixed ? 'hover:border-blue-300' : isOnSite ? 'hover:border-green-300' : 'hover:border-amber-300'
 
-    const promise = job?.next_promised_iso || job?.promised_date || job?.promisedAt || null
-    const overdue = isOverdue(promise)
+    const promise = getPromiseIso(job)
+    const overdue = isOverdueJob(job)
 
     const rawStatus = String(job?.job_status || '').toLowerCase()
     const hasTimeWindow = !!job?.scheduled_start_time
