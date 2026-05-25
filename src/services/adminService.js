@@ -327,45 +327,30 @@ export const adminService = {
   },
 
   async deleteUserProfileWithCleanup(userId) {
-    const safeCleanupDelete = async (cleanupTable, whereColumn, whereValue) => {
-      try {
-        const { error } = await supabase
-          .from(cleanupTable)
-          .delete({ count: 'exact' })
-          .eq(whereColumn, whereValue)
-        if (error) {
-          console.warn(`[adminService] Cleanup delete failed for ${cleanupTable}:`, error?.message)
-        }
-      } catch (e) {
-        console.warn(`[adminService] Cleanup delete threw for ${cleanupTable}:`, asErrorMessage(e))
-      }
+    // Wave XXX-Y: SOFT-DELETE instead of HARD-DELETE for user_profiles.
+    //
+    // Before: deleted the row + nulled assigned_to / created_by /
+    // delivery_coordinator_id on every historical reference. That was
+    // destructive — a deal that Reid Schiff worked finance on would lose
+    // its delivery_coordinator_id forever. Audit trail broken.
+    //
+    // After: set is_active=false. The user_profiles_read_active RLS
+    // policy filters is_active=true, so removed users disappear from
+    // dropdowns and lookups. Historical FK references stay intact —
+    // any deal that ever referenced this person still resolves their
+    // name on read (via the LEFT JOIN). Reversible: set is_active=true
+    // to restore.
+    //
+    // For the rare case where a HARD delete is truly required (e.g., GDPR
+    // erasure), use Supabase admin panel directly — that's the rare,
+    // deliberate path, not the default UI action.
+    const { error } = await supabase
+      .from('user_profiles')
+      .update({ is_active: false, updated_at: new Date().toISOString() })
+      .eq('id', userId)
+    if (error) {
+      throw new Error(error?.message || 'Failed to remove user from directory')
     }
-
-    const cleanupPromises = [
-      supabase
-        .from('jobs')
-        .update({ assigned_to: null, created_by: null, delivery_coordinator_id: null })
-        .or(
-          `assigned_to.eq.${userId},created_by.eq.${userId},delivery_coordinator_id.eq.${userId}`
-        ),
-      supabase.from('transactions').update({ processed_by: null }).eq('processed_by', userId),
-      supabase.from('vehicles').update({ created_by: null }).eq('created_by', userId),
-      supabase.from('vendors').update({ created_by: null }).eq('created_by', userId),
-      supabase.from('products').update({ created_by: null }).eq('created_by', userId),
-      safeCleanupDelete('filter_presets', 'user_id', userId),
-      safeCleanupDelete('notification_preferences', 'user_id', userId),
-      safeCleanupDelete('activity_history', 'performed_by', userId),
-      safeCleanupDelete('communications', 'sent_by', userId),
-    ]
-
-    if (SMS_TEMPLATES_TABLE_AVAILABLE !== false) {
-      cleanupPromises.push(
-        supabase.from('sms_templates').update({ created_by: null }).eq('created_by', userId)
-      )
-    }
-
-    await Promise.allSettled(cleanupPromises)
-    await this.deleteRow('user_profiles', userId)
   },
 }
 
