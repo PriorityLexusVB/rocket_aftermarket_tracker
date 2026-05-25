@@ -645,7 +645,7 @@ const DashboardPage = () => {
                                         : 'border-rose-200 bg-rose-50 text-rose-900'
                                     }
                                   >
-                                    GP {money0OrDash(profit)}
+                                    Profit {money0OrDash(profit)}
                                   </Pill>
                                 ) : null}
                               </div>

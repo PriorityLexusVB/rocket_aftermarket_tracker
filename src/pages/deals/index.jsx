@@ -1396,7 +1396,7 @@ export default function DealsPage() {
                             <table className="w-full text-sm bg-card text-foreground">
                               <thead className="bg-card text-xs text-muted-foreground">
                                 <tr>
-                                  <th className="px-3 py-2 text-left font-medium">Op</th>
+                                  <th className="px-3 py-2 text-left font-medium" title="Operation code (DMS abbreviation, e.g. EN3, RG, EXT)">Op Code</th>
                                   <th className="px-3 py-2 text-left font-medium">Product</th>
                                   <th className="px-3 py-2 text-right font-medium">Qty</th>
                                   <th className="px-3 py-2 text-right font-medium">Price</th>
