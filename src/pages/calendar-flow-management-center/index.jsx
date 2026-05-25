@@ -1952,11 +1952,13 @@ const CalendarFlowManagementCenter = ({
         onStatusUpdate={handleJobStatusUpdate}
       />
 
-      {/* Round-up Modal - Updated to use filtered data */}
+      {/* Round-up Modal — Wave XXX-K: also pass needsSchedulingJobsForView so
+          promised-only jobs (Rob's "Thursday rust-proofing") appear in the
+          export. RoundUpModal's group functions tolerate either field. */}
       <RoundUpModal
         isOpen={showRoundUp}
         onClose={() => setShowRoundUp(false)}
-        jobs={filteredJobs}
+        jobs={[...(filteredJobs || []), ...(needsSchedulingJobsForView || [])]}
         type={roundUpType}
         onTypeChange={setRoundUpType}
         onComplete={(job) => handleCompleteJob(job)}

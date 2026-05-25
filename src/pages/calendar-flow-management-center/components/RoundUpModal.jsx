@@ -77,13 +77,24 @@ const groupByVendor = (jobList) => {
   }, {})
 }
 
+// Wave XXX-K: include promised-only jobs (no scheduled_start_time) when grouping.
+// Falls back to promised_date so Rob's "Thursday rust-proofing" case lands in
+// the right day. Uses the canonical getPromiseIso helper (handles multi-line-item
+// earliest-promised + date-only normalization).
+const getJobDayDate = (job) => {
+  const iso = job?.scheduled_start_time || getPromiseIso(job)
+  if (!iso) return null
+  const d = new Date(iso)
+  return Number.isNaN(d.getTime()) ? null : d
+}
+
 const groupJobsByDay = (jobList, baseDate = new Date()) => {
   const target = baseDate instanceof Date && !Number.isNaN(baseDate.getTime()) ? new Date(baseDate) : new Date()
   target.setHours(0, 0, 0, 0)
 
   const targetJobs = jobList?.filter((job) => {
-    const jobDate = new Date(job?.scheduled_start_time)
-    return jobDate?.toDateString() === target?.toDateString()
+    const jobDate = getJobDayDate(job)
+    return jobDate && jobDate?.toDateString() === target?.toDateString()
   })
 
   return {
@@ -102,8 +113,8 @@ const groupJobsByWeek = (jobList) => {
   weekDays?.forEach((day, idx) => {
     const targetDayOfWeek = idx === 6 ? 0 : idx + 1 // Sunday wraps to JS getDay()=0
     const dayJobs = jobList?.filter((job) => {
-      const jobDate = new Date(job?.scheduled_start_time)
-      return jobDate?.getDay() === targetDayOfWeek
+      const jobDate = getJobDayDate(job)
+      return jobDate && jobDate?.getDay() === targetDayOfWeek
     })
 
     if (dayJobs?.length > 0) {
@@ -126,7 +137,8 @@ const ROUND_UP_LABEL = {
 const groupJobsByMonth = (jobList) => {
   const weeks = {}
   jobList?.forEach((job) => {
-    const jobDate = new Date(job?.scheduled_start_time)
+    const jobDate = getJobDayDate(job)
+    if (!jobDate) return
     const weekNumber = Math.ceil(jobDate?.getDate() / 7)
     const weekKey = `Week ${weekNumber}`
 
