@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   getVendors,
@@ -66,6 +66,10 @@ export default function DealForm({
   const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  // Wave XXX-S: synchronous useRef guard prevents the React stale-closure
+  // double-submit race that the useState saving guard can't catch on rapid
+  // double-clicks (hostile-break-tester #2).
+  const savingRef = useRef(false)
   const [errorMsg, setErrorMsg] = useState('')
   const [savedAt, setSavedAt] = useState(null)
   const [autosaveStatus, setAutosaveStatus] = useState(null) // null | 'saving' | 'saved'
@@ -526,6 +530,9 @@ export default function DealForm({
 
   const submit = async (e) => {
     e?.preventDefault?.()
+    // Wave XXX-S: ref guard before state guard — catches rapid double-clicks
+    if (savingRef.current) return
+    savingRef.current = true
     if (saving) return
     setSaving(true)
     setErrorMsg('')
@@ -535,7 +542,7 @@ export default function DealForm({
         return arr
       }, [])
       if (validProductIdxs.length === 0) {
-        setSaving(false)
+        setSaving(false); savingRef.current = false
         setErrorMsg('Please add at least one product to the deal.')
         try {
           const el = document.querySelector('[data-testid="product-select-0"]')
@@ -557,7 +564,7 @@ export default function DealForm({
           errs[i] = { ...(errs[i] || {}), noScheduleReason: true }
         })
         setLineErrors(errs)
-        setSaving(false)
+        setSaving(false); savingRef.current = false
         try {
           const first = missingReasonIndexes[0]
           const el = document.querySelector(`[data-testid="no-schedule-reason-${first}"]`)
@@ -709,7 +716,7 @@ export default function DealForm({
         await logError?.(err, { where: 'DealForm.submit', orgId })
       } catch {}
     } finally {
-      setSaving(false)
+      setSaving(false); savingRef.current = false
     }
   }
 
