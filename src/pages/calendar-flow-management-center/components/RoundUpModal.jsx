@@ -20,13 +20,59 @@ import { isJobOnSite, getJobLocationType } from '@/utils/locationType'
 import { useToast } from '@/components/ui/ToastProvider'
 import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns'
 
+// Expand a job into the set of vendor slices (id + display name) it has line
+// items at. A multi-vendor job appears under EVERY vendor lane it has tagged
+// parts at, so per-vendor copy/export only includes that vendor's slice.
+//
+// Returns: Array<{ vendorId: string | null, vendorName: string }>
+//   - vendorId: the UUID to pass to jobToBdcRowForVendor (`null` is reserved
+//     for the In-House slice and is NOT used here — In-House jobs come down
+//     a separate branch in the caller).
+const getVendorSlicesForJobWithName = (job) => {
+  const parts = Array.isArray(job?.job_parts) ? job.job_parts : []
+  if (parts.length === 0) {
+    // No tagged parts — fall back to the job-level vendor (legacy single-vendor job).
+    if (!job?.vendor_id) return []
+    return [{ vendorId: job.vendor_id, vendorName: job?.vendor_name || 'Vendor' }]
+  }
+  const seen = new Map() // vendor_id -> display name
+  for (const part of parts) {
+    if (part?.is_off_site === false) continue // in-house line, skip vendor lanes
+    const partVendorId = part?.vendor_id ?? null
+    if (partVendorId) {
+      const name =
+        part?.vendor?.name ||
+        part?.vendors?.name ||
+        (partVendorId === job?.vendor_id ? job?.vendor_name : null) ||
+        'Vendor'
+      if (!seen.has(partVendorId)) seen.set(partVendorId, name)
+    } else if (job?.vendor_id) {
+      // Legacy line with no per-line vendor tag — inherits job vendor.
+      if (!seen.has(job.vendor_id)) {
+        seen.set(job.vendor_id, job?.vendor_name || 'Vendor')
+      }
+    }
+  }
+  return Array.from(seen, ([vendorId, vendorName]) => ({ vendorId, vendorName }))
+}
+
+// groupByVendor produces { [vendorName]: { vendorId, jobs[] } } so the
+// caller can slice each multi-vendor job to that vendor's line items at copy
+// time. A job appears under EVERY vendor lane it has tagged line items at.
 const groupByVendor = (jobList) => {
   return jobList?.reduce((acc, job) => {
-    const vendorName = job?.vendor_name || (job?.vendor_id ? 'Vendor' : 'In-House')
-    if (!acc?.[vendorName]) {
-      acc[vendorName] = []
+    const slices = getVendorSlicesForJobWithName(job)
+    if (slices.length === 0) {
+      // Defensive — shouldn't happen because caller filters !isJobOnSite first.
+      const fallback = job?.vendor_name || (job?.vendor_id ? 'Vendor' : 'In-House')
+      if (!acc[fallback]) acc[fallback] = { vendorId: job?.vendor_id ?? null, jobs: [] }
+      acc[fallback].jobs.push(job)
+      return acc
     }
-    acc?.[vendorName]?.push(job)
+    for (const { vendorId, vendorName } of slices) {
+      if (!acc[vendorName]) acc[vendorName] = { vendorId, jobs: [] }
+      acc[vendorName].jobs.push(job)
+    }
     return acc
   }, {})
 }
@@ -94,10 +140,18 @@ const groupJobsByMonth = (jobList) => {
     if (isJobOnSite(job)) {
       weeks?.[weekKey]?.onSite?.push(job)
     } else {
-      if (!weeks?.[weekKey]?.vendors?.[job?.vendor_name]) {
-        weeks[weekKey].vendors[job?.vendor_name] = []
+      // Expand multi-vendor jobs across every vendor lane they have line items at.
+      const slices = getVendorSlicesForJobWithName(job)
+      const targets =
+        slices.length > 0
+          ? slices
+          : [{ vendorId: job?.vendor_id ?? null, vendorName: job?.vendor_name || 'Vendor' }]
+      for (const { vendorId, vendorName } of targets) {
+        if (!weeks[weekKey].vendors[vendorName]) {
+          weeks[weekKey].vendors[vendorName] = { vendorId, jobs: [] }
+        }
+        weeks[weekKey].vendors[vendorName].jobs.push(job)
       }
-      weeks?.[weekKey]?.vendors?.[job?.vendor_name]?.push(job)
     }
   })
 
@@ -135,24 +189,28 @@ const RoundUpModal = ({
     })
   }, [])
 
+  // Copy a vendor's slice as BDC TSV rows (paste directly into the BDC workbook).
+  // For multi-vendor deals, ONLY this vendor's line items are aggregated into
+  // the row — totals/booleans reflect that vendor's slice, not the whole job.
   const copyVendorJobs = useCallback(
-    async (vendorName, vendorJobs) => {
+    async (vendorName, vendorId, vendorJobs) => {
       if (!navigator?.clipboard?.writeText) {
         toast?.error?.("Couldn't access clipboard.")
         return
       }
-      const text = vendorJobs
-        .map((job) => {
-          const stock = job?.job_number?.split('-')?.pop() || '—'
-          const customer = job?.customer_name || job?.vehicle?.owner_name || '—'
-          const timeStr = job?.scheduled_start_time
-            ? `${formatTime(job.scheduled_start_time)}–${formatTime(job.scheduled_end_time)}`
-            : 'Unscheduled'
-          return `Stock: ${stock} · Customer: ${customer} · Time: ${timeStr}`
-        })
-        .join('\n')
-      await navigator.clipboard.writeText(text)
-      toast?.info?.(`Copied ${vendorName} — ${vendorJobs.length} job${vendorJobs.length === 1 ? '' : 's'}`)
+      try {
+        // Lazy-import keeps roundUpExport off the calendar route's eager bundle
+        // until the user actually copies a vendor slice.
+        const mod = await import('@/utils/roundUpExport')
+        const sliceRows = vendorJobs.map((job) => mod.jobToBdcRowForVendor(job, vendorId))
+        await navigator.clipboard.writeText(mod.rowsToTsv(sliceRows))
+        toast?.info?.(
+          `Copied ${vendorName} — ${vendorJobs.length} deal${vendorJobs.length === 1 ? '' : 's'} (paste into Excel).`,
+        )
+      } catch (err) {
+        console.error('[RoundUpModal] copyVendorJobs failed', err)
+        toast?.error?.("Couldn't copy vendor slice. Try the top-level Copy/CSV instead.")
+      }
     },
     [toast],
   )
@@ -396,7 +454,10 @@ const RoundUpModal = ({
         )}
 
         {/* Vendor Jobs — collapse + per-vendor copy */}
-        {Object.entries(groupData?.vendors || {})?.map(([vendorName, vendorJobs]) => {
+        {Object.entries(groupData?.vendors || {})?.map(([vendorName, entry]) => {
+          // entry shape: { vendorId, jobs[] }
+          const vendorJobs = entry?.jobs || []
+          const vendorId = entry?.vendorId ?? null
           const collapseKey = `${groupName}::${vendorName}`
           const isCollapsed = collapsedVendors.has(collapseKey)
           return (
@@ -418,12 +479,12 @@ const RoundUpModal = ({
                     <ChevronUp className="h-3.5 w-3.5 text-muted-foreground ml-1 flex-shrink-0" />
                   )}
                 </button>
-                {/* Per-vendor clipboard copy */}
+                {/* Per-vendor clipboard copy — emits BDC TSV rows for this vendor's slice only. */}
                 <button
                   type="button"
-                  title={`Copy ${vendorName} jobs`}
+                  title={`Copy ${vendorName} slice as BDC rows`}
                   className="ml-2 p-1 rounded hover:bg-amber-100 text-amber-700 opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex-shrink-0"
-                  onClick={() => copyVendorJobs(vendorName, vendorJobs)}
+                  onClick={() => copyVendorJobs(vendorName, vendorId, vendorJobs)}
                 >
                   <Copy className="h-3.5 w-3.5" />
                 </button>

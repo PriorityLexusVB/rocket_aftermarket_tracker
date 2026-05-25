@@ -8,8 +8,15 @@ export const LOCATION_FILTER_OPTIONS = [
   { value: 'Mixed', label: 'Split Work' },
 ]
 
-// Location field is authoritative. Fall back to vendor_id only when location is unset.
+// Defer to the canonical multi-source classifier so Mixed jobs are correctly
+// treated as off-site (they have at least one off-site line item).
+// Falls back to the legacy `job.location` / `vendor_id` heuristic when neither
+// job_parts nor location/service_type signal a clear answer.
 export function isJobOnSite(job) {
+  const locType = getJobLocationType(job)
+  if (locType === 'In-House') return true
+  if (locType === 'Off-Site' || locType === 'Mixed') return false
+  // Unknown / no signal — fall back to legacy logic
   if (job?.location === 'on_site') return true
   if (job?.location === 'off_site') return false
   return !job?.vendor_id

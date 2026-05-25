@@ -328,6 +328,11 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
     tomorrow.setDate(tomorrow.getDate() + 1)
     const tomorrowStr = toDateInputValue(tomorrow)
 
+    // Default new lines to the job-level vendor (if any) so a single-vendor
+    // deal needs no extra clicks. User can flip to "In-House" or another
+    // vendor per line for multi-vendor deals.
+    const defaultVendorId = customerData?.vendorId || null
+
     setLineItems((prev) => [
       ...prev,
       {
@@ -341,8 +346,8 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
         scheduledStartTime: '',
         scheduledEndTime: '',
         noScheduleReason: '',
-        isOffSite: false,
-        vendorId: null,
+        isOffSite: !!defaultVendorId,
+        vendorId: defaultVendorId,
       },
     ])
   }
@@ -363,6 +368,19 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
               updatedItem.scheduledEndTime = ''
               updatedItem.isMultiDay = false
             }
+          }
+
+          // Vendor selection ⇄ isOffSite are tied: picking a real vendor means
+          // the line goes off-site; picking "In-House" (null) means it stays
+          // here. This keeps job_parts.is_off_site and job_parts.vendor_id in
+          // consistent agreement so the Round-Up vendor slicing is correct.
+          if (field === 'vendorId') {
+            updatedItem.isOffSite = !!value
+          }
+          // The legacy isOffSite checkbox stays in the UI — keep vendor in
+          // sync when the user unchecks it (clears vendor for an in-house line).
+          if (field === 'isOffSite' && value === false) {
+            updatedItem.vendorId = null
           }
 
           return updatedItem
@@ -679,7 +697,11 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
           requires_scheduling: Boolean(item?.requiresScheduling),
           no_schedule_reason: !item?.requiresScheduling ? item?.noScheduleReason : null,
           is_off_site: Boolean(item?.isOffSite),
-          vendor_id: item?.vendorId || customerData?.vendorId || null, // Inherit job vendor if line item vendor not specified
+          // Multi-vendor routing: a line's vendor_id is what the user picked
+          // for THIS line. An "In-House" line (isOffSite=false) always saves
+          // vendor_id=null — even if the job has a job-level vendor — so the
+          // Round-Up vendor slice doesn't wrongly attribute in-house work.
+          vendor_id: item?.isOffSite ? (item?.vendorId || customerData?.vendorId || null) : null,
         }
       })
 
@@ -1243,7 +1265,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
                         </button>
                       </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">
                             Product <span className="text-red-500">*</span>
@@ -1260,6 +1282,31 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
                             {dropdownData?.products?.map((product) => (
                               <option key={product?.id} value={product?.id}>
                                 {product?.label}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {/* Per-line vendor: defaults to the job-level vendor when the
+                           job has one, so a single-vendor deal needs no extra
+                           clicks. Picking "In-House" clears vendor and flips the
+                           isOffSite flag; picking a real vendor sets it on. */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Where
+                          </label>
+                          <select
+                            value={item?.vendorId || ''}
+                            onChange={(e) =>
+                              updateLineItem(item?.id, 'vendorId', e?.target?.value || null)
+                            }
+                            className="w-full p-3 border border-gray-300 rounded-lg text-base"
+                            data-testid={`line-where-select-${index}`}
+                          >
+                            <option value="">In-House</option>
+                            {dropdownData?.vendors?.map((v) => (
+                              <option key={v?.id} value={v?.id}>
+                                {v?.full_name || v?.label || v?.name}
                               </option>
                             ))}
                           </select>
@@ -1297,38 +1344,17 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
                           <span className="text-sm">Off-Site (Tint/Vendor)</span>
                         </label>
 
-                        {item?.isOffSite && (
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                            <div>
-                              <label className="block text-sm font-medium text-slate-700">
-                                Vendor
-                              </label>
-                              <select
-                                data-testid={`line-vendor-${index}`}
-                                value={item?.vendorId || ''}
-                                onChange={(e) =>
-                                  updateLineItem(item?.id, 'vendorId', e?.target?.value || null)
-                                }
-                                className="mt-1 input-mobile w-full p-3 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                              >
-                                <option value="">— Select Vendor —</option>
-                                {dropdownData?.vendors?.map((v) => (
-                                  <option key={v?.id} value={v?.id}>
-                                    {v?.full_name || v?.label || v?.name}
-                                  </option>
-                                ))}
-                              </select>
-                              {dropdownData?.vendors?.length === 0 && (
-                                <p className="mt-2 text-sm text-amber-700 bg-amber-50 rounded px-2 py-1">
-                                  No vendors available. Check{' '}
-                                  <a className="underline" href="/admin?section=vendors">
-                                    Admin → Vendors
-                                  </a>{' '}
-                                  to add or attach vendors.
-                                </p>
-                              )}
-                            </div>
-                          </div>
+                        {/* Per-line vendor selector now lives in the top 3-col grid
+                           above (the "Where" field). The redundant gated copy that
+                           used to live here was removed in Wave XXX-H. */}
+                        {item?.isOffSite && dropdownData?.vendors?.length === 0 && (
+                          <p className="text-sm text-amber-700 bg-amber-50 rounded px-2 py-1">
+                            No vendors available. Add one in{' '}
+                            <a className="underline" href="/admin?section=vendors">
+                              Admin → Vendors
+                            </a>{' '}
+                            so off-site work routes correctly.
+                          </p>
                         )}
 
                         <label className="flex items-center gap-2">

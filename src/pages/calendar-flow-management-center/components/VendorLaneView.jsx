@@ -10,13 +10,34 @@ import { formatEtDateLabel } from '@/utils/scheduleDisplay'
 import { isJobOnSite, getJobLocationType } from '@/utils/locationType'
 import { getWorkTagLabel, MAX_WORK_TAGS_VISIBLE } from '@/utils/workTags'
 
+// Count distinct vendors a job has line items at OTHER than `vendorId`.
+// Used by the lane chip to surface "+N at other vendors" so a multi-vendor
+// deal isn't silently hidden inside one lane.
+const countOtherVendorSlices = (job, vendorId) => {
+  const parts = Array.isArray(job?.job_parts) ? job.job_parts : []
+  if (parts.length === 0) return 0
+  const others = new Set()
+  for (const part of parts) {
+    if (part?.is_off_site === false) continue
+    const pv = part?.vendor_id ?? null
+    if (pv && pv !== vendorId) others.add(pv)
+    else if (pv == null && job?.vendor_id && job.vendor_id !== vendorId) {
+      others.add(job.vendor_id)
+    }
+  }
+  return others.size
+}
+
+
 // Default daily slot count per vendor lane. Pulled from BDC's standard
 // scheduling load (7 booked deals/day per off-site bay). Tune per-vendor
 // once we surface a vendor.daily_capacity column.
 const DEFAULT_VENDOR_CAPACITY = 7
 
 const VendorLaneView = ({ vendors, jobs, onJobClick, onDrop, draggedJob }) => {
-  const renderEventChip = (job) => {
+  // `currentVendorId` is passed by vendor-lane renders so the chip can show
+  // a "+N elsewhere" badge for multi-vendor jobs. Omit for the on-site lane.
+  const renderEventChip = (job, currentVendorId = null) => {
     // Tri-state: In-House (green) / Off-Site (amber) / Mixed (blue, "Split Work").
     // Matches the legend in CalendarShell, the location badge in RoundUpModal, and
     // the dot in UnscheduledQueue.jsx.
@@ -145,9 +166,20 @@ const VendorLaneView = ({ vendors, jobs, onJobClick, onDrop, draggedJob }) => {
 
           {/* Vendor line for off-site / mixed */}
           {!isOnSite && (
-            <div className="text-xs opacity-90 mt-1 flex items-center">
+            <div className="text-xs opacity-90 mt-1 flex items-center gap-1.5">
               <Building2 className="h-3 w-3 mr-1" />
               {job?.vendor_name || (isMixed ? 'Split Work' : '')}
+              {currentVendorId ? (() => {
+                const otherCount = countOtherVendorSlices(job, currentVendorId)
+                return otherCount > 0 ? (
+                  <span
+                    className="ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-blue-100 text-blue-800 whitespace-nowrap"
+                    title={`This deal also has line items at ${otherCount} other vendor${otherCount === 1 ? '' : 's'}`}
+                  >
+                    +{otherCount} elsewhere
+                  </span>
+                ) : null
+              })() : null}
             </div>
           )}
         </div>
@@ -248,6 +280,11 @@ const VendorLaneView = ({ vendors, jobs, onJobClick, onDrop, draggedJob }) => {
       </div>
       {/* Vendor Lanes */}
       {vendors?.map((vendor) => {
+        // Fallback approach (Wave XXX-H Item 5): keep job-level lane grouping
+        // so each job appears in exactly one lane. Multi-vendor visibility is
+        // signaled via the "+N elsewhere" badge inside each chip — see
+        // renderEventChip → countOtherVendorSlices. Full per-vendor lane
+        // expansion is deferred.
         const vendorJobs = jobs?.filter((job) => job?.vendor_id === vendor?.id)
         const capacity = getVendorCapacity(vendor?.id)
 
@@ -320,7 +357,7 @@ const VendorLaneView = ({ vendors, jobs, onJobClick, onDrop, draggedJob }) => {
               onDragOver={(e) => e?.preventDefault()}
               onDrop={() => handleVendorDrop(vendor?.id, 'off_site')}
             >
-              {vendorJobs?.map(renderEventChip)}
+              {vendorJobs?.map((job) => renderEventChip(job, vendor?.id))}
 
               {!draggedJob && (vendorJobs?.length || 0) === 0 && (
                 <div className="col-span-full border-2 border-dashed border-orange-200 rounded-lg p-4 text-center text-orange-700">

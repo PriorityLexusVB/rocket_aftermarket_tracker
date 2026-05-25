@@ -73,11 +73,43 @@ function fmtDate(input) {
 }
 
 /**
- * Transform an enriched job (with vehicle + assigned profile + job_parts joined)
- * into a single BDC row object.
+ * Determine whether a job_part belongs to a given vendor slice.
+ *
+ *   vendorId === null  → the "In-House" slice. A line is in-house when:
+ *     - the line's vendor_id is null AND the job's vendor_id is null, OR
+ *     - the line has is_off_site === false (regardless of vendor_id) — this
+ *       lets the form save shape an "in-house" line even if a stale vendor_id
+ *       lingers on the row from before this feature shipped.
+ *
+ *   vendorId === <uuid> → the slice for that specific vendor. A line is in
+ *   the slice when:
+ *     - part.vendor_id === vendorId, OR
+ *     - part.vendor_id is null AND job.vendor_id === vendorId  (legacy fallback
+ *       for jobs that pre-date per-line vendor tagging; the line inherits the
+ *       job-level vendor).
+ *
+ *   Lines flagged is_off_site=false are EXCLUDED from any vendor's slice — an
+ *   in-house line never belongs to a vendor, even if it has a stray vendor_id.
  */
-export function jobToBdcRow(job) {
-  const parts = Array.isArray(job?.job_parts) ? job.job_parts : []
+function partBelongsToVendor(part, vendorId, jobVendorId) {
+  const partVendorId = part?.vendor_id ?? null
+  const isOffSite = part?.is_off_site
+  if (vendorId === null) {
+    // In-House slice
+    if (isOffSite === false) return true
+    return partVendorId == null && jobVendorId == null
+  }
+  // Vendor slice — must be tagged off-site (or null isOffSite for legacy rows)
+  if (isOffSite === false) return false
+  if (partVendorId === vendorId) return true
+  if (partVendorId == null && jobVendorId === vendorId) return true
+  return false
+}
+
+/**
+ * Aggregate a set of job_parts into the 9 booleans/totals that drive a BDC row.
+ */
+function aggregateParts(parts) {
   let exterior = false
   let interior = false
   let windshield = false
@@ -106,6 +138,10 @@ export function jobToBdcRow(job) {
     costTotal += Number(product?.cost ?? 0) * qty
   }
 
+  return { exterior, interior, windshield, rg, packageBrands, priceTotal, costTotal }
+}
+
+function buildRowFromAggregate(job, agg) {
   const v = job?.vehicle || job?.vehicles || {}
   const customer = lastName(v.owner_name)
   const vehicle = vehicleCode(v.make, v.model)
@@ -118,17 +154,76 @@ export function jobToBdcRow(job) {
     ),
     CUSTOMER: customer,
     VEHICLE: vehicle,
-    EXTERIOR: exterior,
-    INTERIOR: interior,
-    WINDSHIELD: windshield,
-    RG: rg,
-    'ADDITIONAL PACKAGE': [...packageBrands].join(', '),
-    PRICE: priceTotal ? priceTotal.toFixed(2) : '',
-    COST: costTotal ? costTotal.toFixed(2) : '',
-    GROSS: priceTotal ? (priceTotal - costTotal).toFixed(2) : '',
+    EXTERIOR: agg.exterior,
+    INTERIOR: agg.interior,
+    WINDSHIELD: agg.windshield,
+    RG: agg.rg,
+    'ADDITIONAL PACKAGE': [...agg.packageBrands].join(', '),
+    PRICE: agg.priceTotal ? agg.priceTotal.toFixed(2) : '',
+    COST: agg.costTotal ? agg.costTotal.toFixed(2) : '',
+    GROSS: agg.priceTotal ? (agg.priceTotal - agg.costTotal).toFixed(2) : '',
     SALES: sales,
     TRACKING: '',
   }
+}
+
+/**
+ * Transform an enriched job (with vehicle + assigned profile + job_parts joined)
+ * into a single BDC row aggregating ALL line items. Backward-compatible —
+ * callers that want the whole-job view keep using this.
+ */
+export function jobToBdcRow(job) {
+  const parts = Array.isArray(job?.job_parts) ? job.job_parts : []
+  return buildRowFromAggregate(job, aggregateParts(parts))
+}
+
+/**
+ * Same as jobToBdcRow, but aggregates ONLY the line items belonging to the
+ * given vendor slice. Used by Round-Up per-vendor copy / per-vendor exports so
+ * multi-vendor deals don't double-count or wrongly attribute line items.
+ *
+ * Pass `vendorId = null` to get the "In-House" slice.
+ *
+ * If the resulting slice is empty (no matching parts), the booleans are all
+ * false and PRICE/COST/GROSS are blank — same as jobToBdcRow on an empty job.
+ */
+export function jobToBdcRowForVendor(job, vendorId) {
+  const parts = Array.isArray(job?.job_parts) ? job.job_parts : []
+  const jobVendorId = job?.vendor_id ?? null
+  const slice = parts.filter((p) => partBelongsToVendor(p, vendorId ?? null, jobVendorId))
+  return buildRowFromAggregate(job, aggregateParts(slice))
+}
+
+/**
+ * Given a job, return the set of vendor slices it has line items at. Each
+ * entry is a vendor id (or `null` for the In-House slice). Used by Round-Up
+ * to expand a multi-vendor job into rows per vendor lane.
+ *
+ * Falls back to `[job.vendor_id ?? null]` when the job has no per-line
+ * vendor tags yet (legacy single-vendor jobs).
+ */
+export function getVendorSlicesForJob(job) {
+  const parts = Array.isArray(job?.job_parts) ? job.job_parts : []
+  const jobVendorId = job?.vendor_id ?? null
+  if (parts.length === 0) {
+    return [jobVendorId]
+  }
+  const slices = new Set()
+  for (const part of parts) {
+    if (part?.is_off_site === false) {
+      slices.add(null)
+      continue
+    }
+    if (part?.vendor_id) {
+      slices.add(part.vendor_id)
+    } else if (jobVendorId) {
+      // Legacy line with no per-line vendor tag — inherits job vendor.
+      slices.add(jobVendorId)
+    } else {
+      slices.add(null)
+    }
+  }
+  return Array.from(slices)
 }
 
 // Re-fetch jobs in [start, end] with vehicle + assigned profile + job_parts joined.
@@ -227,4 +322,4 @@ export function suggestedFilename(type, baseDate) {
   return `roundup-${label}-${yyyy}${mm}${dd}.csv`
 }
 
-export const __test__ = { classifyProduct, lastName, firstNameUpper, vehicleCode, fmtDate, csvCell, tsvCell }
+export const __test__ = { classifyProduct, lastName, firstNameUpper, vehicleCode, fmtDate, csvCell, tsvCell, partBelongsToVendor, aggregateParts }
