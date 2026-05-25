@@ -309,7 +309,30 @@ const RoundUpModal = ({
       }
     } catch (err) {
       console.error('[RoundUpModal] export failed', err)
-      toast?.error?.("Couldn't export Round-Up. Try refreshing the page.")
+      // Wave XXX-T: specifically detect the stale-chunk case (post-deploy
+      // the lazy-imported roundUpExport chunk hash no longer exists on the
+      // CDN). Tell the user what's actually wrong + offer an explicit
+      // reload. browser-tester saw the previous generic "Try refreshing"
+      // toast not register clearly enough.
+      const msg = String(err?.message || '')
+      const isChunkLoadError =
+        /Failed to fetch dynamically imported module/i.test(msg) ||
+        /Loading chunk \d+ failed/i.test(msg) ||
+        err?.name === 'ChunkLoadError'
+
+      if (isChunkLoadError) {
+        toast?.error?.(
+          'The app has updated since you opened this page. Refresh to enable export.'
+        )
+        // Auto-recover on the next user click — they came back to the page
+        // intending to export, so reload is the right move. Small delay so
+        // they see the toast first.
+        setTimeout(() => {
+          if (typeof window !== 'undefined') window.location.reload()
+        }, 1500)
+      } else {
+        toast?.error?.("Couldn't export Round-Up. Try refreshing the page.")
+      }
     } finally {
       setExportBusy(null)
     }

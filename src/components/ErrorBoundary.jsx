@@ -15,6 +15,34 @@ class ErrorBoundary extends React.Component {
     error.__ErrorBoundary = true
     window.__COMPONENT_ERROR__?.(error, errorInfo)
 
+    // Wave XXX-T: detect a stale lazy-chunk error and auto-recover with a
+    // hard reload. After a Vercel deploy, the previously-loaded eager bundle
+    // still references the OLD hashed chunk names. When the user navigates
+    // and the SPA tries to import a route, the 404'd chunk throws
+    // "Failed to fetch dynamically imported module" — React error boundary
+    // catches it and we'd otherwise show "Something went wrong" forever.
+    // Auto-reloading picks up the new bundle + new chunk hashes.
+    const msg = String(error?.message || '')
+    const isChunkLoadError =
+      /Failed to fetch dynamically imported module/i.test(msg) ||
+      /Loading chunk \d+ failed/i.test(msg) ||
+      /Importing a module script failed/i.test(msg) ||
+      error?.name === 'ChunkLoadError'
+
+    if (isChunkLoadError && typeof window !== 'undefined') {
+      // Use sessionStorage to prevent infinite reload loops in case the
+      // chunk is genuinely missing (not a stale-deploy situation).
+      const RELOAD_KEY = 'chunkLoadReloadAttempt'
+      const alreadyReloaded = sessionStorage.getItem(RELOAD_KEY)
+      if (!alreadyReloaded) {
+        sessionStorage.setItem(RELOAD_KEY, '1')
+        // Small delay so the error boundary state doesn't flicker
+        setTimeout(() => window.location.reload(), 100)
+      } else {
+        // Reload didn't fix — chunk is genuinely broken. Leave error UI up.
+        sessionStorage.removeItem(RELOAD_KEY)
+      }
+    }
   }
 
   render() {
