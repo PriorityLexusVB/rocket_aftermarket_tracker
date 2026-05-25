@@ -294,20 +294,34 @@ export const calendarService = {
    */
   async updateJobSchedule(jobId, scheduleData, orgId = null) {
     try {
+      // Auto-promote DRAFT/PENDING -> SCHEDULED when a start time is set, but never
+      // demote a more-advanced status. Wave XXX-F: the prior code reset every job
+      // to 'scheduled' on every reschedule, silently demoting in_progress jobs.
+      let nextStatus = scheduleData?.status
+      if (nextStatus === undefined && scheduleData?.startTime) {
+        const { data: existing } = await supabase
+          ?.from('jobs')
+          ?.select('job_status')
+          ?.eq('id', jobId)
+          ?.single()
+        if (existing?.job_status === 'draft' || existing?.job_status === 'pending') {
+          nextStatus = 'scheduled'
+        }
+      }
+
       const updateData = {
         scheduled_start_time: scheduleData?.startTime?.toISOString(),
         scheduled_end_time: scheduleData?.endTime?.toISOString(),
-        vendor_id: scheduleData?.vendorId,
+        // Coerce empty-string to null so clearing the vendor field in a form actually clears it
+        vendor_id: scheduleData?.vendorId === '' ? null : scheduleData?.vendorId,
         location: scheduleData?.location,
         color_code: scheduleData?.colorCode,
         calendar_notes: scheduleData?.notes,
-        // Ensure scheduled jobs surface in Active Appointments views
-        // Default to 'scheduled' when we have a start time unless an explicit status was provided
-        job_status: scheduleData?.status ?? (scheduleData?.startTime ? 'scheduled' : undefined),
+        job_status: nextStatus,
         updated_at: new Date()?.toISOString(),
       }
 
-      // Remove undefined values
+      // Remove undefined values (null stays — null clears the field on the DB row)
       Object.keys(updateData)?.forEach((key) => {
         if (updateData?.[key] === undefined) {
           delete updateData?.[key]
@@ -437,11 +451,20 @@ export const calendarService = {
           endDate?.setDate(endDate?.getDate() + 1)
       }
 
-      // Get jobs count for the period
+      // Get jobs count for the period — Wave XXX-F: apply the same date range as
+      // scheduledJobs so the ratio is meaningful. Prior code counted all non-cancelled
+      // jobs lifetime, making the KPI tile show inflated totals (e.g., "3 of 1,200").
+      // We count jobs whose canonical commitment (COALESCE(promised_date,
+      // scheduled_start_time, created_at)) falls in the period.
       let totalQ = supabase
         ?.from('jobs')
         ?.select('id', { count: 'exact', head: true })
         ?.neq('job_status', 'cancelled')
+        ?.or(
+          `and(scheduled_start_time.gte.${startDate?.toISOString()},scheduled_start_time.lt.${endDate?.toISOString()}),` +
+            `and(scheduled_start_time.is.null,promised_date.gte.${startDate?.toISOString()},promised_date.lt.${endDate?.toISOString()}),` +
+            `and(scheduled_start_time.is.null,promised_date.is.null,created_at.gte.${startDate?.toISOString()},created_at.lt.${endDate?.toISOString()})`
+        )
       if (orgId) totalQ = totalQ?.eq('dealer_id', orgId)
       const { count: totalJobs, error: totalErr } = await totalQ
       if (totalErr) throw totalErr

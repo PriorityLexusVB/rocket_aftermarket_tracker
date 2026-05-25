@@ -141,6 +141,10 @@ async function fetchExportableJobs(start, end) {
   const startIso = etStartOfDay(startDate).toISOString()
   const endIso = etEndOfDay(endDate).toISOString()
   const profileFrag = buildUserProfileSelectFragment()
+  // Wave XXX-F: include promised-only jobs. Rob's "Thursday rust-proofing" case —
+  // a deal sold with a promised_date but no scheduled_start_time must still appear
+  // in the Round-Up for that day. Prior query filtered on scheduled_start_time
+  // alone, hiding every unscheduled-but-promised deal.
   const { data, error } = await supabase
     .from('jobs')
     .select(`
@@ -151,15 +155,25 @@ async function fetchExportableJobs(start, end) {
       promised_date,
       created_at,
       assigned_to,
+      job_status,
       vehicle:vehicles!left ( owner_name, make, model, year, stock_number ),
       assigned_profile:user_profiles!jobs_assigned_to_fkey ${profileFrag},
       job_parts ( quantity_used, unit_price, total_price, product:products ( name, brand, category, op_code, unit_price, cost ) )
     `)
-    .gte('scheduled_start_time', startIso)
-    .lte('scheduled_start_time', endIso)
-    .order('scheduled_start_time', { ascending: true })
+    .or(
+      `and(scheduled_start_time.gte.${startIso},scheduled_start_time.lte.${endIso}),` +
+        `and(scheduled_start_time.is.null,promised_date.gte.${startIso},promised_date.lte.${endIso})`
+    )
+    .not('job_status', 'in', '(completed,cancelled,delivered,no_show)')
   if (error) throw error
-  return Array.isArray(data) ? data : []
+  const rows = Array.isArray(data) ? data : []
+  // Client-side sort by canonical commitment time so promised-only jobs interleave
+  // correctly with scheduled jobs (Supabase can't ORDER BY COALESCE across columns).
+  return rows.sort((a, b) => {
+    const at = a?.scheduled_start_time || a?.promised_date || a?.created_at || ''
+    const bt = b?.scheduled_start_time || b?.promised_date || b?.created_at || ''
+    return at < bt ? -1 : at > bt ? 1 : 0
+  })
 }
 
 export async function buildBdcRows(start, end) {
