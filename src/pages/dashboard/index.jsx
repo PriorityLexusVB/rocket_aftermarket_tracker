@@ -97,6 +97,8 @@ const DashboardPage = () => {
   const [crossDayOverdueCount, setCrossDayOverdueCount] = useState(0)
   // Wave XXX-E (2/3): replaced the dead "Pending Approvals" KPI with "Needs Schedule"
   const [needsSchedule, setNeedsSchedule] = useState({ total: 0, vendor: 0, inhouse: 0 })
+  // Wave XXX-P: persistent Overdue tile on the strip (was only conditional rose card)
+  const [overdueData, setOverdueData] = useState({ count: 0, oldestDays: 0 })
 
   const refresh = useCallback(async () => {
     try {
@@ -110,7 +112,7 @@ const DashboardPage = () => {
       const todayStartIso = startOfToday().toISOString()
       const todayEndIso = endOfToday().toISOString()
 
-      const [jobsTodayRes, jobsThroughTomorrowRes, jobsMtdRes, deals, claimsStats, oppSummary, overdueCountRes, needsScheduleRes, promisedTodayRes] =
+      const [jobsTodayRes, jobsThroughTomorrowRes, jobsMtdRes, deals, claimsStats, oppSummary, overdueCountRes, needsScheduleRes, overdueWithOldestRes, promisedTodayRes] =
         await Promise.all([
           calendarService.getJobsByDateRange(startOfToday(), endOfToday(), {
             orgId: orgId || null,
@@ -140,6 +142,8 @@ const DashboardPage = () => {
             .not('job_status', 'in', '(completed,cancelled,delivered)')
             .then((r) => r, () => null),
           calendarService.getNeedsScheduleStats(orgId || null),
+          // Wave XXX-P: overdue count + oldest-days for the new Overdue tile
+          calendarService.getOverdueWithOldest(orgId || null),
           // Promise-only-today jobs: promised today, no scheduled time. Get the
           // vehicle relation so the row renders the same shape as scheduled jobs.
           supabase
@@ -153,6 +157,7 @@ const DashboardPage = () => {
         ])
 
       setNeedsSchedule(needsScheduleRes?.data || { total: 0, vendor: 0, inhouse: 0 })
+      setOverdueData(overdueWithOldestRes?.data || { count: 0, oldestDays: 0 })
 
       const jobsToday = Array.isArray(jobsTodayRes?.data) ? jobsTodayRes.data : []
       const jobsTT = Array.isArray(jobsThroughTomorrowRes?.data) ? jobsThroughTomorrowRes.data : []
@@ -387,24 +392,28 @@ const DashboardPage = () => {
           </div>
         ) : null}
 
+        {/* Wave XXX-P: redesigned KPI strip. Priority order:
+            1) Overdue (action) — was buried in conditional cards
+            2) Needs Schedule (action) — kept, best tile
+            3) Today (operational) — was "Today & Tomorrow", flipped so today is prime
+            4) MTD Revenue (trending) — was "Today", flipped so MTD is prime
+            5) MTD Profit (trending) — same flip
+            Cut: Open Claims (1 row total in prod; future guest-submission module
+            lives on the Claims page where it belongs). */}
         <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           <KpiCard
-            label="Scheduled Today & Tomorrow"
-            value={kpiValue.scheduledTodayTomorrow}
-            sublabel={`Today: ${scheduledToday}`}
-          />
-          <KpiCard
-            label="Revenue Today"
-            value={kpiValue.revenueToday}
-            sublabel={`MTD: ${kpiValue.revenueMtd}`}
-          />
-          <KpiCard
-            label="Profit Today"
-            value={kpiValue.profitToday}
+            label="Overdue"
+            value={String(overdueData.count)}
             sublabel={
-              todayFinancials.hasUnknownProfit
-                ? 'Cost missing on one or more deals'
-                : `MTD: ${kpiValue.profitMtd}`
+              overdueData.count > 0
+                ? `Oldest ${overdueData.oldestDays}d${overdueData.oldestDays >= 30 ? ' — investigate' : ''}`
+                : 'All clear'
+            }
+            href={overdueData.count > 0 ? '/overdue' : null}
+            ariaLabel={
+              overdueData.count > 0
+                ? `${overdueData.count} overdue jobs — open list`
+                : undefined
             }
           />
           <KpiCard
@@ -422,8 +431,32 @@ const DashboardPage = () => {
                 : undefined
             }
           />
-          <KpiCard label="Open Claims" value={kpiValue.openClaims} />
+          <KpiCard
+            label="Today"
+            value={String(scheduledToday)}
+            sublabel={`Tomorrow: ${Math.max(0, Number(kpiValue.scheduledTodayTomorrow || 0) - Number(scheduledToday || 0))}`}
+          />
+          <KpiCard
+            label="MTD Revenue"
+            value={kpiValue.revenueMtd}
+            sublabel={`Today: ${kpiValue.revenueToday}`}
+          />
+          <KpiCard
+            label="MTD Profit"
+            value={kpiValue.profitMtd}
+            sublabel={`Today: ${kpiValue.profitToday}`}
+          />
         </div>
+
+        {/* Wave XXX-P: Cost-Missing warning promoted from sublabel-tiny-text
+            to a visible pill above the body. Tells Rob explicitly which deals
+            need attention. */}
+        {todayFinancials.hasUnknownProfit ? (
+          <div className="mt-3 inline-flex items-center gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-900">
+            <span aria-hidden="true">⚠</span>
+            Cost missing on one or more of today's deals — profit estimates may be incomplete.
+          </div>
+        ) : null}
 
         <div className="mt-8 grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_340px] gap-6">
           <div className="min-w-0">

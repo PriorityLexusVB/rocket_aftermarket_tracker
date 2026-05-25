@@ -421,6 +421,35 @@ export const calendarService = {
   },
 
   /**
+   * Wave XXX-P: dashboard "Overdue" tile data. Returns both the count AND the
+   * age (in days) of the oldest open job. The age signal catches "this fell
+   * through the cracks" cases that bulk count alone misses — a 100-day-old
+   * deal sitting in pending status is more urgent than 3 deals that went
+   * overdue yesterday.
+   */
+  async getOverdueWithOldest(orgId = null) {
+    try {
+      // Use the canonical get_overdue_jobs RPC (Wave XXX-B fixed it to use
+      // COALESCE(promised_date, due_date) + correct status exclusions).
+      const { data: overdue, error } = await supabase?.rpc('get_overdue_jobs')
+      if (error) throw error
+
+      const rows = Array.isArray(overdue) ? overdue : []
+      const count = rows.length
+      // days_overdue is exposed by the RPC; take the max.
+      const oldestDays = rows.reduce((max, r) => {
+        const d = Number(r?.days_overdue)
+        return Number.isFinite(d) && d > max ? d : max
+      }, 0)
+
+      return { data: { count, oldestDays }, error: null }
+    } catch (error) {
+      console.error('[calendar] getOverdueWithOldest failed:', error)
+      return { data: { count: 0, oldestDays: 0 }, error }
+    }
+  },
+
+  /**
    * Wave XXX-E (2/3): count jobs that "need scheduling attention" — the KPI tile
    * that replaces the dead Pending Approvals card. Two categories:
    *   - Vendor jobs (vendor_id IS NOT NULL) missing a scheduled_start_time
