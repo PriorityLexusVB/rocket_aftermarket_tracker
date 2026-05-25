@@ -28,7 +28,7 @@ const DealsFilterBar = ({
         { value: 'Draft', label: 'Draft' },
         { value: 'Pending', label: 'Pending Work' },
         { value: 'Scheduled', label: 'Scheduled' },
-        { value: 'Active', label: 'Active' },
+        { value: 'Active', label: 'In Progress' },
         { value: 'Completed', label: 'Completed' },
       ]?.map(({ value, label }) => (
         <button

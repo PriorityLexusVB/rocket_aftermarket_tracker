@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { openCalendar } from '@/lib/navigation/calendarNavigation'
 import AppLayout from '@/components/layouts/AppLayout'
 import { calendarService } from '@/services/calendarService'
@@ -56,13 +56,27 @@ const Pill = ({ children, className = '' }) => (
   </span>
 )
 
-const KpiCard = ({ label, value, sublabel }) => (
-  <div className="rounded-xl border bg-white p-4 shadow-sm">
-    <div className="text-xs font-semibold tracking-wide text-gray-500 uppercase">{label}</div>
-    <div className="mt-1 text-2xl font-bold text-gray-900 tabular-nums">{value}</div>
-    {sublabel ? <div className="mt-1 text-xs text-gray-500">{sublabel}</div> : null}
-  </div>
-)
+const KpiCard = ({ label, value, sublabel, href, ariaLabel }) => {
+  const body = (
+    <>
+      <div className="text-xs font-semibold tracking-wide text-gray-500 uppercase">{label}</div>
+      <div className="mt-1 text-2xl font-bold text-gray-900 tabular-nums">{value}</div>
+      {sublabel ? <div className="mt-1 text-xs text-gray-500">{sublabel}</div> : null}
+    </>
+  )
+  if (href) {
+    return (
+      <Link
+        to={href}
+        aria-label={ariaLabel || label}
+        className="block rounded-xl border bg-white p-4 shadow-sm hover:border-blue-300 hover:shadow-md transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500"
+      >
+        {body}
+      </Link>
+    )
+  }
+  return <div className="rounded-xl border bg-white p-4 shadow-sm">{body}</div>
+}
 
 const DashboardPage = () => {
   const navigate = useNavigate()
@@ -81,6 +95,8 @@ const DashboardPage = () => {
   const [openOppByJobId, setOpenOppByJobId] = useState({})
   const openOppByJobIdRef = useRef({})
   const [crossDayOverdueCount, setCrossDayOverdueCount] = useState(0)
+  // Wave XXX-E (2/3): replaced the dead "Pending Approvals" KPI with "Needs Schedule"
+  const [needsSchedule, setNeedsSchedule] = useState({ total: 0, vendor: 0, inhouse: 0 })
 
   const refresh = useCallback(async () => {
     try {
@@ -88,7 +104,7 @@ const DashboardPage = () => {
       setError(null)
       setOpenOppByJobId({})
 
-      const [jobsTodayRes, jobsThroughTomorrowRes, jobsMtdRes, deals, claimsStats, oppSummary, overdueCountRes] =
+      const [jobsTodayRes, jobsThroughTomorrowRes, jobsMtdRes, deals, claimsStats, oppSummary, overdueCountRes, needsScheduleRes] =
         await Promise.all([
           calendarService.getJobsByDateRange(startOfToday(), endOfToday(), {
             orgId: orgId || null,
@@ -117,7 +133,10 @@ const DashboardPage = () => {
             .lt('promised_date', startOfToday().toISOString())
             .not('job_status', 'in', '(completed,cancelled,delivered)')
             .then((r) => r, () => null),
+          calendarService.getNeedsScheduleStats(orgId || null),
         ])
+
+      setNeedsSchedule(needsScheduleRes?.data || { total: 0, vendor: 0, inhouse: 0 })
 
       const jobsToday = Array.isArray(jobsTodayRes?.data) ? jobsTodayRes.data : []
       const jobsTT = Array.isArray(jobsThroughTomorrowRes?.data) ? jobsThroughTomorrowRes.data : []
@@ -364,7 +383,21 @@ const DashboardPage = () => {
                 : `MTD: ${kpiValue.profitMtd}`
             }
           />
-          <KpiCard label="Pending Approvals" value={kpiValue.openOpp} sublabel={openOppSublabel} />
+          <KpiCard
+            label="Needs Schedule"
+            value={String(needsSchedule.total)}
+            sublabel={
+              needsSchedule.total > 0
+                ? `${needsSchedule.vendor} vendor · ${needsSchedule.inhouse} in-house`
+                : 'All set'
+            }
+            href={needsSchedule.total > 0 ? '/deals?presetView=Needs%20Schedule' : null}
+            ariaLabel={
+              needsSchedule.total > 0
+                ? `${needsSchedule.total} jobs need scheduling — open list`
+                : undefined
+            }
+          />
           <KpiCard label="Open Claims" value={kpiValue.openClaims} />
         </div>
 

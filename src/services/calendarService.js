@@ -421,6 +421,55 @@ export const calendarService = {
   },
 
   /**
+   * Wave XXX-E (2/3): count jobs that "need scheduling attention" — the KPI tile
+   * that replaces the dead Pending Approvals card. Two categories:
+   *   - Vendor jobs (vendor_id IS NOT NULL) missing a scheduled_start_time
+   *   - In-house jobs (vendor_id IS NULL) missing a promised_date
+   * Excludes terminal statuses. Returns total + per-category breakdown so
+   * the sublabel can show "N vendor · M in-house".
+   */
+  async getNeedsScheduleStats(orgId = null) {
+    try {
+      const baseFilter = (q) =>
+        q
+          ?.not('job_status', 'in', '(completed,cancelled,delivered,draft,no_show)')
+      // Vendor jobs needing a scheduled appointment
+      let vendorQ = supabase
+        ?.from('jobs')
+        ?.select('id', { count: 'exact', head: true })
+        ?.not('vendor_id', 'is', null)
+        ?.is('scheduled_start_time', null)
+      vendorQ = baseFilter(vendorQ)
+      if (orgId) vendorQ = vendorQ?.eq('dealer_id', orgId)
+      const { count: vendorCount, error: vErr } = await vendorQ
+      if (vErr) throw vErr
+
+      // In-house jobs missing a promised date
+      let inhouseQ = supabase
+        ?.from('jobs')
+        ?.select('id', { count: 'exact', head: true })
+        ?.is('vendor_id', null)
+        ?.is('promised_date', null)
+      inhouseQ = baseFilter(inhouseQ)
+      if (orgId) inhouseQ = inhouseQ?.eq('dealer_id', orgId)
+      const { count: inhouseCount, error: iErr } = await inhouseQ
+      if (iErr) throw iErr
+
+      return {
+        data: {
+          vendor: vendorCount || 0,
+          inhouse: inhouseCount || 0,
+          total: (vendorCount || 0) + (inhouseCount || 0),
+        },
+        error: null,
+      }
+    } catch (error) {
+      console.error('[calendar] getNeedsScheduleStats failed:', error)
+      return { data: { vendor: 0, inhouse: 0, total: 0 }, error }
+    }
+  },
+
+  /**
    * Get calendar overview statistics
    */
   async getCalendarStats(dateRange = 'today', orgId = null) {

@@ -529,12 +529,20 @@ export default function DealsPage() {
   }, [])
 
   // ✅ ADDED: Initialize status from URL parameter on mount
+  // Wave XXX-E: also support ?presetView=... so the Dashboard's "Needs Schedule"
+  // KPI tile can deep-link into a filtered view.
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search)
     const statusParam = urlParams?.get('status')
-    if (statusParam) {
-      const statusValue = statusParam?.charAt(0)?.toUpperCase() + statusParam?.slice(1)
-      setFilters((prev) => ({ ...prev, status: statusValue }))
+    const presetParam = urlParams?.get('presetView')
+    if (statusParam || presetParam) {
+      setFilters((prev) => ({
+        ...prev,
+        status: statusParam
+          ? statusParam.charAt(0).toUpperCase() + statusParam.slice(1)
+          : prev.status,
+        presetView: presetParam || prev.presetView,
+      }))
     }
   }, [])
 
@@ -604,6 +612,21 @@ export default function DealsPage() {
         case 'Unscheduled':
           if (!(hasSchedLine && !apptKey)) return false
           break
+        case 'Needs Schedule': {
+          // Wave XXX-E: matches calendarService.getNeedsScheduleStats — vendor jobs
+          // missing scheduled_start_time + in-house jobs missing promised_date.
+          // Excludes terminal statuses.
+          const status = deal?.job_status
+          if (['completed', 'cancelled', 'delivered', 'draft', 'no_show'].includes(status)) {
+            return false
+          }
+          const hasVendor = !!deal?.vendor_id
+          const hasStart = !!deal?.scheduled_start_time || !!deal?.appt_start
+          const hasPromise = !!deal?.promised_date || promiseKey
+          if (hasVendor && hasStart) return false
+          if (!hasVendor && hasPromise) return false
+          break
+        }
         case 'Off-site Today': {
           const parts = Array.isArray(deal?.job_parts) ? deal.job_parts : []
           const hasOff = parts.some((p) => p?.is_off_site)
