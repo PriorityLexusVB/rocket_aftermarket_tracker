@@ -79,7 +79,10 @@ const LoginForm = () => {
         // signIn() has already awaited getSession + profile load, so auth state
         // is fully populated. Navigate directly — no setTimeout, no effect race.
         // isLoading stays true; this component unmounts on the route change.
-        navigate('/deals', { replace: true })
+        // Wave XXX-S: land on Dashboard (/) not Deals list. Sense-check finding —
+        // coordinator's first question is "what's going on today?", which is
+        // Dashboard's job.
+        navigate('/', { replace: true })
       } else {
         setError(result?.error || 'Login failed. Please try again.')
         setIsLoading(false)

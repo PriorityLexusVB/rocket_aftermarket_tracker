@@ -12,7 +12,8 @@ const AuthenticationPortal = () => {
     const rememberMe = localStorage.getItem('rememberMe')
 
     if (userRole && rememberMe === 'true') {
-      navigate('/deals')
+      // Wave XXX-S: dashboard is the login landing, not deals list
+      navigate('/')
     }
   }, [navigate])
 

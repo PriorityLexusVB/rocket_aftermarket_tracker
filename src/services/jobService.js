@@ -43,10 +43,14 @@ async function selectJobs(baseQuery) {
   // Attempt expanded with safe wildcards for relations
   try {
     const profileFrag = buildUserProfileSelectFragment()
+    // Wave XXX-S: added `transaction:transactions(customer_name)` join so
+    // surfaces that need customer_name (Overdue Inbox row, Dashboard Today's
+    // Schedule) don't render "—" because the field doesn't exist on `jobs`.
     const { data, error } = await baseQuery?.select(`
         *,
         vendor:vendors(id,name,specialty,contact_person,phone,email),
         vehicle:vehicles(*),
+        transaction:transactions(customer_name),
         assigned_to_profile:user_profiles!jobs_assigned_to_fkey${profileFrag},
         created_by_profile:user_profiles!jobs_created_by_fkey${profileFrag},
         delivery_coordinator:user_profiles!jobs_delivery_coordinator_id_fkey${profileFrag},

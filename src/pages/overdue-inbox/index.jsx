@@ -306,7 +306,12 @@ export default function OverdueInbox() {
                       >
                         <td className="px-4 py-3 font-medium text-foreground">{job?.job_number || '—'}</td>
                         <td className="px-4 py-3 text-foreground">
-                          {job?.customer_name || job?.vehicle?.owner_name || '—'}
+                          {job?.customer_name ||
+                            (Array.isArray(job?.transaction)
+                              ? job.transaction[0]?.customer_name
+                              : job?.transaction?.customer_name) ||
+                            job?.vehicle?.owner_name ||
+                            '—'}
                         </td>
                         <td className="px-4 py-3 text-foreground">
                           <div className="flex flex-col gap-1">

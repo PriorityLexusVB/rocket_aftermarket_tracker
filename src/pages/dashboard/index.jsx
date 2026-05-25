@@ -100,7 +100,15 @@ const DashboardPage = () => {
   // Wave XXX-P: persistent Overdue tile on the strip (was only conditional rose card)
   const [overdueData, setOverdueData] = useState({ count: 0, oldestDays: 0 })
 
+  // Wave XXX-S: ref guard prevents rapid-click refresh-flooding (hostile-break-
+  // tester found 5 clicks fire 5 concurrent refresh cycles with race conditions
+  // on state writes). useState alone doesn't gate because of the React render
+  // cycle delay.
+  const refreshInFlightRef = useRef(false)
+
   const refresh = useCallback(async () => {
+    if (refreshInFlightRef.current) return
+    refreshInFlightRef.current = true
     try {
       setLoading(true)
       setError(null)
@@ -135,24 +143,31 @@ const DashboardPage = () => {
           // The valid enum is: pending, in_progress, completed, cancelled (BR),
           // scheduled, quality_check, delivered, draft. PostgREST returned 400
           // on every dashboard load. Wave XXIX-E uses only valid done-states.
+          // Wave XXX-S: align exclusions with the KPI Overdue tile and the
+          // get_overdue_jobs RPC. Was excluding only completed/cancelled/
+          // delivered, which counted no_show + quality_check + draft as
+          // "overdue" — created contradictory "0 / 1 overdue" displays.
           supabase
             .from('jobs')
             .select('id', { count: 'exact', head: true })
             .lt('promised_date', startOfToday().toISOString())
-            .not('job_status', 'in', '(completed,cancelled,delivered)')
+            .not('job_status', 'in', '(completed,cancelled,delivered,draft,no_show,quality_check)')
             .then((r) => r, () => null),
           calendarService.getNeedsScheduleStats(orgId || null),
           // Wave XXX-P: overdue count + oldest-days for the new Overdue tile
           calendarService.getOverdueWithOldest(orgId || null),
-          // Promise-only-today jobs: promised today, no scheduled time. Get the
-          // vehicle relation so the row renders the same shape as scheduled jobs.
+          // Wave XXX-S: removed `customer_name`, `vendor_name`, `vehicle_info`
+          // from the select — they don't exist on `jobs` table (caused HTTP
+          // 400 on every dashboard load, broke Today's Schedule panel
+          // population). Customer name lives on transactions; vendor name on
+          // vendors join; vehicle_info is computed client-side.
           supabase
             .from('jobs')
-            .select('id, title, customer_name, vendor_id, vendor_name, vehicle_id, vehicle_info, scheduled_start_time, scheduled_end_time, promised_date, job_status, vehicle:vehicles(year, make, model, stock_number, owner_name)')
+            .select('id, title, vendor_id, vehicle_id, scheduled_start_time, scheduled_end_time, promised_date, job_status, vehicle:vehicles(year, make, model, stock_number, owner_name), vendor:vendors(id, name), transaction:transactions(customer_name)')
             .gte('promised_date', todayStartIso)
             .lte('promised_date', todayEndIso)
             .is('scheduled_start_time', null)
-            .not('job_status', 'in', '(completed,cancelled,delivered,draft,no_show)')
+            .not('job_status', 'in', '(completed,cancelled,delivered,draft,no_show,quality_check)')
             .then((r) => r, () => null),
         ])
 
@@ -212,6 +227,7 @@ const DashboardPage = () => {
       setCrossDayOverdueCount(0)
     } finally {
       setLoading(false)
+      refreshInFlightRef.current = false
     }
   }, [orgId])
 
@@ -437,14 +453,22 @@ const DashboardPage = () => {
             sublabel={`Tomorrow: ${Math.max(0, Number(kpiValue.scheduledTodayTomorrow || 0) - Number(scheduledToday || 0))}`}
           />
           <KpiCard
-            label="MTD Revenue"
+            label={`${new Date().toLocaleString('en-US', { month: 'long' })} Revenue`}
             value={kpiValue.revenueMtd}
-            sublabel={`Today: ${kpiValue.revenueToday}`}
+            sublabel={
+              kpiValue.revenueMtd === '—' || kpiValue.revenueMtd === '$0'
+                ? 'No deals dated this month'
+                : `Today: ${kpiValue.revenueToday}`
+            }
           />
           <KpiCard
-            label="MTD Profit"
+            label={`${new Date().toLocaleString('en-US', { month: 'long' })} Profit`}
             value={kpiValue.profitMtd}
-            sublabel={`Today: ${kpiValue.profitToday}`}
+            sublabel={
+              kpiValue.profitMtd === '—' || kpiValue.profitMtd === '$0'
+                ? 'No deals dated this month'
+                : `Today: ${kpiValue.profitToday}`
+            }
           />
         </div>
 
@@ -512,7 +536,13 @@ const DashboardPage = () => {
                         {count > 1 ? `${count} overdue today` : '1 overdue today'}
                       </div>
                       <h2 className="mt-0.5 text-lg font-semibold text-rose-900 truncate">
-                        {job?.customer_name || job?.vehicle?.owner_name || job?.title || 'Overdue job'}
+                        {job?.customer_name ||
+                          (Array.isArray(job?.transaction)
+                            ? job.transaction[0]?.customer_name
+                            : job?.transaction?.customer_name) ||
+                          job?.vehicle?.owner_name ||
+                          job?.title ||
+                          'Overdue job'}
                       </h2>
                       <div className="mt-0.5 text-sm text-rose-800 truncate">
                         {job?.vehicle_info || '—'}
@@ -701,7 +731,12 @@ const DashboardPage = () => {
                                     <span className="text-amber-700 font-medium"> · {promiseLabel}</span>
                                   ) : null}
                                   {' • '}
-                                  {job?.customer_name || job?.vehicle?.owner_name || '—'} •{' '}
+                                  {job?.customer_name ||
+                                    (Array.isArray(job?.transaction)
+                                      ? job.transaction[0]?.customer_name
+                                      : job?.transaction?.customer_name) ||
+                                    job?.vehicle?.owner_name ||
+                                    '—'} •{' '}
                                   {job?.vehicle_info || ''}
                                   {job?.vehicle?.stock_number ? ` · #${job.vehicle.stock_number}` : ''}
                                 </div>

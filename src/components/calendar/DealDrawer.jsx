@@ -107,6 +107,10 @@ export default function DealDrawer({ open, deal, onClose, onStatusChange }) {
   const [mounted, setMounted] = useState(false)
   // Wave XXX-M: Copy Job Number affordance (prep for JobDrawer retirement)
   const [jobNumberCopied, setJobNumberCopied] = useState(false)
+  // Wave XXX-S: useRef guard for action concurrency. useState alone has a
+  // stale-closure window — rapid double-click can see actionLoading=false
+  // twice before the first render commits. useRef is synchronous.
+  const actionInFlightRef = useRef(false)
 
   const location = useOptionalLocation()
   const fromOverdue = location?.pathname === '/overdue'
@@ -228,6 +232,9 @@ export default function DealDrawer({ open, deal, onClose, onStatusChange }) {
 
   const handlePrimaryAction = async () => {
     if (!primaryAction.targetStatus || !dealId) return
+    // Wave XXX-S: synchronous ref guard prevents double-fire on rapid clicks
+    if (actionInFlightRef.current) return
+    actionInFlightRef.current = true
     setActionLoading(true)
     setActionError(null)
     try {
@@ -238,6 +245,7 @@ export default function DealDrawer({ open, deal, onClose, onStatusChange }) {
       setActionError(err?.message || 'Status update failed.')
     } finally {
       setActionLoading(false)
+      actionInFlightRef.current = false
     }
   }
 
@@ -245,7 +253,9 @@ export default function DealDrawer({ open, deal, onClose, onStatusChange }) {
   // Previously only in JobDrawer (unreachable from chip). Confirmation prevents
   // an accidental status flip from a misplaced click.
   const handleNoShow = async () => {
-    if (!dealId || actionLoading) return
+    // Wave XXX-S: ref guard catches rapid double-clicks BEFORE the confirm
+    // dialog so users can't accidentally fire two no-show requests.
+    if (!dealId || actionInFlightRef.current) return
     if (
       typeof window !== 'undefined' &&
       !window.confirm(
@@ -254,6 +264,7 @@ export default function DealDrawer({ open, deal, onClose, onStatusChange }) {
     ) {
       return
     }
+    actionInFlightRef.current = true
     setActionLoading(true)
     setActionError(null)
     try {
@@ -264,6 +275,7 @@ export default function DealDrawer({ open, deal, onClose, onStatusChange }) {
       setActionError(err?.message || 'Could not set No-Show.')
     } finally {
       setActionLoading(false)
+      actionInFlightRef.current = false
     }
   }
 
