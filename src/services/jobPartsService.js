@@ -15,6 +15,7 @@ import {
   incrementTelemetry,
   TelemetryKey,
 } from '../utils/capabilityTelemetry'
+import { wrapDbError } from './deal/dealHelpers'
 import { z } from 'zod'
 import { jobPartInsertSchema } from '@/db/schemas'
 
@@ -483,7 +484,7 @@ export async function syncJobPartsForJob(jobId, lineItems = [], opts = {}) {
 
       if (updErr) {
         console.error('[syncJobPartsForJob] UPDATE failed for id:', item.id, updErr)
-        throw new Error(`Failed to update job_part ${item.id}: ${updErr.message}`)
+        throw wrapDbError(updErr, 'save line items')
       }
 
       // Guard: UPDATE can be blocked by RLS and return 0 rows without error.
@@ -555,7 +556,7 @@ export async function syncJobPartsForJob(jobId, lineItems = [], opts = {}) {
           const { error: retryErr } = await supabase.from('job_parts').insert(retryRows).select()
           if (retryErr) {
             console.error('[syncJobPartsForJob] Retry INSERT failed:', retryErr)
-            throw new Error(`Failed to insert job_parts (retry): ${retryErr.message}`)
+            throw wrapDbError(retryErr, 'save line items (retry)')
           }
           if (import.meta.env.MODE === 'development') {
             console.log('[syncJobPartsForJob] Retry INSERT successful')
@@ -577,7 +578,7 @@ export async function syncJobPartsForJob(jobId, lineItems = [], opts = {}) {
           const { error: retryErr } = await supabase.from('job_parts').insert(retryRows).select()
           if (retryErr) {
             console.error('[syncJobPartsForJob] Retry INSERT failed:', retryErr)
-            throw new Error(`Failed to insert job_parts (retry): ${retryErr.message}`)
+            throw wrapDbError(retryErr, 'save line items (retry)')
           }
           if (import.meta.env.MODE === 'development') {
             console.log('[syncJobPartsForJob] Retry INSERT successful')
@@ -587,7 +588,7 @@ export async function syncJobPartsForJob(jobId, lineItems = [], opts = {}) {
       }
 
       console.error('[syncJobPartsForJob] INSERT failed:', insErr)
-      throw new Error(`Failed to insert job_parts: ${insErr.message}`)
+      throw wrapDbError(insErr, 'save line items')
     }
 
     if (import.meta.env.MODE === 'development') {

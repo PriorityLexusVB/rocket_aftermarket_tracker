@@ -4,6 +4,7 @@ import { buildUserProfileSelectFragment, resolveUserProfileName } from '@/utils/
 import { toDateInputValue } from '@/utils/dateTimeUtils'
 import { syncJobPartsForJob } from './jobPartsService'
 import { enqueueNotification } from './notificationService'
+import { wrapDbError } from './deal/dealHelpers'
 import { z } from 'zod'
 
 /** Map job_status values to their SMS template names. */
@@ -362,7 +363,9 @@ export const jobService = {
       return data
     } catch (err) {
       console.error('[jobs] updateStatus failed:', err?.message || err)
-      throw new Error(`Failed to update status: ${err?.message || err}`)
+      // Wave XXX-E: humanize PG errors so trigger messages + constraint violations
+      // surface as readable copy rather than raw SQLERRM.
+      throw wrapDbError(err, 'update status')
     }
   },
 

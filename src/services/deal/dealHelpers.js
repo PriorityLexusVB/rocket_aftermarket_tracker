@@ -333,20 +333,99 @@ export function mapPermissionError(err) {
   throw err
 }
 
-// Helper: wrap common PostgREST permission errors with actionable guidance
-// This function uses mapPermissionError internally for consistency
+// Wave XXX-E: humanize common Postgres / PostgREST errors before they reach the UI.
+// Trigger exceptions (P0001) typically carry user-friendly text already (e.g., the
+// vendor-scheduling and status-progression triggers raise readable messages); we
+// preserve those. Standard constraint violations get plain-language replacements.
 export function wrapDbError(error, actionLabel = 'operation') {
   const raw = String(error?.message || error || '')
+  const code = error?.code || error?.sqlstate || ''
+
+  // Special case: RLS on auth.users — keep the rich remediation guidance
   if (/permission denied for (table |relation )?users/i.test(raw)) {
-    // Use the new mapPermissionError for consistent messaging
     try {
       mapPermissionError(error)
     } catch (mappedErr) {
-      // Prepend the action label
-      return new Error(`Failed to ${actionLabel}: ${mappedErr.message}`)
+      return wrapWithOriginal(`Failed to ${actionLabel}: ${mappedErr.message}`, error)
     }
   }
-  return new Error(`Failed to ${actionLabel}: ${error?.message || error}`)
+
+  // Trigger-raised exception (P0001) — message is already written for the user
+  // (see validate_vendor_job_scheduling, validate_job_status_progression triggers)
+  if (code === 'P0001' || /^Cannot move vendor job/i.test(raw) || /^Invalid status progression/i.test(raw)) {
+    return wrapWithOriginal(raw || `Failed to ${actionLabel}`, error)
+  }
+
+  // 23505 unique_violation
+  if (code === '23505' || /duplicate key value violates unique constraint/i.test(raw)) {
+    const constraintMatch = raw.match(/constraint "([^"]+)"/i)
+    const which = constraintMatch ? friendlyConstraintName(constraintMatch[1]) : 'record'
+    return wrapWithOriginal(`Failed to ${actionLabel}: that ${which} already exists.`, error)
+  }
+
+  // 23503 foreign_key_violation
+  if (code === '23503' || /violates foreign key constraint/i.test(raw)) {
+    return wrapWithOriginal(
+      `Failed to ${actionLabel}: a referenced record is missing or was just deleted. Refresh and try again.`,
+      error
+    )
+  }
+
+  // 23502 not_null_violation
+  if (code === '23502' || /null value in column/i.test(raw)) {
+    const colMatch = raw.match(/null value in column "([^"]+)"/i)
+    const which = colMatch ? friendlyColumnName(colMatch[1]) : 'a required field'
+    return wrapWithOriginal(`Failed to ${actionLabel}: ${which} is required.`, error)
+  }
+
+  // 22P02 invalid_text_representation (bad UUID, bad enum value, etc.)
+  if (code === '22P02' || /invalid input syntax for type|invalid input value for enum/i.test(raw)) {
+    return wrapWithOriginal(`Failed to ${actionLabel}: one of the fields has an invalid value.`, error)
+  }
+
+  // 42501 insufficient_privilege (generic RLS denial)
+  if (code === '42501' || /permission denied/i.test(raw)) {
+    return wrapWithOriginal(
+      `Failed to ${actionLabel}: you don't have permission to do this. If this looks wrong, ask Rob to check your role.`,
+      error
+    )
+  }
+
+  // Fallback: include the action label + raw message (preserved historical behavior)
+  return wrapWithOriginal(`Failed to ${actionLabel}: ${error?.message || error}`, error)
+}
+
+function wrapWithOriginal(message, original) {
+  const wrapped = new Error(message)
+  wrapped.original = original
+  wrapped.code = original?.code
+  return wrapped
+}
+
+function friendlyConstraintName(constraint) {
+  // jobs_job_number_key -> "job number"
+  // vehicles_vin_key -> "VIN"
+  if (/vin/i.test(constraint)) return 'VIN'
+  if (/job_number/i.test(constraint)) return 'job number'
+  if (/stock_number/i.test(constraint)) return 'stock number'
+  if (/external_id/i.test(constraint)) return 'external ID'
+  if (/email/i.test(constraint)) return 'email'
+  return 'record'
+}
+
+function friendlyColumnName(column) {
+  const map = {
+    vendor_id: 'Vendor',
+    job_id: 'Job',
+    product_id: 'Product',
+    customer_name: 'Customer name',
+    dealer_id: 'Dealer',
+    promised_date: 'Promised date',
+    scheduled_start_time: 'Scheduled time',
+    vehicle_id: 'Vehicle',
+    title: 'Title',
+  }
+  return map[column] || column.replace(/_/g, ' ')
 }
 
 // --- Capability detection for job_parts per-line time windows -------------
