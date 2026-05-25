@@ -179,9 +179,12 @@ const JobScheduleModal = ({ job, vendors = [], onClose, onUpdate }) => {
       }
     }
 
-    if (!formData?.vendor_id) {
-      newErrors.vendor_id = 'Please select a vendor'
-    }
+    // Wave XXX-R: vendor is optional. In-house jobs (no vendor) are a valid
+    // workflow — Rob does most aftermarket work on-site. Forcing vendor_id
+    // blocked in-house jobs from being scheduled via this modal.
+    // The form's location field (or absence of vendor) is the canonical
+    // signal for in-house vs vendor; we don't need a hard validation on
+    // vendor_id presence.
 
     setErrors(newErrors)
     return Object.keys(newErrors)?.length === 0

@@ -6,8 +6,12 @@ import { safeSelect } from '@/lib/supabase/safeSelect'
 import { getEtDayUtcMs } from '@/utils/scheduleDisplay'
 import { isOverdue } from '@/lib/time'
 
-// Job statuses that cannot be "overdue" by definition — terminal/non-active states.
+// Job statuses that cannot be "overdue" by definition.
 // Used by isOverdueJob() so consumers don't have to inline this list.
+//
+// Wave XXX-R: added 'quality_check'. Work is done; sitting in QC stage. The
+// coordinator's overdue list should be ACTIONABLE items — QC handles itself.
+// Customer is still waiting but there's nothing the coordinator must do.
 const TERMINAL_STATUSES = new Set([
   'completed',
   'cancelled',
@@ -15,6 +19,7 @@ const TERMINAL_STATUSES = new Set([
   'delivered',
   'draft',
   'no_show',
+  'quality_check',
 ])
 
 const MS_DAY = 24 * 60 * 60 * 1000

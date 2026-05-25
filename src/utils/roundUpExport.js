@@ -276,6 +276,16 @@ export async function buildBdcRows(start, end) {
   return jobs.map(jobToBdcRow)
 }
 
+// Wave XXX-R: lets the RoundUpModal's top-level export buttons use the
+// SAME jobs array that the modal is displaying — without re-fetching from
+// the DB. Closes the calendar-flow-specialist NEW 4 finding (the prior
+// pattern silently bypassed any modal-side filters and exported more rows
+// than what the user could see).
+export function buildBdcRowsFromJobs(jobs) {
+  if (!Array.isArray(jobs)) return []
+  return jobs.map(jobToBdcRow)
+}
+
 function csvCell(value) {
   if (value === null || value === undefined) return ''
   if (value === true) return 'TRUE'

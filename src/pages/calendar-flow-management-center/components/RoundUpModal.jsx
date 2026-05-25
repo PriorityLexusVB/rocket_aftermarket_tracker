@@ -284,7 +284,11 @@ const RoundUpModal = ({
       // Lazy-import keeps ~213 LOC + supabase reference off the calendar route's
       // eager bundle when the user never opens Round-Up export.
       const mod = await import('@/utils/roundUpExport')
-      const rows = await mod.buildBdcRows(exportRange.start, exportRange.end)
+      // Wave XXX-R: use the modal's displayed `jobs` prop (which already
+      // includes promise-only-today merged + any parent-filter scoping)
+      // rather than re-fetching from the DB. Prior code silently exported
+      // more rows than the user could see (calendar-flow-specialist NEW 4).
+      const rows = mod.buildBdcRowsFromJobs(jobs)
       if (!rows.length) {
         toast?.info?.('No deals to export for this period.')
         return
