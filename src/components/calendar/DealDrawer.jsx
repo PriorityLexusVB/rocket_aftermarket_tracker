@@ -246,7 +246,12 @@ export default function DealDrawer({ open, deal, onClose, onStatusChange }) {
   // an accidental status flip from a misplaced click.
   const handleNoShow = async () => {
     if (!dealId || actionLoading) return
-    if (typeof window !== 'undefined' && !window.confirm('Mark this job as No-Show?')) {
+    if (
+      typeof window !== 'undefined' &&
+      !window.confirm(
+        'Mark this job as No-Show? This updates the job status to No-Show — the customer did not show up. You can recover by rescheduling.'
+      )
+    ) {
       return
     }
     setActionLoading(true)

@@ -406,7 +406,7 @@ const DashboardPage = () => {
             value={String(overdueData.count)}
             sublabel={
               overdueData.count > 0
-                ? `Oldest ${overdueData.oldestDays}d${overdueData.oldestDays >= 30 ? ' — investigate' : ''}`
+                ? `Oldest ${overdueData.oldestDays}d${overdueData.oldestDays >= 30 ? ' · check status' : ''}`
                 : 'All clear'
             }
             href={overdueData.count > 0 ? '/overdue' : null}
@@ -455,6 +455,13 @@ const DashboardPage = () => {
           <div className="mt-3 inline-flex items-center gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-900">
             <span aria-hidden="true">⚠</span>
             Cost missing on one or more of today's deals — profit estimates may be incomplete.
+            <Link
+              to="/deals"
+              className="underline underline-offset-2 hover:text-amber-700"
+              aria-label="Open Deals to add missing costs"
+            >
+              Open Deals →
+            </Link>
           </div>
         ) : null}
 

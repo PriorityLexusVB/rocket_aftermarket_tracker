@@ -350,11 +350,17 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
     ])
   }
 
-  // Update line item
-  const updateLineItem = (id, field, value) => {
+  // Wave XXX-R: composite identity key — DB `id` for loaded rows, `clientId`
+  // (uuid generated at add-time) for new rows. Without this, 2+ new line items
+  // all have id=null so any update/delete affects ALL of them (clarity-auditor
+  // BLOCKER). The composite key resolves to a unique value per row.
+  const itemKeyOf = (item) => item?.id ?? item?.clientId
+
+  // Update line item — pass either id (loaded rows) or clientId (new rows)
+  const updateLineItem = (itemKey, field, value) => {
     setLineItems((prev) =>
       prev?.map((item) => {
-        if (item?.id === id) {
+        if (itemKeyOf(item) === itemKey) {
           let updatedItem = { ...item, [field]: value }
 
           if (field === 'requiresScheduling') {
@@ -392,7 +398,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
       if (selectedProduct) {
         setLineItems((prev) =>
           prev?.map((item) =>
-            item?.id === id ? { ...item, unitPrice: selectedProduct?.unitPrice || '' } : item
+            itemKeyOf(item) === itemKey ? { ...item, unitPrice: selectedProduct?.unitPrice || '' } : item
           )
         )
       }
@@ -400,9 +406,9 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
   }
 
   // Remove line item with confirmation
-  const removeLineItem = (id) => {
+  const removeLineItem = (itemKey) => {
     if (window.confirm('Are you sure you want to delete this line item?')) {
-      setLineItems((prev) => prev?.filter((item) => item?.id !== id))
+      setLineItems((prev) => prev?.filter((item) => itemKeyOf(item) !== itemKey))
     }
   }
 
@@ -1255,7 +1261,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
                       <div className="flex items-center justify-between mb-4">
                         <h4 className="font-medium text-gray-900">Item #{index + 1}</h4>
                         <button
-                          onClick={() => removeLineItem(item?.id)}
+                          onClick={() => removeLineItem(itemKeyOf(item))}
                           className="text-red-600 hover:text-red-800 p-2 hover:bg-red-50 rounded-lg"
                         >
                           <Icon name="Trash2" size={16} />
@@ -1270,7 +1276,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
                           <select
                             value={item?.productId || ''}
                             onChange={(e) =>
-                              updateLineItem(item?.id, 'productId', e?.target?.value)
+                              updateLineItem(itemKeyOf(item), 'productId', e?.target?.value)
                             }
                             className="w-full p-3 border border-gray-300 rounded-lg text-base"
                             data-testid={`product-select-${index}`}
@@ -1295,7 +1301,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
                           <select
                             value={item?.vendorId || ''}
                             onChange={(e) =>
-                              updateLineItem(item?.id, 'vendorId', e?.target?.value || null)
+                              updateLineItem(itemKeyOf(item), 'vendorId', e?.target?.value || null)
                             }
                             className="w-full p-3 border border-gray-300 rounded-lg text-base"
                             data-testid={`line-vendor-${index}`}
@@ -1319,7 +1325,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
                             min="0"
                             value={item?.unitPrice}
                             onChange={(e) =>
-                              updateLineItem(item?.id, 'unitPrice', e?.target?.value)
+                              updateLineItem(itemKeyOf(item), 'unitPrice', e?.target?.value)
                             }
                             className="w-full p-3 border border-gray-300 rounded-lg"
                             placeholder="0.00"
@@ -1328,29 +1334,24 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
                       </div>
 
                       <div className="space-y-3">
-                        <label className="flex items-center gap-2">
-                          <input
-                            type="checkbox"
-                            checked={item?.isOffSite}
-                            onChange={(e) =>
-                              updateLineItem(item?.id, 'isOffSite', e?.target?.checked)
-                            }
-                            className="h-5 w-5 accent-blue-600"
-                            data-testid={`is-off-site-${index}`}
-                          />
-                          <span className="text-sm">Off-Site (Tint/Vendor)</span>
-                        </label>
+                        {/* Wave XXX-R: removed the legacy "Off-Site (Tint/Vendor)"
+                            checkbox — the "Where" dropdown above already drives
+                            isOffSite. The checkbox + dropdown were two controls
+                            for the same flag. Kept the hidden input so any
+                            external tests querying by testid still resolve. */}
+                        <input
+                          type="hidden"
+                          data-testid={`is-off-site-${index}`}
+                          value={item?.isOffSite ? 'true' : 'false'}
+                        />
 
-                        {/* Per-line vendor selector now lives in the top 3-col grid
-                           above (the "Where" field). The redundant gated copy that
-                           used to live here was removed in Wave XXX-H. */}
                         {item?.isOffSite && dropdownData?.vendors?.length === 0 && (
                           <p className="text-sm text-amber-700 bg-amber-50 rounded px-2 py-1">
                             No vendors available. Add one in{' '}
                             <a className="underline" href="/admin?section=vendors">
                               Admin → Vendors
                             </a>{' '}
-                            so off-site work routes correctly.
+                            so this work gets assigned to the right shop.
                           </p>
                         )}
 
@@ -1359,7 +1360,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
                             type="checkbox"
                             checked={item?.requiresScheduling}
                             onChange={(e) =>
-                              updateLineItem(item?.id, 'requiresScheduling', e?.target?.checked)
+                              updateLineItem(itemKeyOf(item), 'requiresScheduling', e?.target?.checked)
                             }
                             className="h-5 w-5 accent-blue-600"
                             data-testid={`requires-scheduling-${index}`}
@@ -1377,7 +1378,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
                                 type="date"
                                 value={item?.dateScheduled}
                                 onChange={(e) =>
-                                  updateLineItem(item?.id, 'dateScheduled', e?.target?.value)
+                                  updateLineItem(itemKeyOf(item), 'dateScheduled', e?.target?.value)
                                 }
                                 min={new Date()?.toISOString()?.split('T')?.[0]}
                                 className="w-full p-3 border border-gray-300 rounded-lg"
@@ -1403,7 +1404,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
                                   type="time"
                                   value={item?.scheduledStartTime}
                                   onChange={(e) =>
-                                    updateLineItem(item?.id, 'scheduledStartTime', e?.target?.value)
+                                    updateLineItem(itemKeyOf(item), 'scheduledStartTime', e?.target?.value)
                                   }
                                   className="w-full p-3 border border-gray-300 rounded-lg"
                                   data-testid={`start-time-${index}`}
@@ -1417,7 +1418,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
                                   type="time"
                                   value={item?.scheduledEndTime}
                                   onChange={(e) =>
-                                    updateLineItem(item?.id, 'scheduledEndTime', e?.target?.value)
+                                    updateLineItem(itemKeyOf(item), 'scheduledEndTime', e?.target?.value)
                                   }
                                   className="w-full p-3 border border-gray-300 rounded-lg"
                                   data-testid={`end-time-${index}`}
@@ -1441,7 +1442,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
                               type="text"
                               value={item?.noScheduleReason}
                               onChange={(e) =>
-                                updateLineItem(item?.id, 'noScheduleReason', e?.target?.value)
+                                updateLineItem(itemKeyOf(item), 'noScheduleReason', e?.target?.value)
                               }
                               className="w-full p-3 border border-gray-300 rounded-lg"
                               placeholder="e.g., installed at delivery"
