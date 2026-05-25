@@ -16,6 +16,9 @@ const mockGetNeedsSchedulingPromiseItems = vi.fn()
 vi.mock('@/services/scheduleItemsService', () => ({
   getScheduledJobsByDateRange: (...args) => mockGetScheduledJobsByDateRange(...args),
   getNeedsSchedulingPromiseItems: (...args) => mockGetNeedsSchedulingPromiseItems(...args),
+  // Wave XXX-C canonical helpers — mocks must declare them.
+  getPromiseIso: (job) => job?.next_promised_iso || job?.promised_date || job?.promisedAt || null,
+  isOverdueJob: () => false,
 }))
 
 vi.mock('@/components/layouts/AppLayout', () => ({

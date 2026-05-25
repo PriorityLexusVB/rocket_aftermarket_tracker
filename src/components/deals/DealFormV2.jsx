@@ -1301,7 +1301,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
                               updateLineItem(item?.id, 'vendorId', e?.target?.value || null)
                             }
                             className="w-full p-3 border border-gray-300 rounded-lg text-base"
-                            data-testid={`line-where-select-${index}`}
+                            data-testid={`line-vendor-${index}`}
                           >
                             <option value="">In-House</option>
                             {dropdownData?.vendors?.map((v) => (

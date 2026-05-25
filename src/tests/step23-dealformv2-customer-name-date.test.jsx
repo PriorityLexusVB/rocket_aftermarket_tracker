@@ -164,19 +164,19 @@ describe('Step 23: DealFormV2 - Customer Name + Deal Date at top; Vendor per lin
       screen.getByText('Item #1')
     })
 
-    // Vendor select should NOT be visible initially (is_off_site is false by default)
-    let vendorSelect = screen.queryByTestId('line-vendor-0')
-    expect(vendorSelect).toBeNull()
+    // Wave XXX-H: the "Where" dropdown is now ALWAYS visible (replaces the
+    // checkbox-gated vendor selector). Default value is "In-House" (or the
+    // job-level vendor if set); user can pick any vendor per line item.
+    const vendorSelect = screen.getByTestId('line-vendor-0')
+    expect(vendorSelect).toBeDefined()
+    // Default option is In-House (empty value → in-house save path)
+    expect(vendorSelect.value).toBe('')
 
-    // Check off-site checkbox
+    // Picking the off-site checkbox is now a legacy/back-compat toggle —
+    // the canonical change is via the Where dropdown. Verify the checkbox
+    // still exists for back-compat.
     const offSiteCheckbox = screen.getByTestId('is-off-site-0')
-    fireEvent.click(offSiteCheckbox)
-
-    await waitFor(() => {
-      // Now vendor select should be visible
-      vendorSelect = screen.getByTestId('line-vendor-0')
-      expect(vendorSelect).toBeDefined()
-    })
+    expect(offSiteCheckbox).toBeDefined()
   })
 
   it('should require Customer Name for validation', async () => {

@@ -1,7 +1,12 @@
 // src/pages/deals/components/EditDealModal.jsx
 // Simplified Edit Deal Modal using DealFormV2 for wizard parity
 import React, { useEffect, useState } from 'react'
-import { getDeal, updateDeal, mapDbDealToForm } from '../../../services/dealService'
+import { getDeal, updateDeal } from '../../../services/dealService'
+// Wave XXX-L: import mapDbDealToForm directly from dealMappers, not via the
+// dealService re-export. Rollup warned of a circular dep when this component
+// re-exported through dealService. Direct import breaks the cycle; behavior
+// unchanged. release-auditor RECOMMENDED.
+import { mapDbDealToForm } from '../../../services/deal/dealMappers'
 import DealFormV2 from '../../../components/deals/DealFormV2'
 import Icon from '../../../components/ui/Icon'
 

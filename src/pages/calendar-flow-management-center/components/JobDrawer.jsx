@@ -23,12 +23,31 @@ import { formatEtDateLabel } from '@/utils/scheduleDisplay'
 import { openCalendar } from '@/lib/navigation/calendarNavigation'
 import { useToast } from '@/components/ui/ToastProvider'
 
+// Wave XXX-L: defensive Router-context hooks. Production always renders inside
+// AppLayout (Router guaranteed), but unit tests render the drawer bare.
+// Returning safe defaults keeps the eyebrow hidden in tests without forcing
+// every test file to wrap in a MemoryRouter.
+function useOptionalNavigate() {
+  try {
+    return useNavigate()
+  } catch {
+    return () => {}
+  }
+}
+function useOptionalLocation() {
+  try {
+    return useLocation()
+  } catch {
+    return null
+  }
+}
+
 const JobDrawer = ({ job, isOpen, onClose, onStatusUpdate }) => {
   const [activeTab, setActiveTab] = useState('details')
   const [jobNumberCopied, setJobNumberCopied] = useState(false)
   const closeButtonRef = useRef(null)
-  const navigate = useNavigate()
-  const location = useLocation()
+  const navigate = useOptionalNavigate()
+  const location = useOptionalLocation()
   const fromSchedulingBoard = location?.pathname?.startsWith('/calendar-flow-management-center')
   const toast = useToast()
 

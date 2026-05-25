@@ -6,6 +6,18 @@ import Loader2 from 'lucide-react/dist/esm/icons/loader-2.js'
 import jobService from '@/services/jobService'
 import { getPromiseIso } from '@/services/scheduleItemsService'
 
+// Wave XXX-L: useLocation throws when rendered outside a Router. The drawer
+// is used in production inside the AppLayout (Router context guaranteed), but
+// unit tests render it bare. Returning null when no Router context keeps the
+// eyebrow hidden in tests without forcing every test file to wrap in a Router.
+function useOptionalLocation() {
+  try {
+    return useLocation()
+  } catch {
+    return null
+  }
+}
+
 // ─── helpers ────────────────────────────────────────────────────────────────
 
 function getDealTitle(deal) {
@@ -92,7 +104,7 @@ export default function DealDrawer({ open, deal, onClose, onStatusChange }) {
   const [actionError, setActionError] = useState(null)
   const [mounted, setMounted] = useState(false)
 
-  const location = useLocation()
+  const location = useOptionalLocation()
   const fromOverdue = location?.pathname === '/overdue'
 
   useEffect(() => {
@@ -156,6 +168,14 @@ export default function DealDrawer({ open, deal, onClose, onStatusChange }) {
     return { label: 'Select action', disabled: true }
   }, [dealStatus])
 
+  // Wave XXX-L: secondary actions reachable from chip click on the calendar
+  // board. Previously No-Show was only in the heavy JobDrawer surface which
+  // isn't reachable from chip click (browser-tester finding). The compact
+  // secondary row keeps the simplified drawer (less button overload than
+  // opening the full JobDrawer) while making No-Show + Reschedule reachable.
+  const showNoShow = ['pending', 'scheduled', 'in_progress'].includes(dealStatus)
+  const showReschedule = ['scheduled', 'in_progress', 'no_show'].includes(dealStatus)
+
   // focus trap + ESC
   useEffect(() => {
     if (!open) return
@@ -214,6 +234,37 @@ export default function DealDrawer({ open, deal, onClose, onStatusChange }) {
       setActionError(err?.message || 'Status update failed.')
     } finally {
       setActionLoading(false)
+    }
+  }
+
+  // Wave XXX-L: No-Show is reachable from chip click on the calendar board.
+  // Previously only in JobDrawer (unreachable from chip). Confirmation prevents
+  // an accidental status flip from a misplaced click.
+  const handleNoShow = async () => {
+    if (!dealId || actionLoading) return
+    if (typeof window !== 'undefined' && !window.confirm('Mark this job as No-Show?')) {
+      return
+    }
+    setActionLoading(true)
+    setActionError(null)
+    try {
+      await jobService.updateStatus(dealId, 'no_show')
+      onStatusChange?.()
+      onClose?.()
+    } catch (err) {
+      setActionError(err?.message || 'Could not set No-Show.')
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  const handleReschedule = () => {
+    if (!dealId) return
+    // Send the user to the deal edit surface where date/time fields live.
+    // Calendar drag-and-drop is the faster path; the edit page is the
+    // reliable fallback if the user isn't sure where the job belongs.
+    if (typeof window !== 'undefined') {
+      window.location.href = `/deals/${dealId}/edit`
     }
   }
 
@@ -364,6 +415,36 @@ export default function DealDrawer({ open, deal, onClose, onStatusChange }) {
           {actionError && (
             <p className="mb-2 text-[11px] font-medium text-red-600">{actionError}</p>
           )}
+
+          {/* Wave XXX-L: secondary actions reachable from chip click — No-Show
+              and Reschedule. Hidden when not applicable to the current status. */}
+          {(showNoShow || showReschedule) && (
+            <div className="mb-2 flex items-center gap-2">
+              {showReschedule && (
+                <button
+                  type="button"
+                  onClick={handleReschedule}
+                  disabled={actionLoading}
+                  aria-label="Reschedule this job"
+                  className="rounded-md border border-orange-200 bg-orange-50 px-3 py-1.5 text-[11px] font-medium text-orange-800 hover:bg-orange-100 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Reschedule
+                </button>
+              )}
+              {showNoShow && (
+                <button
+                  type="button"
+                  onClick={handleNoShow}
+                  disabled={actionLoading}
+                  aria-label="Mark as No-Show"
+                  className="rounded-md border border-slate-300 bg-slate-50 px-3 py-1.5 text-[11px] font-medium text-slate-700 hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  No-Show
+                </button>
+              )}
+            </div>
+          )}
+
           <div className="flex items-center justify-between gap-2">
             <button
               type="button"
