@@ -1,6 +1,6 @@
 // src/pages/deals/index.jsx
 import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { deleteDeal, getAllDeals, markLoanerReturned } from '../../services/dealService'
 import { listByJobId } from '@/services/opportunitiesService'
 import { handleAuthError, isTechNoiseMessage } from '@/lib/authErrorHandler'
@@ -1015,9 +1015,13 @@ export default function DealsPage() {
 
             if (overdueCount > 0) {
               return (
-                <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-red-500/10 text-red-200">
+                <Link
+                  to="/overdue"
+                  className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-red-500/10 text-red-200 cursor-pointer hover:bg-red-500/20 hover:text-red-100 transition-colors duration-150"
+                  aria-label={`View ${overdueCount} overdue jobs`}
+                >
                   {overdueCount} overdue
-                </span>
+                </Link>
               )
             }
             return null

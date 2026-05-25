@@ -1,11 +1,13 @@
 import React, { useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import CheckCircle from 'lucide-react/dist/esm/icons/check-circle.js'
 import ChevronDown from 'lucide-react/dist/esm/icons/chevron-down.js'
 import ChevronUp from 'lucide-react/dist/esm/icons/chevron-up.js'
 import Clock from 'lucide-react/dist/esm/icons/clock.js'
+import ExternalLink from 'lucide-react/dist/esm/icons/external-link.js'
 import RefreshCw from 'lucide-react/dist/esm/icons/refresh-cw.js'
 import { formatEtDateLabel } from '@/utils/scheduleDisplay'
-import { getPromiseIso } from '@/services/scheduleItemsService'
+import { getPromiseIso, isOverdueJob } from '@/services/scheduleItemsService'
 import { getJobLocationType } from '@/utils/locationType'
 
 function getQueueLocationMeta(job) {
@@ -32,6 +34,7 @@ export default function UnscheduledQueue({
   isStatusInFlight,
   loading,
 }) {
+  const navigate = useNavigate()
   const rows = useMemo(() => unscheduledJobs ?? [], [unscheduledJobs])
   const needsTimeTotal = Number.isFinite(needsTimeCount) ? needsTimeCount : 0
   const overdueTotal = Number.isFinite(overdueCount) ? overdueCount : 0
@@ -118,6 +121,8 @@ export default function UnscheduledQueue({
           const promise = getPromiseIso(raw)
           const locMeta = getQueueLocationMeta(raw)
 
+          const isJobOverdue = isOverdueJob(raw)
+
           return (
             <div
               key={job?.calendarKey || job?.calendar_key || raw?.id}
@@ -152,6 +157,21 @@ export default function UnscheduledQueue({
                     <div className="text-xs text-gray-600">
                       {promise ? `Due: ${formatEtDateLabel(promise) || '—'}` : 'No due date'}
                     </div>
+                    {isJobOverdue && raw?.id && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          navigate(`/deals/${raw.id}/edit`)
+                        }}
+                        className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-medium text-red-700 bg-red-50 hover:bg-red-100 transition-colors duration-150 cursor-pointer"
+                        aria-label={`Edit overdue deal ${raw?.job_number || raw?.id}`}
+                        title="Open deal to resolve overdue"
+                      >
+                        <ExternalLink className="h-3 w-3" aria-hidden="true" />
+                        Edit
+                      </button>
+                    )}
                   </div>
                 </div>
 

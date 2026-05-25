@@ -1,4 +1,5 @@
 import React from 'react'
+import { Link } from 'react-router-dom'
 import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle.js'
 import Clock from 'lucide-react/dist/esm/icons/clock.js'
 import Users from 'lucide-react/dist/esm/icons/users.js'
@@ -37,10 +38,15 @@ const KanbanColumn = ({
         {/* Column Stats */}
         <div className="flex items-center space-x-4 mt-2">
           {stats?.overdue > 0 && (
-            <div className="flex items-center space-x-1 text-red-600">
+            <Link
+              to="/overdue"
+              className="flex items-center space-x-1 text-red-600 cursor-pointer hover:text-red-800 transition-colors duration-150"
+              aria-label={`View ${stats.overdue} overdue jobs`}
+              title="View overdue jobs"
+            >
               <AlertTriangle className="h-4 w-4" />
               <span className="text-sm font-medium">{stats?.overdue} overdue</span>
-            </div>
+            </Link>
           )}
 
           {stats?.urgent > 0 && (
@@ -93,7 +99,13 @@ const KanbanColumn = ({
             <>
               {stats?.total} job{stats?.total !== 1 ? 's' : ''}
               {stats?.overdue > 0 && (
-                <span className="text-red-500 ml-2">({stats?.overdue} overdue)</span>
+                <Link
+                  to="/overdue"
+                  className="text-red-500 ml-2 hover:text-red-700 transition-colors duration-150"
+                  aria-label={`View ${stats.overdue} overdue jobs`}
+                >
+                  ({stats?.overdue} overdue)
+                </Link>
               )}
             </>
           )}

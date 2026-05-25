@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { useLocation } from 'react-router-dom'
 import X from 'lucide-react/dist/esm/icons/x.js'
 import Loader2 from 'lucide-react/dist/esm/icons/loader-2.js'
 import jobService from '@/services/jobService'
@@ -90,6 +91,9 @@ export default function DealDrawer({ open, deal, onClose, onStatusChange }) {
   const [actionLoading, setActionLoading] = useState(false)
   const [actionError, setActionError] = useState(null)
   const [mounted, setMounted] = useState(false)
+
+  const location = useLocation()
+  const fromOverdue = location?.pathname === '/overdue'
 
   useEffect(() => {
     if (!open) { setMounted(false); return }
@@ -236,6 +240,11 @@ export default function DealDrawer({ open, deal, onClose, onStatusChange }) {
         {/* ── header ── */}
         <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3 md:px-6 md:py-4">
           <div className="space-y-1 min-w-0">
+            {fromOverdue && (
+              <div className="text-[10px] font-semibold uppercase tracking-wide text-red-500">
+                From Overdue Inbox
+              </div>
+            )}
             {identifierLabel && (
               <div className="text-[10px] font-mono uppercase tracking-wide text-slate-400">
                 {identifierLabel}

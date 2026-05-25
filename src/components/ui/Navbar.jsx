@@ -14,6 +14,8 @@ import BarChart3 from 'lucide-react/dist/esm/icons/bar-chart-3.js'
 import Clock from 'lucide-react/dist/esm/icons/clock.js'
 import FileText from 'lucide-react/dist/esm/icons/file-text.js'
 import MoreHorizontal from 'lucide-react/dist/esm/icons/more-horizontal.js'
+import HomeIcon from 'lucide-react/dist/esm/icons/home.js'
+import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle.js'
 import { useAuth } from '../../contexts/AuthContext'
 import { notificationService } from '../../services/notificationService'
 import QuickNavigation from '../common/QuickNavigation'
@@ -82,12 +84,19 @@ const Navbar = () => {
     }
   }, [])
 
+  // Wave XXX-D nav order: the first 5 entries are pinned in the mobile bottom bar
+  // (slice(0,5)). Order reflects daily-use priority for the GSM + coordinator:
+  // Home, Calendar (today's board), Overdue (urgent), Deals (workflow), Appointments.
+  // Claims / Loaners / Analytics / Admin live in the "More" drawer.
   const navigationLinks = [
+    { name: 'Home', href: '/', icon: HomeIcon, shortName: 'Home' },
     {
       name: 'Calendar',
       href: getCalendarDestination({ target: 'calendar', range: 'month' }),
       icon: Calendar,
     },
+    { name: 'Overdue', href: '/overdue', icon: AlertTriangle, shortName: 'Overdue' },
+    { name: 'Deals', href: '/deals', icon: Package },
     {
       name: 'Appointments',
       href: '/currently-active-appointments',
@@ -95,7 +104,6 @@ const Navbar = () => {
       shortName: 'Active',
     },
     { name: 'Claims', href: '/claims-management-center', icon: FileText },
-    { name: 'Deals', href: '/deals', icon: Package },
     { name: 'Loaners', href: '/loaner-management-drawer', icon: Car, shortName: 'Loaners' },
     { name: 'Analytics', href: '/advanced-business-intelligence-analytics', icon: BarChart3 },
     { name: 'Admin', href: '/admin', icon: Settings },

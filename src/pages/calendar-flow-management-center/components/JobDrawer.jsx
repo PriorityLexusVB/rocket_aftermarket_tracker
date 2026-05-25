@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { isJobOnSite } from '@/utils/locationType'
 import X from 'lucide-react/dist/esm/icons/x.js'
 import Car from 'lucide-react/dist/esm/icons/car.js'
@@ -28,6 +28,8 @@ const JobDrawer = ({ job, isOpen, onClose, onStatusUpdate }) => {
   const [jobNumberCopied, setJobNumberCopied] = useState(false)
   const closeButtonRef = useRef(null)
   const navigate = useNavigate()
+  const location = useLocation()
+  const fromSchedulingBoard = location?.pathname?.startsWith('/calendar-flow-management-center')
   const toast = useToast()
 
   const useAgenda = useMemo(() => String(import.meta.env.VITE_SIMPLE_CALENDAR || '') === 'true', [])
@@ -334,6 +336,11 @@ const JobDrawer = ({ job, isOpen, onClose, onStatusUpdate }) => {
                   }`}
                 ></div>
                 <div>
+                  {fromSchedulingBoard && (
+                    <div className="text-[10px] font-semibold uppercase tracking-wide text-blue-500">
+                      From Scheduling Board
+                    </div>
+                  )}
                   {job?.job_number && (
                     <div className="text-[10px] font-mono uppercase tracking-wide text-gray-400">
                       Job {job.job_number}
