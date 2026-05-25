@@ -4,7 +4,8 @@ import { openCalendar } from '@/lib/navigation/calendarNavigation'
 import AppLayout from '@/components/layouts/AppLayout'
 import { calendarService } from '@/services/calendarService'
 import { jobService } from '@/services/jobService'
-import { claimsService } from '@/services/claimsService'
+// Wave XXX-U: claimsService import removed — Open Claims tile cut in XXX-P,
+// fetch was still running on every dashboard load wasting an API call.
 import { getAllDeals } from '@/services/dealService'
 import { getOpenOpportunitySummary, listOpenCountsByJobIds } from '@/services/opportunitiesService'
 import { getDealFinancials } from '@/utils/dealKpis'
@@ -90,7 +91,10 @@ const DashboardPage = () => {
   const [jobsThroughTomorrow, setJobsThroughTomorrow] = useState([])
   const [mtdDeals, setMtdDeals] = useState([])
   const [todayDeals, setTodayDeals] = useState([])
-  const [openClaims, setOpenClaims] = useState(null)
+  // Wave XXX-U: openClaims state + claims fetch removed. The Open Claims KPI
+  // tile was cut in XXX-P but the state and the claimsService.getClaimsStats()
+  // call kept running on every dashboard load (one wasted API request).
+  // Hostile-break-tester RECOMMENDED. Claims surface lives on /claims-management-center.
   const [openOppSummary, setOpenOppSummary] = useState(null)
   const [openOppByJobId, setOpenOppByJobId] = useState({})
   const openOppByJobIdRef = useRef({})
@@ -120,7 +124,7 @@ const DashboardPage = () => {
       const todayStartIso = startOfToday().toISOString()
       const todayEndIso = endOfToday().toISOString()
 
-      const [jobsTodayRes, jobsThroughTomorrowRes, jobsMtdRes, deals, claimsStats, oppSummary, overdueCountRes, needsScheduleRes, overdueWithOldestRes, promisedTodayRes] =
+      const [jobsTodayRes, jobsThroughTomorrowRes, jobsMtdRes, deals, oppSummary, overdueCountRes, needsScheduleRes, overdueWithOldestRes, promisedTodayRes] =
         await Promise.all([
           calendarService.getJobsByDateRange(startOfToday(), endOfToday(), {
             orgId: orgId || null,
@@ -132,27 +136,16 @@ const DashboardPage = () => {
             orgId: orgId || null,
           }),
           getAllDeals(),
-          claimsService.getClaimsStats(orgId || null),
           getOpenOpportunitySummary().catch(() => null),
-          // PostgrestFilterBuilder is thenable but NOT a Promise — it has `.then`
-          // but no `.catch`. Wave XXVII shipped this with `.catch(() => null)`
-          // which threw a TypeError on EVERY dashboard load (live since 1dd3a44).
-          // Wave XXIX-C fixed the .catch but exposed a SECOND Wave XXVII bug:
-          // the not-in list included `canceled` (American spelling) and
-          // `no_show` — NEITHER of those is a valid `job_status` enum value.
-          // The valid enum is: pending, in_progress, completed, cancelled (BR),
-          // scheduled, quality_check, delivered, draft. PostgREST returned 400
-          // on every dashboard load. Wave XXIX-E uses only valid done-states.
-          // Wave XXX-S: align exclusions with the KPI Overdue tile and the
-          // get_overdue_jobs RPC. Was excluding only completed/cancelled/
-          // delivered, which counted no_show + quality_check + draft as
-          // "overdue" — created contradictory "0 / 1 overdue" displays.
-          supabase
-            .from('jobs')
-            .select('id', { count: 'exact', head: true })
-            .lt('promised_date', startOfToday().toISOString())
-            .not('job_status', 'in', '(completed,cancelled,delivered,draft,no_show,quality_check)')
-            .then((r) => r, () => null),
+          // Wave XXX-U: the separate inline overdue COUNT query is GONE.
+          // It used the same UTC-midnight comparison that produced the 8hr
+          // ET false-positive (calendar-flow-specialist NEW 1). We now
+          // derive crossDayOverdueCount from the same RPC result the
+          // Overdue tile uses (getOverdueWithOldest, which uses ET-day
+          // boundaries server-side per migration 20260525000600).
+          // Net: -1 API call per dashboard load + perfect consistency
+          // between the Overdue KPI tile and the Catch Up amber card.
+          Promise.resolve(null),
           calendarService.getNeedsScheduleStats(orgId || null),
           // Wave XXX-P: overdue count + oldest-days for the new Overdue tile
           calendarService.getOverdueWithOldest(orgId || null),
@@ -191,22 +184,14 @@ const DashboardPage = () => {
       const mappedTodayDeals = jobsToday.map((j) => dealById.get(j?.id)).filter(Boolean)
       const mappedMtdDeals = jobsMtd.map((j) => dealById.get(j?.id)).filter(Boolean)
 
-      const closedStatuses = new Set(['resolved', 'closed', 'completed', 'denied'])
-      const byStatus = claimsStats?.byStatus || {}
-      const openClaimsCount = Object.entries(byStatus).reduce((sum, [status, count]) => {
-        const key = String(status || '').toLowerCase()
-        if (!key) return sum
-        if (closedStatuses.has(key)) return sum
-        return sum + (Number.isFinite(Number(count)) ? Number(count) : 0)
-      }, 0)
-
       setTodayJobs(todayJobsCombined)
       setJobsThroughTomorrow(jobsTT)
       setTodayDeals(mappedTodayDeals)
       setMtdDeals(mappedMtdDeals)
-      setOpenClaims(Number.isFinite(openClaimsCount) ? openClaimsCount : null)
       setOpenOppSummary(oppSummary && typeof oppSummary === 'object' ? oppSummary : null)
-      setCrossDayOverdueCount(Number(overdueCountRes?.count) || 0)
+      // Wave XXX-U: source crossDayOverdueCount from the same RPC the
+      // Overdue tile uses (ET-day aware, terminal-status exclusions match).
+      setCrossDayOverdueCount(Number(overdueWithOldestRes?.data?.count) || 0)
     } catch (e) {
       console.error('[dashboard] load failed', e)
       // If this is a real auth failure (stale JWT, etc.), redirect to /auth.
@@ -222,7 +207,6 @@ const DashboardPage = () => {
       setJobsThroughTomorrow([])
       setTodayDeals([])
       setMtdDeals([])
-      setOpenClaims(null)
       setOpenOppSummary(null)
       setCrossDayOverdueCount(0)
     } finally {
@@ -361,7 +345,6 @@ const DashboardPage = () => {
     revenueMtd: money0OrDash(mtdFinancials.revenue),
     profitMtd: mtdFinancials.hasUnknownProfit ? '—' : money0OrDash(mtdFinancials.profit),
     openOpp: money0OrDash(openOppSummary?.open_amount),
-    openClaims: openClaims == null ? '—' : String(openClaims),
   }
 
   const openOppSublabel = openOppSummary

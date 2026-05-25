@@ -9,6 +9,7 @@ import { getPromiseIso, isOverdueJob } from '@/services/scheduleItemsService'
 import { formatEtDateLabel } from '@/utils/scheduleDisplay'
 import { isJobOnSite, getJobLocationType } from '@/utils/locationType'
 import { getWorkTagLabel, MAX_WORK_TAGS_VISIBLE } from '@/utils/workTags'
+import { DEFAULT_VENDOR_CAPACITY_PER_DAY as DEFAULT_VENDOR_CAPACITY } from '@/config/capacityDefaults'
 
 // Count distinct vendors a job has line items at OTHER than `vendorId`.
 // Used by the lane chip to surface "+N at other vendors" so a multi-vendor
@@ -29,10 +30,8 @@ const countOtherVendorSlices = (job, vendorId) => {
 }
 
 
-// Default daily slot count per vendor lane. Pulled from BDC's standard
-// scheduling load (7 booked deals/day per off-site bay). Tune per-vendor
-// once we surface a vendor.daily_capacity column.
-const DEFAULT_VENDOR_CAPACITY = 7
+// Wave XXX-U: DEFAULT_VENDOR_CAPACITY now imported from
+// `@/config/capacityDefaults` (single source of truth for capacity tuning).
 
 const VendorLaneView = ({ vendors, jobs, onJobClick, onDrop, draggedJob }) => {
   // `currentVendorId` is passed by vendor-lane renders so the chip can show
@@ -171,12 +170,15 @@ const VendorLaneView = ({ vendors, jobs, onJobClick, onDrop, draggedJob }) => {
               {job?.vendor_name || (isMixed ? 'Split Work' : '')}
               {currentVendorId ? (() => {
                 const otherCount = countOtherVendorSlices(job, currentVendorId)
+                // Wave XXX-U: "+N more vendor(s)" reads cleaner than "+N elsewhere"
+                // on mobile where hover tooltip isn't reachable. Singular/plural
+                // handled inline.
                 return otherCount > 0 ? (
                   <span
                     className="ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-blue-100 text-blue-800 whitespace-nowrap"
                     title={`This deal also has line items at ${otherCount} other vendor${otherCount === 1 ? '' : 's'}`}
                   >
-                    +{otherCount} elsewhere
+                    +{otherCount} more vendor{otherCount === 1 ? '' : 's'}
                   </span>
                 ) : null
               })() : null}
