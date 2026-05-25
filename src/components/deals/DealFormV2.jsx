@@ -1422,6 +1422,13 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
                                   className="w-full p-3 border border-gray-300 rounded-lg"
                                   data-testid={`end-time-${index}`}
                                 />
+                                {/* Wave XXX-O: clarify the End Time semantic. End time of day on
+                                    the promised date. Form is single-date by design — covers
+                                    Rob's 99% case (same-day work). Multi-day cure work is
+                                    modeled as a single-day promise at the pickup time. */}
+                                <p className="mt-1 text-xs text-gray-500">
+                                  Pickup time on the promised date.
+                                </p>
                               </div>
                             </div>
                           </div>

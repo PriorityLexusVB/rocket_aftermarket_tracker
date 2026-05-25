@@ -337,10 +337,26 @@ export const jobService = {
   async updateStatus(jobId, status, extra = {}) {
     if (!jobId) throw new Error('Job ID is required')
 
+    // Wave XXX-O: auto-manage completed_at timestamp based on target status.
+    // Centralizing here means every caller (DealDrawer, EditDeal, future
+    // code paths) gets correct timestamp behavior without each one having
+    // to remember the rule. Caller can still override via `extra`.
+    const autoStamp = {}
+    const normalized = String(status || '').toLowerCase()
+    if (normalized === 'completed') {
+      autoStamp.completed_at = new Date().toISOString()
+    } else if (
+      // Any non-completed transition clears the stale completed_at if it was set
+      ['pending', 'scheduled', 'in_progress', 'quality_check', 'cancelled', 'no_show', 'draft'].includes(normalized)
+    ) {
+      autoStamp.completed_at = null
+    }
+
     const update = {
       job_status: status,
       updated_at: nowIso(),
-      ...extra,
+      ...autoStamp,
+      ...extra, // explicit caller-provided values still win
     }
 
     try {

@@ -26,7 +26,8 @@ import QuickFilters from './components/QuickFilters'
 import { useToast } from '@/components/ui/ToastProvider'
 
 import UnscheduledQueue from './components/UnscheduledQueue'
-import JobDrawer from './components/JobDrawer'
+// Wave XXX-O: JobDrawer retired. DealDrawer covers all use cases.
+import DealDrawer from '@/components/calendar/DealDrawer'
 import RoundUpModal from './components/RoundUpModal'
 import { formatTime, getStatusBadge } from '../../lib/time'
 import { useLocation, useNavigate } from 'react-router-dom'
@@ -1944,12 +1945,15 @@ const CalendarFlowManagementCenter = ({
         </div>
       </div>
 
-      {/* Job Details Drawer */}
-      <JobDrawer
-        job={selectedJob}
-        isOpen={showDrawer}
+      {/* Wave XXX-O: JobDrawer retired. DealDrawer has parity after XXX-L
+          (No-Show + Reschedule action row) + XXX-M (Copy Job Number). One
+          drawer, less maintenance, less UI debt. completed_at timestamp is
+          now auto-managed by jobService.updateStatus regardless of caller. */}
+      <DealDrawer
+        deal={selectedJob}
+        open={showDrawer}
         onClose={() => setShowDrawer(false)}
-        onStatusUpdate={handleJobStatusUpdate}
+        onStatusChange={loadCalendarData}
       />
 
       {/* Round-up Modal — Wave XXX-K: also pass needsSchedulingJobsForView so
