@@ -375,7 +375,11 @@ export default function CalendarShell() {
                 {[
                   { key: 'board', label: 'Board', tip: 'Vendor lanes — drag to reassign work' },
                   { key: 'calendar', label: 'Calendar', tip: 'Day / Week / Month grid' },
-                  { key: 'list', label: 'List', disabled: !agendaEnabled, tip: 'Time-ordered list of every job for the day' },
+                  // Wave XXX-M: hide List tab entirely when feature flag is off
+                  // (was rendering disabled with no explanation — clarity-auditor)
+                  ...(agendaEnabled
+                    ? [{ key: 'list', label: 'List', tip: 'Time-ordered list of every job for the day' }]
+                    : []),
                 ].map((item) => (
                   <button
                     key={item.key}

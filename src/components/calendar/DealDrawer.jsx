@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useLocation } from 'react-router-dom'
 import X from 'lucide-react/dist/esm/icons/x.js'
+import Copy from 'lucide-react/dist/esm/icons/copy.js'
+import Check from 'lucide-react/dist/esm/icons/check.js'
 import Loader2 from 'lucide-react/dist/esm/icons/loader-2.js'
 import jobService from '@/services/jobService'
 import { getPromiseIso } from '@/services/scheduleItemsService'
@@ -103,6 +105,8 @@ export default function DealDrawer({ open, deal, onClose, onStatusChange }) {
   const [actionLoading, setActionLoading] = useState(false)
   const [actionError, setActionError] = useState(null)
   const [mounted, setMounted] = useState(false)
+  // Wave XXX-M: Copy Job Number affordance (prep for JobDrawer retirement)
+  const [jobNumberCopied, setJobNumberCopied] = useState(false)
 
   const location = useOptionalLocation()
   const fromOverdue = location?.pathname === '/overdue'
@@ -268,6 +272,20 @@ export default function DealDrawer({ open, deal, onClose, onStatusChange }) {
     }
   }
 
+  // Wave XXX-M: copy job number to clipboard (parity with JobDrawer for the
+  // simplified DealDrawer to fully replace it).
+  const handleCopyJobNumber = async () => {
+    const text = deal?.job_number
+    if (!text || typeof navigator === 'undefined' || !navigator.clipboard) return
+    try {
+      await navigator.clipboard.writeText(String(text))
+      setJobNumberCopied(true)
+      window.setTimeout(() => setJobNumberCopied(false), 2000)
+    } catch (err) {
+      console.error('Failed to copy job number:', err)
+    }
+  }
+
   if (!open) return null
 
   const jobParts = Array.isArray(deal?.job_parts) ? deal.job_parts : []
@@ -297,8 +315,23 @@ export default function DealDrawer({ open, deal, onClose, onStatusChange }) {
               </div>
             )}
             {identifierLabel && (
-              <div className="text-[10px] font-mono uppercase tracking-wide text-slate-400">
-                {identifierLabel}
+              <div className="flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-wide text-slate-400">
+                <span>{identifierLabel}</span>
+                {deal?.job_number ? (
+                  <button
+                    type="button"
+                    onClick={handleCopyJobNumber}
+                    aria-label="Copy job number"
+                    title="Copy job number"
+                    className="inline-flex items-center justify-center rounded p-0.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+                  >
+                    {jobNumberCopied ? (
+                      <Check className="h-3 w-3 text-emerald-600" />
+                    ) : (
+                      <Copy className="h-3 w-3" />
+                    )}
+                  </button>
+                ) : null}
               </div>
             )}
             <h2 id="deal-drawer-title" className="text-lg font-semibold text-slate-900 truncate">

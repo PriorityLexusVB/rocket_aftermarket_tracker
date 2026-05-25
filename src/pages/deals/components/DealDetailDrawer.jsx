@@ -18,6 +18,9 @@ export default function DealDetailDrawer({ isOpen, onClose, deal, onComplete, on
     return () => cancelAnimationFrame(id)
   }, [isOpen])
 
+  // Wave XXX-M: removed Files, Activity, Alerts/Holds tabs — each rendered a
+  // "coming soon" / empty state with no add affordance. Dead tabs create dead
+  // ends and confuse new users. Restore when the underlying feature ships.
   const tabs = useMemo(
     () => [
       'Customer',
@@ -25,9 +28,6 @@ export default function DealDetailDrawer({ isOpen, onClose, deal, onComplete, on
       'Deal & Pricing',
       'Scheduling',
       'Vendor',
-      'Files',
-      'Activity',
-      'Alerts/Holds',
     ],
     []
   )
@@ -141,8 +141,8 @@ export default function DealDetailDrawer({ isOpen, onClose, deal, onComplete, on
                   </div>
                 </div>
                 <div>
-                  <div className="text-xs text-slate-500">Est. Margin</div>
-                  <div className="font-medium">
+                  <div className="text-xs text-slate-500">Est. Margin (25% placeholder)</div>
+                  <div className="font-medium text-slate-500" title="Hardcoded 25% estimate — not actual margin from line items">
                     {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(
                       (parseFloat(deal?.total_amount) || 0) * 0.25
                     )}

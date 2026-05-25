@@ -10,7 +10,9 @@ import Clock from 'lucide-react/dist/esm/icons/clock.js'
 import Car from 'lucide-react/dist/esm/icons/car.js'
 import Building2 from 'lucide-react/dist/esm/icons/building-2.js'
 import MapPin from 'lucide-react/dist/esm/icons/map-pin.js'
-import GitBranch from 'lucide-react/dist/esm/icons/git-branch.js'
+// Wave XXX-M: GitBranch (a code-versioning icon) was wrong semantic for
+// "this job goes to multiple locations." Route conveys "path with stops."
+import Route from 'lucide-react/dist/esm/icons/route.js'
 import CheckCircle from 'lucide-react/dist/esm/icons/check-circle.js'
 import RefreshCw from 'lucide-react/dist/esm/icons/refresh-cw.js'
 import { formatTime, getStatusBadge } from '../../../lib/time'
@@ -373,7 +375,7 @@ const RoundUpModal = ({
                   className="flex items-center gap-1 text-muted-foreground"
                   aria-label="Location: Mixed"
                 >
-                  <GitBranch className="h-3 w-3 text-blue-500 shrink-0" />
+                  <Route className="h-3 w-3 text-blue-500 shrink-0" />
                   <span
                     className="bg-blue-100 text-blue-700 font-semibold px-1.5 py-0.5 rounded-full whitespace-nowrap"
                     title="Job has both in-house and off-site parts"

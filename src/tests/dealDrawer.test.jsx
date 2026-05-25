@@ -51,24 +51,38 @@ describe('DealDrawer', () => {
 
   it('traps focus within drawer', () => {
     render(<DealDrawer open deal={sampleDeal} onClose={() => {}} />)
+    const dialog = screen.getByRole('dialog')
     const openDealLink = screen.getByRole('link', { name: /Open deal/i })
-    const closeButton = screen.getByRole('button', { name: /close/i })
     const primaryAction = screen.getByRole('button', { name: /Mark In Progress/i })
 
-    // Shift+Tab from first element should wrap to last
-    closeButton.focus()
+    // Wave XXX-M: the drawer's focus trap is order-aware but the focusable
+    // element count changes whenever buttons are added/removed (Copy Job #,
+    // No-Show, Reschedule, etc.). The invariant the trap actually guarantees
+    // is "focus never escapes the drawer." Test the invariant, not the order.
+
+    // Compute the trap's view of first/last directly so this test survives
+    // future button additions without being a maintenance trap.
+    const focusables = dialog.querySelectorAll(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    )
+    const first = focusables[0]
+    const last = focusables[focusables.length - 1]
+
+    // Shift+Tab from FIRST wraps to LAST
+    first.focus()
     fireEvent.keyDown(document, { key: 'Tab', shiftKey: true })
-    expect(primaryAction).toHaveFocus()
+    expect(last).toHaveFocus()
 
-    // Tab from last element should wrap to first
-    primaryAction.focus()
+    // Tab from LAST wraps to FIRST
+    last.focus()
     fireEvent.keyDown(document, { key: 'Tab' })
-    expect(closeButton).toHaveFocus()
+    expect(first).toHaveFocus()
 
-    // Tab between elements should keep focus within drawer
+    // Tab from a middle element keeps focus within drawer
     openDealLink.focus()
     fireEvent.keyDown(document, { key: 'Tab' })
     expect(document.activeElement).not.toBe(document.body)
+    expect(dialog.contains(document.activeElement)).toBe(true)
   })
 
   it('renders section scaffolding headings', () => {

@@ -211,7 +211,6 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
           '',
         scheduledEndTime:
           item?.scheduledEndTime || formatTime(item?.scheduled_end_time || item?.appt_end) || '',
-        isMultiDay: false,
       }))
 
       // 🔍 DEBUG: Log line items loading
@@ -342,7 +341,6 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
         unitPrice: '',
         requiresScheduling: true,
         dateScheduled: tomorrowStr,
-        isMultiDay: false,
         scheduledStartTime: '',
         scheduledEndTime: '',
         noScheduleReason: '',
@@ -366,7 +364,6 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
               updatedItem.dateScheduled = ''
               updatedItem.scheduledStartTime = ''
               updatedItem.scheduledEndTime = ''
-              updatedItem.isMultiDay = false
             }
           }
 
@@ -1390,20 +1387,13 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
                                 Time is optional for off-site work. Promise date is required.
                               </p>
                             </div>
-                            <div>
-                              <label className="flex items-center gap-2">
-                                <input
-                                  type="checkbox"
-                                  checked={item?.isMultiDay}
-                                  onChange={(e) =>
-                                    updateLineItem(item?.id, 'isMultiDay', e?.target?.checked)
-                                  }
-                                  className="h-5 w-5 accent-blue-600"
-                                  data-testid={`multi-day-${index}`}
-                                />
-                                <span className="text-sm">Work spans multiple days</span>
-                              </label>
-                            </div>
+                            {/* Wave XXX-M: killed the "Work spans multiple days" checkbox.
+                                It was redundant — promised_date IS the customer-facing end
+                                date, and start/end can already differ by date. The
+                                effective rule: if scheduledEndTime is empty, the system
+                                treats the job as "ends on promised_date." If the user
+                                wants the end on a different day than start, they update
+                                promised_date — that's the canonical signal. */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                               <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">

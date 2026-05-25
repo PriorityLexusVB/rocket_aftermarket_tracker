@@ -1070,7 +1070,15 @@ export default function DealsPage() {
                 ) : null}
               </div>
             ) : (
-              <SheetViewTable deals={sortedDeals} onRowClick={handleOpenDetail} />
+              <>
+                {/* Wave XXX-M: clarify that Sheet View is read-only.
+                    Card View has edit/complete/delete actions per row. */}
+                <div className="mb-2 inline-flex items-center gap-1.5 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-medium text-amber-800">
+                  <Icon name="Lock" size={12} />
+                  Sheet View is read-only — switch to Card View to edit, complete, or delete deals.
+                </div>
+                <SheetViewTable deals={sortedDeals} onRowClick={handleOpenDetail} />
+              </>
             )
           ) : sortedDeals?.length === 0 ? (
             <div className="bg-card rounded-lg border border-border p-10 text-center">

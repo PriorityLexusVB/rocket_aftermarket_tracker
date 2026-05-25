@@ -104,7 +104,13 @@ const DashboardPage = () => {
       setError(null)
       setOpenOppByJobId({})
 
-      const [jobsTodayRes, jobsThroughTomorrowRes, jobsMtdRes, deals, claimsStats, oppSummary, overdueCountRes, needsScheduleRes] =
+      // Wave XXX-M: fetch jobs whose promised_date is today but have no
+      // scheduled_start_time. Without this, "promised today" in-house jobs
+      // (e.g., the Thursday rust-proofing case) never appear on the dashboard.
+      const todayStartIso = startOfToday().toISOString()
+      const todayEndIso = endOfToday().toISOString()
+
+      const [jobsTodayRes, jobsThroughTomorrowRes, jobsMtdRes, deals, claimsStats, oppSummary, overdueCountRes, needsScheduleRes, promisedTodayRes] =
         await Promise.all([
           calendarService.getJobsByDateRange(startOfToday(), endOfToday(), {
             orgId: orgId || null,
@@ -134,6 +140,16 @@ const DashboardPage = () => {
             .not('job_status', 'in', '(completed,cancelled,delivered)')
             .then((r) => r, () => null),
           calendarService.getNeedsScheduleStats(orgId || null),
+          // Promise-only-today jobs: promised today, no scheduled time. Get the
+          // vehicle relation so the row renders the same shape as scheduled jobs.
+          supabase
+            .from('jobs')
+            .select('id, title, customer_name, vendor_id, vendor_name, vehicle_id, vehicle_info, scheduled_start_time, scheduled_end_time, promised_date, job_status, vehicle:vehicles(year, make, model, stock_number, owner_name)')
+            .gte('promised_date', todayStartIso)
+            .lte('promised_date', todayEndIso)
+            .is('scheduled_start_time', null)
+            .not('job_status', 'in', '(completed,cancelled,delivered,draft,no_show)')
+            .then((r) => r, () => null),
         ])
 
       setNeedsSchedule(needsScheduleRes?.data || { total: 0, vendor: 0, inhouse: 0 })
@@ -141,6 +157,14 @@ const DashboardPage = () => {
       const jobsToday = Array.isArray(jobsTodayRes?.data) ? jobsTodayRes.data : []
       const jobsTT = Array.isArray(jobsThroughTomorrowRes?.data) ? jobsThroughTomorrowRes.data : []
       const jobsMtd = Array.isArray(jobsMtdRes?.data) ? jobsMtdRes.data : []
+      // Wave XXX-M: merge promise-only-today jobs into the today list. Dedupe by id
+      // (a job that's both scheduled today AND promised today should appear once).
+      const promisedTodayRows = Array.isArray(promisedTodayRes?.data) ? promisedTodayRes.data : []
+      const todayIds = new Set(jobsToday.map((j) => j?.id))
+      const promisedOnlyToday = promisedTodayRows
+        .filter((j) => !todayIds.has(j?.id))
+        .map((j) => ({ ...j, _promiseOnly: true }))
+      const todayJobsCombined = [...jobsToday, ...promisedOnlyToday]
       const safeDeals = Array.isArray(deals) ? deals : []
 
       const dealById = new Map(safeDeals.map((d) => [d?.id, d]))
@@ -156,7 +180,7 @@ const DashboardPage = () => {
         return sum + (Number.isFinite(Number(count)) ? Number(count) : 0)
       }, 0)
 
-      setTodayJobs(jobsToday)
+      setTodayJobs(todayJobsCombined)
       setJobsThroughTomorrow(jobsTT)
       setTodayDeals(mappedTodayDeals)
       setMtdDeals(mappedMtdDeals)
@@ -572,9 +596,15 @@ const DashboardPage = () => {
                   {todayJobs
                     .slice()
                     .sort((a, b) => {
+                      // Scheduled jobs first (by time), then promise-only at the end.
                       const am = Date.parse(a?.scheduled_start_time || '')
                       const bm = Date.parse(b?.scheduled_start_time || '')
-                      return (Number.isFinite(am) ? am : 0) - (Number.isFinite(bm) ? bm : 0)
+                      const aHas = Number.isFinite(am)
+                      const bHas = Number.isFinite(bm)
+                      if (aHas && !bHas) return -1
+                      if (!aHas && bHas) return 1
+                      if (!aHas && !bHas) return 0
+                      return am - bm
                     })
                     .map((job) => {
                       const deal = todayDeals.find((d) => d?.id === job?.id) || null
@@ -593,6 +623,25 @@ const DashboardPage = () => {
                             })
                           : 'Time TBD'
 
+                      // Wave XXX-M: show promise context when meaningful.
+                      // - Promise-only-today (no scheduled time) → "Promised today"
+                      // - Scheduled today but promised LATER → "Promised Wed" (multi-day)
+                      // - Scheduled today and promised today → nothing extra (the common case)
+                      const promiseDateRaw = job?.promised_date
+                      let promiseLabel = null
+                      if (promiseDateRaw) {
+                        const promise = new Date(promiseDateRaw)
+                        if (!Number.isNaN(promise.getTime())) {
+                          const today = new Date()
+                          const sameDay = promise.toDateString() === today.toDateString()
+                          if (job?._promiseOnly) {
+                            promiseLabel = sameDay ? 'Promised today' : `Promised ${promise.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}`
+                          } else if (start && promise.toDateString() !== start.toDateString()) {
+                            promiseLabel = `Promised ${promise.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}`
+                          }
+                        }
+                      }
+
                       const loaner = deal?.loaner_number || deal?.loaner_id || deal?.loaner_assigned
 
                       return (
@@ -607,7 +656,11 @@ const DashboardPage = () => {
                                   {job?.title || 'Open deal'}
                                 </div>
                                 <div className="mt-0.5 text-xs text-gray-600 truncate">
-                                  {timeLabel} •{' '}
+                                  {timeLabel}
+                                  {promiseLabel ? (
+                                    <span className="text-amber-700 font-medium"> · {promiseLabel}</span>
+                                  ) : null}
+                                  {' • '}
                                   {job?.customer_name || job?.vehicle?.owner_name || '—'} •{' '}
                                   {job?.vehicle_info || ''}
                                   {job?.vehicle?.stock_number ? ` · #${job.vehicle.stock_number}` : ''}
