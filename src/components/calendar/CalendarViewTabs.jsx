@@ -69,7 +69,7 @@ export default function CalendarViewTabs() {
             item.target === 'calendar'
               ? range === 'week' || range === 'month'
                 ? range
-                : 'month'
+                : 'week'
               : range
           const href = getCalendarDestination({ target: item.target, range: nextRange, date })
           const active = isActive(href, item)

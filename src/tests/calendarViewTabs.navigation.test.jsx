@@ -31,7 +31,7 @@ describe('CalendarViewTabs navigation', () => {
     }
   })
 
-  it('renders Calendar tab link to canonical calendar route', () => {
+  it('renders Calendar tab link to canonical calendar route (defaults to week, not month, on sparse-data first-impression)', () => {
     render(
       <MemoryRouter initialEntries={['/calendar/agenda']}>
         <CalendarViewTabs />
@@ -39,7 +39,7 @@ describe('CalendarViewTabs navigation', () => {
     )
 
     const calendarLink = screen.getByRole('link', { name: 'Calendar' })
-    const expected = getCalendarDestination({ target: 'calendar', range: 'month' })
+    const expected = getCalendarDestination({ target: 'calendar', range: 'week' })
     expect(calendarLink.getAttribute('href')).toBe(expected)
   })
 })
