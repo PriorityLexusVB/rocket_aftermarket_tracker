@@ -16,6 +16,7 @@ import { handleAuthError, isTechNoiseMessage } from '@/lib/authErrorHandler'
 import CalendarLegend from '@/components/calendar/CalendarLegend'
 import CalendarViewTabs from '@/components/calendar/CalendarViewTabs'
 import EventDetailPopover from '@/components/calendar/EventDetailPopover'
+import CalendarAgenda from '@/pages/calendar-agenda'
 import AppLayout from '@/components/layouts/AppLayout'
 import { getEventColors } from '@/utils/calendarColors'
 import { getReopenTargetStatus } from '@/utils/jobStatusTimeRules'
@@ -95,6 +96,142 @@ const safeFormatTime = (dateInput, options = {}) => {
     console.warn('Time formatting error:', dateInput, error)
     return ''
   }
+}
+
+// === Wave B time-axis week-view helpers ============================
+// 7am-7pm visible band (Rob pick Q1), 64px per hour (Rob pick Q2).
+// 12 hours × 64px = 768px total grid height — fits a 768p laptop exactly.
+const WEEK_GRID_START_HOUR = 7
+const WEEK_GRID_END_HOUR = 19
+const WEEK_GRID_HOUR_PX = 64
+const WEEK_GRID_TOTAL_HEIGHT_PX = (WEEK_GRID_END_HOUR - WEEK_GRID_START_HOUR) * WEEK_GRID_HOUR_PX
+const WEEK_GRID_MIN_BLOCK_PX = 32
+
+const isPromiseOnly = (job) =>
+  job?.time_tbd === true || job?.schedule_state === 'scheduled_no_time'
+
+const isOffGridDate = (date) => {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) return true
+  const hour = date.getHours()
+  return hour < WEEK_GRID_START_HOUR || hour >= WEEK_GRID_END_HOUR
+}
+
+const minutesFromGridStart = (date) => {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) return null
+  return (date.getHours() - WEEK_GRID_START_HOUR) * 60 + date.getMinutes()
+}
+
+const jobTopPx = (date) => {
+  const mins = minutesFromGridStart(date)
+  if (mins == null) return 0
+  return (mins / 60) * WEEK_GRID_HOUR_PX
+}
+
+const jobHeightPx = (start, end) => {
+  if (!(start instanceof Date)) return WEEK_GRID_MIN_BLOCK_PX
+  // No end time → default 1 hour (Rob pick Q7 fallback).
+  const realEnd =
+    end instanceof Date && !Number.isNaN(end.getTime())
+      ? end
+      : new Date(start.getTime() + 60 * 60 * 1000)
+  const durationMin = Math.max(15, (realEnd.getTime() - start.getTime()) / 60000)
+  const px = (durationMin / 60) * WEEK_GRID_HOUR_PX
+  return Math.max(WEEK_GRID_MIN_BLOCK_PX, px)
+}
+
+// Greedy column-packing for overlap resolution.
+// Returns enriched job entries with { job, top, height, colIdx, colCount }.
+// All entries within a single overlap cluster share the same colCount.
+const layoutOverlaps = (timedJobs) => {
+  if (!Array.isArray(timedJobs) || timedJobs.length === 0) return []
+  const entries = timedJobs
+    .map((job) => {
+      const start = safeCreateDate(job?.scheduled_start_time)
+      if (!start || isOffGridDate(start)) return null
+      const end = safeCreateDate(job?.scheduled_end_time)
+      const realEnd =
+        end && !Number.isNaN(end.getTime())
+          ? end
+          : new Date(start.getTime() + 60 * 60 * 1000)
+      return { job, start, end: realEnd, top: jobTopPx(start), height: jobHeightPx(start, realEnd) }
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.start.getTime() - b.start.getTime() || b.end.getTime() - a.end.getTime())
+
+  // Walk left-to-right, assigning each job to the lowest-index column whose last job ended <= this start.
+  const cols = [] // each col = last end time
+  const assigned = entries.map((entry) => {
+    let colIdx = cols.findIndex((endMs) => endMs <= entry.start.getTime())
+    if (colIdx === -1) {
+      colIdx = cols.length
+      cols.push(entry.end.getTime())
+    } else {
+      cols[colIdx] = entry.end.getTime()
+    }
+    return { ...entry, colIdx }
+  })
+
+  // Group into overlap clusters → all members share colCount = cluster's max colIdx + 1.
+  const clusters = []
+  let current = []
+  let currentMaxEnd = -Infinity
+  for (const entry of assigned) {
+    if (entry.start.getTime() >= currentMaxEnd) {
+      if (current.length) clusters.push(current)
+      current = [entry]
+      currentMaxEnd = entry.end.getTime()
+    } else {
+      current.push(entry)
+      currentMaxEnd = Math.max(currentMaxEnd, entry.end.getTime())
+    }
+  }
+  if (current.length) clusters.push(current)
+
+  return clusters.flatMap((cluster) => {
+    const colCount = Math.max(1, ...cluster.map((e) => e.colIdx + 1))
+    return cluster.map((entry) => ({
+      job: entry.job,
+      top: entry.top,
+      height: entry.height,
+      colIdx: entry.colIdx,
+      colCount,
+    }))
+  })
+}
+
+// matchMedia inline hook (mirrors Navbar.jsx:63 pattern; no useMediaQuery in repo).
+// Defensive against jsdom-without-matchMedia test envs.
+const useIsBelowMd = () => {
+  const [isBelow, setIsBelow] = useState(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return false
+    try {
+      return window.matchMedia('(max-width: 767px)').matches
+    } catch {
+      return false
+    }
+  })
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return
+    let mql
+    try {
+      mql = window.matchMedia('(max-width: 767px)')
+    } catch {
+      return
+    }
+    if (!mql) return
+    const apply = () => setIsBelow(mql.matches)
+    apply()
+    if (typeof mql.addEventListener === 'function') {
+      mql.addEventListener('change', apply)
+      return () => mql.removeEventListener('change', apply)
+    }
+    if (typeof mql.addListener === 'function') {
+      mql.addListener(apply)
+      return () => mql.removeListener(apply)
+    }
+    return undefined
+  }, [])
+  return isBelow
 }
 
 const VALID_VIEW_TYPES = new Set(['day', 'week', 'month'])
@@ -203,6 +340,13 @@ const CalendarSchedulingCenter = ({
   const cellBgToday = darkUi ? 'bg-white/10' : 'bg-blue-50/30'
   const cellBg = darkUi ? 'bg-background' : 'bg-white'
   const cellBgAlt = darkUi ? 'bg-background' : 'bg-gray-50'
+  // Wave B: now-line + mobile fallback state.
+  const [nowMs, setNowMs] = useState(() => Date.now())
+  useEffect(() => {
+    const id = setInterval(() => setNowMs(Date.now()), 60000)
+    return () => clearInterval(id)
+  }, [])
+  const isMobile = useIsBelowMd()
   const shellDate = shellState?.date
   const shellRange = shellState?.range
   const [currentDate, setCurrentDate] = useState(() => {
@@ -744,223 +888,359 @@ const CalendarSchedulingCenter = ({
         })
       }
 
+      // === Wave B time-axis week view (Slice 1 + 4) ============================
+      const hourLabels = []
+      for (let h = WEEK_GRID_START_HOUR; h < WEEK_GRID_END_HOUR; h++) {
+        const label = `${(h % 12) || 12}${h < 12 ? 'a' : 'p'}`
+        hourLabels.push({ hour: h, label })
+      }
+      const nowDate = new Date(nowMs)
+
       return (
-        <div className="grid grid-cols-7 gap-1 h-full">
-          {/* Day headers */}
-          {weekDays?.map((day, index) => (
-            <div
-              key={`header-${index}`}
-              className={cx(
-                'sticky top-0 z-10 p-1 border-b font-semibold text-center',
-                darkUi ? 'border-white/10 text-gray-300' : 'border-gray-200',
-                day?.date?.toDateString?.() === todayKey
-                  ? darkUi
-                    ? 'bg-slate-800'
-                    : 'bg-blue-50'
-                  : darkUi
-                    ? 'bg-slate-900'
-                    : 'bg-gray-50'
-              )}
-            >
-              <div className={cx('text-sm', darkUi ? 'text-gray-300' : 'text-gray-600')}>
-                {safeFormatDate(day?.date, { weekday: 'short' }) || 'N/A'}
-              </div>
-              <div className="text-base">{day?.date?.getDate() || '?'}</div>
+        <div className="flex h-full overflow-hidden">
+          {/* Time-axis gutter (left edge) */}
+          <div
+            className={cx(
+              'w-12 shrink-0 relative border-r',
+              darkUi ? 'border-white/10' : 'border-gray-200'
+            )}
+            aria-hidden="true"
+          >
+            {/* Spacer matches sticky day-header height */}
+            <div className="h-12 border-b" style={{ borderColor: darkUi ? 'rgba(255,255,255,0.1)' : 'rgb(229,231,235)' }} />
+            {/* Hour labels positioned at each hour line */}
+            <div className="relative" style={{ height: `${WEEK_GRID_TOTAL_HEIGHT_PX}px` }}>
+              {hourLabels.map(({ hour, label }) => (
+                <div
+                  key={`hl-label-${hour}`}
+                  className={cx(
+                    'absolute right-1 text-[10px] -translate-y-1/2',
+                    darkUi ? 'text-gray-400' : 'text-gray-500'
+                  )}
+                  style={{ top: `${(hour - WEEK_GRID_START_HOUR) * WEEK_GRID_HOUR_PX}px` }}
+                >
+                  {label}
+                </div>
+              ))}
             </div>
-          ))}
-          {/* Day content */}
-          {weekDays?.map((day, index) => (
-            <div
-              key={`content-${index}`}
-              className={cx(
-                'p-1 border-r min-h-80 overflow-y-auto',
-                darkUi ? 'border-white/10' : 'border-gray-200',
-                day?.date?.toDateString?.() === todayKey ? cellBgToday : cellBg
-              )}
-            >
-              {day?.jobs?.map((job) => {
-                const jobStartTime = job?.time_tbd
-                  ? null
-                  : safeCreateDate(job?.scheduled_start_time)
-                const normalizedStatus =
-                  job?.job_status === 'pending' ? 'scheduled' : job?.job_status
-                const isPromiseOnly =
-                  job?.time_tbd === true || job?.schedule_state === 'scheduled_no_time'
-                const colors = getEventColors(job?.service_type, normalizedStatus)
-                const statusLabel = isPromiseOnly
-                  ? 'PROMISE'
-                  : normalizedStatus
-                    ? normalizedStatus === 'scheduled'
-                      ? 'BOOKED'
-                      : String(normalizedStatus).replace(/_/g, ' ').toUpperCase()
-                    : 'SCHEDULED'
+          </div>
+          {/* 7 day columns */}
+          {weekDays?.map((day, index) => {
+            const isToday = day?.date?.toDateString?.() === todayKey
+            const dayJobs = day?.jobs || []
+            const promiseOnlyJobs = dayJobs.filter((j) => isPromiseOnly(j) || !j?.scheduled_start_time)
+            const timedJobs = dayJobs.filter((j) => !isPromiseOnly(j) && j?.scheduled_start_time)
+            const offGridJobs = timedJobs.filter((j) => isOffGridDate(safeCreateDate(j?.scheduled_start_time)))
+            const onGridJobs = timedJobs.filter((j) => !isOffGridDate(safeCreateDate(j?.scheduled_start_time)))
+            const positioned = layoutOverlaps(onGridJobs)
+            const bandJobs = [...promiseOnlyJobs, ...offGridJobs]
 
-                const jobNumber = job?.job_number?.split?.('-')?.pop?.() || ''
-                const vendorLabel = job?.vendor_name || (job?.vendor_id ? 'Vendor' : 'On-site')
-                const vehicleLabel = job?.vehicle_info || ''
-                const customerName = getAppointmentCustomerName(job)
-                const titleText = job?.title || ''
-                const titleWithNumber = jobNumber
-                  ? `${jobNumber} • ${titleText || 'Open deal'}`
-                  : titleText || 'Open deal'
-                const promiseLabel = job?.time_tbd
-                  ? safeFormatDate(job?.scheduled_start_time, {
-                      weekday: 'short',
-                      month: 'short',
-                      day: 'numeric',
-                    })
-                  : ''
-                const timeLabel = job?.time_tbd
-                  ? `Time TBD • Promise: ${promiseLabel || '—'}`
-                  : jobStartTime
-                    ? safeFormatTime(jobStartTime, {
-                        hour: 'numeric',
-                        minute: '2-digit',
-                      })
-                    : 'Invalid Time'
-                const popoverId = showDetailPopovers
-                  ? `calendar-popover-${job?.id || job?.calendar_key}`
-                  : undefined
-                const popoverLines = showDetailPopovers
-                    ? [
-                        timeLabel ? `Time: ${timeLabel}` : null,
-                        vendorLabel ? `Vendor: ${vendorLabel}` : null,
-                        customerName ? `Customer: ${customerName}` : null,
-                        vehicleLabel ? `Vehicle: ${vehicleLabel}` : null,
-                        statusLabel ? `Status: ${statusLabel}` : null,
-                      ]
-                    : []
-                const handleGridClick = getCalendarGridClickHandler({
-                  dealDrawerEnabled: canOpenDrawer,
-                  onOpenDealDrawer,
-                  navigate,
-                  deal: job,
-                })
-
-                const locMeta = getLocationMeta(job)
-                const overdue = isOverdueJob(job)
-                return (
-                  <div
-                    key={job?.calendar_key || job?.id}
-                    className={`group relative mb-2 p-2 rounded text-xs cursor-pointer hover:shadow-md transition-shadow border ${locMeta.border} ${overdue ? 'ring-1 ring-red-400 ring-offset-1' : ''} ${colors?.className || 'bg-blue-100 border-blue-300 text-blue-900'}`}
-                    onClick={handleGridClick}
-                    onKeyDown={(event) => handleCalendarCardKeyDown(event, handleGridClick)}
-                    role="button"
-                    tabIndex={0}
-                    aria-label={`Open deal ${titleWithNumber}${overdue ? ' (overdue)' : ''}`}
-                    title={titleText}
-                    aria-describedby={popoverId}
-                  >
-                    {overdue && (
-                      <div className="mb-1 inline-flex items-center gap-1 rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-semibold text-red-800">
-                        <span aria-hidden="true">!</span>
-                        Overdue
-                      </div>
-                    )}
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="font-semibold truncate min-w-0">
-                        {jobNumber ? `${jobNumber} • ` : ''}
-                        {job?.title}
-                      </div>
-                      <div className="flex items-center gap-1 shrink-0">
-                        {!isPromiseOnly && (
-                          <button
-                            type="button"
-                            onClick={(e) =>
-                              String(job?.job_status || '').toLowerCase() === 'completed'
-                                ? handleReopen(job, e)
-                                : handleComplete(job, e)
-                            }
-                            disabled={isStatusInFlight(job?.id)}
-                            className={
-                              String(job?.job_status || '').toLowerCase() === 'completed'
-                                ? `inline-flex h-8 w-8 items-center justify-center rounded-md border border-indigo-200 bg-indigo-50 text-indigo-800 ${
-                                    isStatusInFlight(job?.id)
-                                      ? 'opacity-50 cursor-not-allowed'
-                                      : 'hover:bg-indigo-100'
-                                  }`
-                                : `inline-flex h-8 w-8 items-center justify-center rounded-md border border-emerald-200 bg-emerald-50 text-emerald-800 ${
-                                    isStatusInFlight(job?.id)
-                                      ? 'opacity-50 cursor-not-allowed'
-                                      : 'hover:bg-emerald-100'
-                                  }`
-                            }
-                            aria-label={
-                              String(job?.job_status || '').toLowerCase() === 'completed'
-                                ? 'Reopen'
-                                : 'Complete'
-                            }
-                            title={
-                              String(job?.job_status || '').toLowerCase() === 'completed'
-                                ? 'Reopen deal'
-                                : 'Mark completed'
-                            }
-                          >
-                            {String(job?.job_status || '').toLowerCase() === 'completed' ? (
-                              <RefreshCw className="h-4 w-4" />
-                            ) : (
-                              <CheckCircle className="h-4 w-4" />
-                            )}
-                          </button>
-                        )}
-                        <span
-                          className={`px-2 py-0.5 rounded text-[10px] font-semibold ${colors?.badge || 'bg-blue-500 text-white'} ${colors?.pulse ? 'animate-pulse' : ''}`}
-                        >
-                          {statusLabel}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="text-[11px] opacity-90 truncate">{vendorLabel}</div>
-                    {customerName ? (
-                      <div className="text-[11px] opacity-90 truncate">{customerName}</div>
-                    ) : null}
-                    {vehicleLabel ? (
-                      <div className="text-[11px] opacity-90 truncate">{vehicleLabel}</div>
-                    ) : null}
-                    <div className="mt-1 flex items-center justify-between gap-2">
-                      <span className="text-xs opacity-80">
-                        {job?.time_tbd
-                          ? `Time TBD • Promise: ${promiseLabel || '—'}`
-                          : jobStartTime
-                            ? safeFormatTime(jobStartTime, {
-                                hour: 'numeric',
-                                minute: '2-digit',
-                              })
-                            : 'Invalid Time'}
-                      </span>
-                    </div>
-                    {locMeta.label && (
-                      <div className="mt-1 flex items-center gap-1">
-                        <span className={`inline-block h-2 w-2 rounded-full shrink-0 ${locMeta.dot}`} aria-hidden="true" />
-                        <span className="text-[10px] text-gray-700">{locMeta.label}</span>
-                      </div>
-                    )}
-                    {Array.isArray(job?.work_tags) && job.work_tags.length ? (
-                      <div className="mt-1 flex flex-wrap gap-1">
-                        {job.work_tags.slice(0, MAX_WORK_TAGS_VISIBLE).map((tag) => (
-                          <span
-                            key={tag}
-                            title={getWorkTagLabel(tag)}
-                            className="rounded bg-white/70 px-1.5 py-0.5 text-[10px] font-medium text-gray-700"
-                          >
-                            {tag}
-                          </span>
-                        ))}
-                      </div>
-                    ) : null}
-
-                    {showDetailPopovers ? (
-                      <EventDetailPopover
-                        id={popoverId}
-                        title={titleWithNumber}
-                        lines={popoverLines}
-                      />
-                    ) : null}
+            return (
+              <div
+                key={`day-${index}`}
+                className={cx(
+                  'flex-1 min-w-0 flex flex-col border-r',
+                  darkUi ? 'border-white/10' : 'border-gray-200',
+                  isToday ? cellBgToday : cellBg
+                )}
+              >
+                {/* Sticky day header (h-12 = 48px) */}
+                <div
+                  className={cx(
+                    'sticky top-0 z-30 h-12 p-1 border-b font-semibold text-center flex flex-col justify-center',
+                    darkUi ? 'border-white/10 text-gray-300' : 'border-gray-200',
+                    isToday
+                      ? darkUi
+                        ? 'bg-slate-800'
+                        : 'bg-blue-50'
+                      : darkUi
+                        ? 'bg-slate-900'
+                        : 'bg-gray-50'
+                  )}
+                >
+                  <div className={cx('text-xs leading-tight', darkUi ? 'text-gray-300' : 'text-gray-600')}>
+                    {safeFormatDate(day?.date, { weekday: 'short' }) || 'N/A'}
                   </div>
-                )
-              })}
-            </div>
-          ))}
+                  <div className="text-sm leading-tight">{day?.date?.getDate() || '?'}</div>
+                </div>
+                {/* Promise + off-hours band (above grid) */}
+                {bandJobs.length > 0 && (
+                  <div
+                    className={cx(
+                      'flex flex-wrap gap-1 p-1 border-b',
+                      darkUi ? 'border-white/10 bg-white/5' : 'border-gray-200 bg-amber-50/60'
+                    )}
+                    aria-label="Promise and off-hours jobs"
+                  >
+                    {bandJobs.map((job) => {
+                      const promiseOnly = isPromiseOnly(job)
+                      const normalizedStatus =
+                        job?.job_status === 'pending' ? 'scheduled' : job?.job_status
+                      const colors = getEventColors(job?.service_type, normalizedStatus)
+                      const statusLabel = promiseOnly
+                        ? 'PROMISE'
+                        : normalizedStatus === 'scheduled'
+                          ? 'BOOKED'
+                          : String(normalizedStatus || 'SCHEDULED').replace(/_/g, ' ').toUpperCase()
+                      const jobNumber = job?.job_number?.split?.('-')?.pop?.() || ''
+                      const customerName = getAppointmentCustomerName(job)
+                      const titleText = job?.title || ''
+                      const titleWithNumber = jobNumber
+                        ? `${jobNumber} • ${titleText || 'Open deal'}`
+                        : titleText || 'Open deal'
+                      const promiseLabel = job?.scheduled_start_time
+                        ? safeFormatDate(job?.scheduled_start_time, {
+                            weekday: 'short',
+                            month: 'short',
+                            day: 'numeric',
+                          })
+                        : ''
+                      const promiseTime = !promiseOnly && job?.scheduled_start_time
+                        ? safeFormatTime(safeCreateDate(job?.scheduled_start_time), { hour: 'numeric', minute: '2-digit' })
+                        : ''
+                      const handleClick = getCalendarGridClickHandler({
+                        dealDrawerEnabled: canOpenDrawer,
+                        onOpenDealDrawer,
+                        navigate,
+                        deal: job,
+                      })
+                      const locMeta = getLocationMeta(job)
+                      const overdue = isOverdueJob(job)
+                      const isCompleted = String(job?.job_status || '').toLowerCase() === 'completed'
+                      return (
+                        <div
+                          key={`band-${job?.calendar_key || job?.id}`}
+                          className={cx(
+                            'group inline-flex flex-col gap-0.5 px-1.5 py-1 rounded text-[10px] cursor-pointer hover:shadow-md transition-shadow border min-w-0 max-w-full',
+                            locMeta.border,
+                            overdue ? 'ring-1 ring-red-400' : '',
+                            darkUi ? 'bg-white/10 text-gray-100 border-white/20' : 'bg-white border-amber-300 text-amber-900'
+                          )}
+                          onClick={handleClick}
+                          onKeyDown={(e) => handleCalendarCardKeyDown(e, handleClick)}
+                          role="button"
+                          tabIndex={0}
+                          aria-label={`Open deal ${titleWithNumber}${overdue ? ' (overdue)' : ''}`}
+                          title={titleText}
+                        >
+                          <div className="flex items-center gap-1 min-w-0">
+                            <span className="font-semibold truncate min-w-0">{jobNumber || 'Open'}</span>
+                            <span className={cx('shrink-0 px-1 rounded text-[9px] font-semibold', colors?.badge || 'bg-amber-500 text-white')}>
+                              {statusLabel}
+                            </span>
+                            {!promiseOnly && !isCompleted && (
+                              <button
+                                type="button"
+                                onClick={(e) => handleComplete(job, e)}
+                                disabled={isStatusInFlight(job?.id)}
+                                aria-label="Complete"
+                                title="Mark completed"
+                                className="shrink-0 inline-flex h-5 w-5 items-center justify-center rounded border border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 disabled:opacity-50"
+                              >
+                                <CheckCircle className="h-3 w-3" />
+                              </button>
+                            )}
+                            {!promiseOnly && isCompleted && (
+                              <button
+                                type="button"
+                                onClick={(e) => handleReopen(job, e)}
+                                disabled={isStatusInFlight(job?.id)}
+                                aria-label="Reopen"
+                                title="Reopen deal"
+                                className="shrink-0 inline-flex h-5 w-5 items-center justify-center rounded border border-indigo-200 bg-indigo-50 text-indigo-800 hover:bg-indigo-100 disabled:opacity-50"
+                              >
+                                <RefreshCw className="h-3 w-3" />
+                              </button>
+                            )}
+                          </div>
+                          {customerName ? (
+                            <span className="truncate opacity-90 max-w-full">{customerName}</span>
+                          ) : null}
+                          {promiseOnly && promiseLabel ? (
+                            <span className="truncate opacity-80 text-[9px] max-w-full">Promise: {promiseLabel}</span>
+                          ) : null}
+                          {!promiseOnly && promiseTime ? (
+                            <span className="truncate opacity-80 text-[9px] max-w-full">Off-hrs: {promiseTime}</span>
+                          ) : null}
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+                {/* Time-axis grid body */}
+                <div className="relative" style={{ height: `${WEEK_GRID_TOTAL_HEIGHT_PX}px` }}>
+                  {/* Hour gridlines */}
+                  {hourLabels.map(({ hour }, hi) => (
+                    <div
+                      key={`gl-${hour}`}
+                      className={cx(
+                        'absolute left-0 right-0 border-t',
+                        hi === 0 ? 'border-transparent' : (darkUi ? 'border-white/5' : 'border-gray-100')
+                      )}
+                      style={{ top: `${(hour - WEEK_GRID_START_HOUR) * WEEK_GRID_HOUR_PX}px` }}
+                    />
+                  ))}
+                  {/* Now line on today's column only */}
+                  {isToday && !isOffGridDate(nowDate) && (
+                    <div
+                      aria-hidden="true"
+                      className="absolute left-0 right-0 z-10 pointer-events-none"
+                      style={{ top: `${jobTopPx(nowDate)}px` }}
+                    >
+                      <div className="relative h-[2px] bg-red-500">
+                        <span className="absolute -left-1 -top-1 h-2.5 w-2.5 rounded-full bg-red-500 shadow" />
+                      </div>
+                    </div>
+                  )}
+                  {/* Positioned JobBlocks */}
+                  {positioned.map(({ job, top, height, colIdx, colCount }) => {
+                    const start = safeCreateDate(job?.scheduled_start_time)
+                    const end = safeCreateDate(job?.scheduled_end_time)
+                    const normalizedStatus =
+                      job?.job_status === 'pending' ? 'scheduled' : job?.job_status
+                    const colors = getEventColors(job?.service_type, normalizedStatus)
+                    const statusLabel = normalizedStatus === 'scheduled'
+                      ? 'BOOKED'
+                      : String(normalizedStatus || 'SCHEDULED').replace(/_/g, ' ').toUpperCase()
+                    const jobNumber = job?.job_number?.split?.('-')?.pop?.() || ''
+                    const vendorLabel = job?.vendor_name || (job?.vendor_id ? 'Vendor' : 'On-site')
+                    const vehicleLabel = job?.vehicle_info || ''
+                    const customerName = getAppointmentCustomerName(job)
+                    const titleText = job?.title || ''
+                    const titleWithNumber = jobNumber
+                      ? `${jobNumber} • ${titleText || 'Open deal'}`
+                      : titleText || 'Open deal'
+                    const timeStartLabel = safeFormatTime(start, { hour: 'numeric', minute: '2-digit' })
+                    const timeEndLabel = end ? safeFormatTime(end, { hour: 'numeric', minute: '2-digit' }) : ''
+                    const timeRange = timeEndLabel ? `${timeStartLabel}–${timeEndLabel}` : timeStartLabel
+                    const popoverId = showDetailPopovers
+                      ? `calendar-popover-${job?.id || job?.calendar_key}`
+                      : undefined
+                    const popoverLines = showDetailPopovers
+                      ? [
+                          timeRange ? `Time: ${timeRange}` : null,
+                          vendorLabel ? `Vendor: ${vendorLabel}` : null,
+                          customerName ? `Customer: ${customerName}` : null,
+                          vehicleLabel ? `Vehicle: ${vehicleLabel}` : null,
+                          statusLabel ? `Status: ${statusLabel}` : null,
+                        ]
+                      : []
+                    const handleClick = getCalendarGridClickHandler({
+                      dealDrawerEnabled: canOpenDrawer,
+                      onOpenDealDrawer,
+                      navigate,
+                      deal: job,
+                    })
+                    const locMeta = getLocationMeta(job)
+                    const overdue = isOverdueJob(job)
+                    const isCompleted = String(job?.job_status || '').toLowerCase() === 'completed'
+                    // Progressive disclosure tiers
+                    const showVendor = height >= 64
+                    const showCustomer = height >= 48
+                    const showDetails = height >= 128
+                    return (
+                      <div
+                        key={job?.calendar_key || job?.id}
+                        className={cx(
+                          'group absolute rounded text-[10px] cursor-pointer hover:shadow-md hover:z-30 transition-shadow border overflow-hidden',
+                          locMeta.border,
+                          overdue ? 'ring-1 ring-red-400' : '',
+                          colors?.className || 'bg-blue-100 border-blue-300 text-blue-900'
+                        )}
+                        style={{
+                          top: `${top}px`,
+                          height: `${height}px`,
+                          left: `calc(${(colIdx / colCount) * 100}% + 1px)`,
+                          width: `calc(${100 / colCount}% - 2px)`,
+                          zIndex: 20,
+                        }}
+                        onClick={handleClick}
+                        onKeyDown={(e) => handleCalendarCardKeyDown(e, handleClick)}
+                        role="button"
+                        tabIndex={0}
+                        aria-label={`Open deal ${titleWithNumber}${overdue ? ' (overdue)' : ''}`}
+                        title={`${timeRange} · ${titleText}`}
+                        aria-describedby={popoverId}
+                      >
+                        <div className="flex items-center justify-between gap-1 px-1 pt-0.5">
+                          <span className="font-semibold truncate min-w-0">
+                            {timeStartLabel ? `${timeStartLabel} ` : ''}
+                            {jobNumber || titleText || 'Open'}
+                          </span>
+                          <div className="flex items-center gap-0.5 shrink-0">
+                            {isCompleted ? (
+                              <button
+                                type="button"
+                                onClick={(e) => handleReopen(job, e)}
+                                disabled={isStatusInFlight(job?.id)}
+                                aria-label="Reopen"
+                                title="Reopen deal"
+                                className="inline-flex h-5 w-5 items-center justify-center rounded border border-indigo-200 bg-indigo-50 text-indigo-800 hover:bg-indigo-100 disabled:opacity-50"
+                              >
+                                <RefreshCw className="h-3 w-3" />
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={(e) => handleComplete(job, e)}
+                                disabled={isStatusInFlight(job?.id)}
+                                aria-label="Complete"
+                                title="Mark completed"
+                                className="inline-flex h-5 w-5 items-center justify-center rounded border border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 disabled:opacity-50"
+                              >
+                                <CheckCircle className="h-3 w-3" />
+                              </button>
+                            )}
+                            <span className={cx('px-1 rounded text-[9px] font-semibold', colors?.badge || 'bg-blue-500 text-white', colors?.pulse ? 'animate-pulse' : '')}>
+                              {statusLabel}
+                            </span>
+                          </div>
+                        </div>
+                        {showCustomer && customerName ? (
+                          <div className="px-1 truncate opacity-90">{customerName}</div>
+                        ) : null}
+                        {showVendor && vendorLabel ? (
+                          <div className="px-1 truncate opacity-80 text-[9px]">{vendorLabel}</div>
+                        ) : null}
+                        {showDetails ? (
+                          <>
+                            {vehicleLabel ? (
+                              <div className="px-1 truncate opacity-80 text-[9px]">{vehicleLabel}</div>
+                            ) : null}
+                            {locMeta.label ? (
+                              <div className="px-1 flex items-center gap-1">
+                                <span className={cx('inline-block h-1.5 w-1.5 rounded-full shrink-0', locMeta.dot)} aria-hidden="true" />
+                                <span className="text-[9px]">{locMeta.label}</span>
+                              </div>
+                            ) : null}
+                            {Array.isArray(job?.work_tags) && job.work_tags.length ? (
+                              <div className="px-1 mt-0.5 flex flex-wrap gap-0.5">
+                                {job.work_tags.slice(0, MAX_WORK_TAGS_VISIBLE).map((tag) => (
+                                  <span
+                                    key={tag}
+                                    title={getWorkTagLabel(tag)}
+                                    className="rounded bg-white/70 px-1 text-[9px] font-medium text-gray-700"
+                                  >
+                                    {tag}
+                                  </span>
+                                ))}
+                              </div>
+                            ) : null}
+                          </>
+                        ) : null}
+                        {overdue && (
+                          <span className="absolute top-0 right-0 px-1 text-[9px] font-bold bg-red-100 text-red-800 rounded-bl" aria-hidden="true">!</span>
+                        )}
+                        {showDetailPopovers ? (
+                          <EventDetailPopover id={popoverId} title={titleWithNumber} lines={popoverLines} />
+                        ) : null}
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )
+          })}
         </div>
       )
     }
@@ -1647,7 +1927,19 @@ const CalendarSchedulingCenter = ({
         >
           <div className="min-w-0">
             <div className="relative">
-              <CalendarGrid jobs={filteredJobs} viewType={viewType} />
+              {/* Wave B Slice 2: at narrow viewports, swap the time-axis grid for the Agenda list.
+                  Time-axis at 375px would render 44px-wide columns which are unreadable.
+                  CalendarAgenda is the canonical mobile fallback. */}
+              {isMobile && viewType === 'week' ? (
+                <CalendarAgenda
+                  embedded
+                  shellState={{ range: 'week', date: currentDate, q: searchQuery }}
+                  hideEmbeddedControls
+                  onOpenDealDrawer={canOpenDrawer ? onOpenDealDrawer : undefined}
+                />
+              ) : (
+                <CalendarGrid jobs={filteredJobs} viewType={viewType} />
+              )}
 
               {isEmptyRange ? (
                 <div className="absolute inset-0 flex items-center justify-center p-4 pointer-events-none">
