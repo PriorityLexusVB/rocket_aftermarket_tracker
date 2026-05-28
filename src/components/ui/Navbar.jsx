@@ -92,7 +92,7 @@ const Navbar = () => {
     { name: 'Home', href: '/', icon: HomeIcon, shortName: 'Home' },
     {
       name: 'Calendar',
-      href: getCalendarDestination({ target: 'calendar', range: 'month' }),
+      href: getCalendarDestination({ target: 'board', range: 'day' }),
       icon: Calendar,
     },
     { name: 'Overdue', href: '/overdue', icon: AlertTriangle, shortName: 'Overdue' },

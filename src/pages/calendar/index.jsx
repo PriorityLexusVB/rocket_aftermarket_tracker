@@ -751,14 +751,14 @@ const CalendarSchedulingCenter = ({
             <div
               key={`header-${index}`}
               className={cx(
-                'p-1 border-b font-semibold text-center',
+                'sticky top-0 z-10 p-1 border-b font-semibold text-center',
                 darkUi ? 'border-white/10 text-gray-300' : 'border-gray-200',
                 day?.date?.toDateString?.() === todayKey
                   ? darkUi
-                    ? 'bg-white/10'
+                    ? 'bg-slate-800'
                     : 'bg-blue-50'
                   : darkUi
-                    ? 'bg-white/5'
+                    ? 'bg-slate-900'
                     : 'bg-gray-50'
               )}
             >
@@ -863,44 +863,46 @@ const CalendarSchedulingCenter = ({
                         {job?.title}
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
-                        <button
-                          type="button"
-                          onClick={(e) =>
-                            String(job?.job_status || '').toLowerCase() === 'completed'
-                              ? handleReopen(job, e)
-                              : handleComplete(job, e)
-                          }
-                          disabled={isStatusInFlight(job?.id)}
-                          className={
-                            String(job?.job_status || '').toLowerCase() === 'completed'
-                              ? `inline-flex h-8 w-8 items-center justify-center rounded-md border border-indigo-200 bg-indigo-50 text-indigo-800 ${
-                                  isStatusInFlight(job?.id)
-                                    ? 'opacity-50 cursor-not-allowed'
-                                    : 'hover:bg-indigo-100'
-                                }`
-                              : `inline-flex h-8 w-8 items-center justify-center rounded-md border border-emerald-200 bg-emerald-50 text-emerald-800 ${
-                                  isStatusInFlight(job?.id)
-                                    ? 'opacity-50 cursor-not-allowed'
-                                    : 'hover:bg-emerald-100'
-                                }`
-                          }
-                          aria-label={
-                            String(job?.job_status || '').toLowerCase() === 'completed'
-                              ? 'Reopen'
-                              : 'Complete'
-                          }
-                          title={
-                            String(job?.job_status || '').toLowerCase() === 'completed'
-                              ? 'Reopen deal'
-                              : 'Mark completed'
-                          }
-                        >
-                          {String(job?.job_status || '').toLowerCase() === 'completed' ? (
-                            <RefreshCw className="h-4 w-4" />
-                          ) : (
-                            <CheckCircle className="h-4 w-4" />
-                          )}
-                        </button>
+                        {!isPromiseOnly && (
+                          <button
+                            type="button"
+                            onClick={(e) =>
+                              String(job?.job_status || '').toLowerCase() === 'completed'
+                                ? handleReopen(job, e)
+                                : handleComplete(job, e)
+                            }
+                            disabled={isStatusInFlight(job?.id)}
+                            className={
+                              String(job?.job_status || '').toLowerCase() === 'completed'
+                                ? `inline-flex h-8 w-8 items-center justify-center rounded-md border border-indigo-200 bg-indigo-50 text-indigo-800 ${
+                                    isStatusInFlight(job?.id)
+                                      ? 'opacity-50 cursor-not-allowed'
+                                      : 'hover:bg-indigo-100'
+                                  }`
+                                : `inline-flex h-8 w-8 items-center justify-center rounded-md border border-emerald-200 bg-emerald-50 text-emerald-800 ${
+                                    isStatusInFlight(job?.id)
+                                      ? 'opacity-50 cursor-not-allowed'
+                                      : 'hover:bg-emerald-100'
+                                  }`
+                            }
+                            aria-label={
+                              String(job?.job_status || '').toLowerCase() === 'completed'
+                                ? 'Reopen'
+                                : 'Complete'
+                            }
+                            title={
+                              String(job?.job_status || '').toLowerCase() === 'completed'
+                                ? 'Reopen deal'
+                                : 'Mark completed'
+                            }
+                          >
+                            {String(job?.job_status || '').toLowerCase() === 'completed' ? (
+                              <RefreshCw className="h-4 w-4" />
+                            ) : (
+                              <CheckCircle className="h-4 w-4" />
+                            )}
+                          </button>
+                        )}
                         <span
                           className={`px-2 py-0.5 rounded text-[10px] font-semibold ${colors?.badge || 'bg-blue-500 text-white'} ${colors?.pulse ? 'animate-pulse' : ''}`}
                         >
@@ -1196,7 +1198,7 @@ const CalendarSchedulingCenter = ({
                     </div>
                   </div>
 
-                  <div className="p-1 space-y-1 max-h-28 overflow-y-auto">
+                  <div className="p-1 space-y-1 overflow-hidden">
                     {visibleJobs.map((job) => {
                       const normalizedStatus =
                         job?.job_status === 'pending' ? 'scheduled' : job?.job_status
@@ -1525,7 +1527,7 @@ const CalendarSchedulingCenter = ({
     const overdueCount = overdueCountForEmptyState
 
     return (
-      <div className="p-4">
+      <div className={suppressChrome ? '' : 'p-4'}>
         {unifiedShellEnabled &&
           (consistency?.missingCount > 0 ||
             (consistency?.rpcCount > 0 && consistency?.jobCount === 0)) && (

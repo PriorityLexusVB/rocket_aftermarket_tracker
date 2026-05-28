@@ -106,7 +106,7 @@ const QuickNavigation = () => {
         group: 'Navigation',
         type: 'nav',
         name: 'Calendar & Scheduling',
-        path: getCalendarDestination({ target: 'calendar', range: 'month' }),
+        path: getCalendarDestination({ target: 'board', range: 'day' }),
         icon: Calendar,
         description: 'Manage appointments and scheduling',
         keywords: ['calendar', 'appointments', 'schedule', 'time'],
