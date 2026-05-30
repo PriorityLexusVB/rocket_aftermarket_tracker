@@ -476,7 +476,13 @@ export default function CalendarAgenda({ embedded = false, shellState, onOpenDea
         })
       }
 
-      const excluded = new Set(['draft', 'canceled', 'cancelled'])
+      // Redundant safety net — `normalizeScheduleItemFromJob` (scheduleItemsService.js:240)
+      // already strips draft/canceled/cancelled/completed before items reach this filter.
+      // We intentionally KEEP quality_check/delivered/no_show visible (coordinators
+      // need them in the working list). The Deals "overdue" tile uses a NARROWER
+      // exclusion set in `get_overdue_jobs` RPC (which also strips quality_check + no_show
+      // because those aren't actionable-overdue). Scope difference is intentional, not a bug.
+      const excluded = new Set(['draft', 'canceled', 'cancelled', 'completed'])
       const combined = [...(scheduledRes?.items || []), ...(promisedRes?.items || [])].filter(
         (it) => !excluded.has(String(it?.raw?.job_status || it?.job_status || '').toLowerCase())
       )
