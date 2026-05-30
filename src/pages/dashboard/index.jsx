@@ -124,7 +124,13 @@ const DashboardPage = () => {
       const todayStartIso = startOfToday().toISOString()
       const todayEndIso = endOfToday().toISOString()
 
-      const [jobsTodayRes, jobsThroughTomorrowRes, jobsMtdRes, deals, oppSummary, overdueCountRes, needsScheduleRes, overdueWithOldestRes, promisedTodayRes] =
+      // Wave XXX-U: the inline overdue COUNT query was removed (used UTC-midnight
+      // comparison that produced an 8hr ET false-positive). crossDayOverdueCount
+      // now derives from the same RPC the Overdue tile uses (getOverdueWithOldest,
+      // ET-day boundaries server-side per migration 20260525000600). v1.3.65 Wave 1
+      // cleanup: removed the lingering Promise.resolve(null) placeholder + the dead
+      // overdueCountRes destructure that survived Wave XXX-U.
+      const [jobsTodayRes, jobsThroughTomorrowRes, jobsMtdRes, deals, oppSummary, needsScheduleRes, overdueWithOldestRes, promisedTodayRes] =
         await Promise.all([
           calendarService.getJobsByDateRange(startOfToday(), endOfToday(), {
             orgId: orgId || null,
@@ -137,15 +143,6 @@ const DashboardPage = () => {
           }),
           getAllDeals(),
           getOpenOpportunitySummary().catch(() => null),
-          // Wave XXX-U: the separate inline overdue COUNT query is GONE.
-          // It used the same UTC-midnight comparison that produced the 8hr
-          // ET false-positive (calendar-flow-specialist NEW 1). We now
-          // derive crossDayOverdueCount from the same RPC result the
-          // Overdue tile uses (getOverdueWithOldest, which uses ET-day
-          // boundaries server-side per migration 20260525000600).
-          // Net: -1 API call per dashboard load + perfect consistency
-          // between the Overdue KPI tile and the Catch Up amber card.
-          Promise.resolve(null),
           calendarService.getNeedsScheduleStats(orgId || null),
           // Wave XXX-P: overdue count + oldest-days for the new Overdue tile
           calendarService.getOverdueWithOldest(orgId || null),
@@ -346,10 +343,6 @@ const DashboardPage = () => {
     profitMtd: mtdFinancials.hasUnknownProfit ? '—' : money0OrDash(mtdFinancials.profit),
     openOpp: money0OrDash(openOppSummary?.open_amount),
   }
-
-  const openOppSublabel = openOppSummary
-    ? `${Number(openOppSummary.open_deals_count) || 0} deals • ${Number(openOppSummary.open_count) || 0} ${Number(openOppSummary.open_count) === 1 ? 'open item' : 'open items'}`
-    : '—'
 
   return (
     <AppLayout>

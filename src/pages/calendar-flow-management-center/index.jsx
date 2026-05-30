@@ -588,30 +588,6 @@ const CalendarFlowManagementCenter = ({
     }
   }, [])
 
-  const handleJobStatusUpdate = async (jobId, newStatus) => {
-    await withStatusLock(jobId, async () => {
-      try {
-        const nextStatus = String(newStatus || '').toLowerCase()
-
-        // Status-only updates should use jobService so we can correctly manage completed_at.
-        if (nextStatus === 'completed') {
-          await jobService.updateStatus(jobId, 'completed', {
-            completed_at: new Date().toISOString(),
-          })
-          toast?.success?.('Completed')
-        } else {
-          // Clearing completed_at avoids "completed" timestamps lingering after status changes.
-          await jobService.updateStatus(jobId, nextStatus, { completed_at: null })
-        }
-
-        loadCalendarData() // Refresh data
-      } catch (error) {
-        console.error('Error updating job status:', error)
-        toast?.error?.(error?.message || 'Failed to update status')
-      }
-    })
-  }
-
   const handleCompleteJob = async (job, e) => {
     e?.stopPropagation?.()
     const jobId = job?.id

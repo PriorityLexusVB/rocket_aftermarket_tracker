@@ -107,6 +107,17 @@ const WEEK_GRID_HOUR_PX = 64
 const WEEK_GRID_TOTAL_HEIGHT_PX = (WEEK_GRID_END_HOUR - WEEK_GRID_START_HOUR) * WEEK_GRID_HOUR_PX
 const WEEK_GRID_MIN_BLOCK_PX = 32
 
+// Hour labels for the time-axis week-view gutter (module-scope so we don't
+// rebuild the array on every render of the calendar).
+const HOUR_LABELS = (() => {
+  const labels = []
+  for (let h = WEEK_GRID_START_HOUR; h < WEEK_GRID_END_HOUR; h++) {
+    const label = `${(h % 12) || 12}${h < 12 ? 'a' : 'p'}`
+    labels.push({ hour: h, label })
+  }
+  return labels
+})()
+
 const isPromiseOnly = (job) =>
   job?.time_tbd === true || job?.schedule_state === 'scheduled_no_time'
 
@@ -889,11 +900,7 @@ const CalendarSchedulingCenter = ({
       }
 
       // === Wave B time-axis week view (Slice 1 + 4) ============================
-      const hourLabels = []
-      for (let h = WEEK_GRID_START_HOUR; h < WEEK_GRID_END_HOUR; h++) {
-        const label = `${(h % 12) || 12}${h < 12 ? 'a' : 'p'}`
-        hourLabels.push({ hour: h, label })
-      }
+      // hourLabels lives at module scope (HOUR_LABELS) — see top of file.
       const nowDate = new Date(nowMs)
 
       return (
@@ -910,7 +917,7 @@ const CalendarSchedulingCenter = ({
             <div className="h-12 border-b" style={{ borderColor: darkUi ? 'rgba(255,255,255,0.1)' : 'rgb(229,231,235)' }} />
             {/* Hour labels positioned at each hour line */}
             <div className="relative" style={{ height: `${WEEK_GRID_TOTAL_HEIGHT_PX}px` }}>
-              {hourLabels.map(({ hour, label }) => (
+              {HOUR_LABELS.map(({ hour, label }) => (
                 <div
                   key={`hl-label-${hour}`}
                   className={cx(
@@ -1070,7 +1077,7 @@ const CalendarSchedulingCenter = ({
                 {/* Time-axis grid body */}
                 <div className="relative" style={{ height: `${WEEK_GRID_TOTAL_HEIGHT_PX}px` }}>
                   {/* Hour gridlines */}
-                  {hourLabels.map(({ hour }, hi) => (
+                  {HOUR_LABELS.map(({ hour }, hi) => (
                     <div
                       key={`gl-${hour}`}
                       className={cx(

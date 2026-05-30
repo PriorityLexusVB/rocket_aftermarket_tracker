@@ -53,7 +53,6 @@ describe('DealDrawer', () => {
     render(<DealDrawer open deal={sampleDeal} onClose={() => {}} />)
     const dialog = screen.getByRole('dialog')
     const openDealLink = screen.getByRole('link', { name: /Open deal/i })
-    const primaryAction = screen.getByRole('button', { name: /Mark In Progress/i })
 
     // Wave XXX-M: the drawer's focus trap is order-aware but the focusable
     // element count changes whenever buttons are added/removed (Copy Job #,

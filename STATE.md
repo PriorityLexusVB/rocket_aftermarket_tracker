@@ -3,7 +3,7 @@
 > Per-repo memory file. The repo's single source of truth for "where is this project."
 > Rewrite to current truth each working session — do NOT append session logs.
 
-**Last updated:** 2026-05-30 PM · **By:** WORK PC / Claude · **HEAD:** post-`0a804d7` (Wave B Slices 1+2+4 shipped 5/28; ET-aware Round-Up + isPromiseOnly cleanup in flight this session — commit pending)
+**Last updated:** 2026-05-30 ~14:00 ET · **By:** WORK PC / Claude · **HEAD:** post-`5c4d1e7` (Wave B follow-up #1 ET-aware Round-Up shipped 5/30 13:00 ET; Wave 1 cleanup in flight — commit pending: hourLabels hoist + 7 unused-var sweep + eslint `_`-prefix whitelist)
 
 ---
 
@@ -38,10 +38,27 @@ React 18 + Vite 7 + Tailwind 3 + Redux Toolkit + React Query. Supabase (Auth/Pos
 - [ ] **Twilio Trust Hub Brand registration** — ~10 min Rob manual action in Twilio console (unblocks SMS delivery).
 - [ ] **Appointments/List view overdue inconsistency** — calendar-flow-specialist sense-check found: Appointments page shows empty while Deals reports 3 overdue. `src/pages/calendar-agenda/index.jsx:479` excluded set is `['draft','canceled','cancelled']` — does NOT filter completed/delivered. Needs Rob decision: should Appointments match Deals overdue count (filter alignment) or is it intended-scope-difference?
 - [ ] **Product chip tooltip expansion** — EN3/RG/EXT/EVERNEW codes used in Round-Up export and deal cards without expansion labels. Touches DealDrawer.jsx, RoundUpModal.jsx, deal card renderers.
-- [ ] **Memoize `layoutOverlaps`** in `src/pages/calendar/index.jsx` — release-auditor flagged in Wave B as RECOMMENDED deferred. Currently recomputed on every render.
-- [ ] **Hoist `hourLabels`** to module scope — same Wave B deferred RECOMMENDED. Currently built per render.
-- [ ] Lint: 15 unused-var warnings (dealCRUD.js, jobService.js) — leftover from P1-2 auto-upgrade neutralization. Cosmetic; does not fail CI.
-- [ ] Dependabot PRs #341 (fast-uri) / #342 (npm-minor group) — #341 now moot (fast-uri overridden directly); review/close.
+- [ ] **Dependabot PR #345** — axios 1.15.2 → 1.16.0 security upgrade (1 CRITICAL CVSS 9.4 + 3 HIGH advisories). PRODUCTION DEP BUMP — Rob's call to merge. CI currently RED on the audit gate because of this; goes GREEN on merge.
+- [ ] **Dependabot PR #344** — npm-minor-patch group (31 deps). Rob decision.
+- [ ] **RoundUpModal date-aware export verification** — Wave 1 deleted a dead `exportRange` useMemo from RoundUpModal.jsx. The deleted code was using local-time `date-fns` boundaries (same bug class as the CalendarShell weekly/monthly Round-Up). Since the export now flows through CalendarShell's date range, and CalendarShell is ET-aware as of `5c4d1e7`, the export is implicitly ET-aware too — BUT worth a coordinator-side eyeball verification on the next live weekly+monthly export.
+
+## ✅ REJECTED open loops (closed without action)
+- ~~Memoize `layoutOverlaps`~~ — REJECTED 2026-05-30. Originally listed as Wave B "deferred RECOMMENDED" but verification could not find the release-auditor flag this claimed; was assumed from general React-perf patterns. `layoutOverlaps` is called inside a `.map(day => ...)` loop where each day computes a fresh `onGridJobs` via `.filter()` chains, so the array reference always differs and a naive `useMemo` would never hit. A real memoization would require WeakMap-keyed pure-function cache (non-trivial refactor touching hot render path) or upstream memoization of `weekDays`. Not worth the risk-of-stale-view tradeoff for a non-measured perf win. Will reconsider if it surfaces as a real bottleneck.
+- ~~Lint warning count "15"~~ — was actually 7 (count was stale); all 7 cleared in Wave 1.
+- ~~Dependabot PR #341 fast-uri~~ — was reported as moot; verified closed by Rob (no longer in open PR list).
+
+## ✅ Wave 1 cleanup shipped this session (commit pending)
+- `hourLabels` hoisted from per-render build (inside week-view JSX) to module-scope `HOUR_LABELS` constant in `src/pages/calendar/index.jsx`.
+- `eslint.config.js` updated: `no-unused-vars` now whitelists `^_` prefix for both args (`argsIgnorePattern`) and vars (`varsIgnorePattern`) — standard JS intent-marker convention.
+- 7 unused-var lint warnings cleared:
+  - `exportRange` (RoundUpModal) — dead useMemo deleted + 6 stale `date-fns` imports cleaned
+  - `handleJobStatusUpdate` (flow-management) — 4-month-old dead handler deleted (added 2026-01-24 Wave XX, never wired)
+  - `overdueCountRes` (dashboard) — Wave XXX-U placeholder cleanup: removed lingering `Promise.resolve(null)` from the Promise.all + the orphan destructure slot
+  - `openOppSublabel` (dashboard) — dead constant deleted
+  - `orgId` (calendarService.getOverdueWithOldest) — renamed `_orgId` with comment explaining stable API surface
+  - `_now` (scheduleItemsService.isOverdueJob) — now whitelisted by eslint config
+  - `primaryAction` (dealDrawer.test) — unused locator deleted
+- Verified: `pnpm lint` 0 warnings · `pnpm typecheck` clean · `pnpm build` clean 5.48s.
 
 ## Credentials / access needed
 - Supabase — project `ogjtmtndgiqqdtwatsue`; keys in `.env.local` + `sb:link` scripts. Canonical encrypted copy: `OneDrive/claude-sync/env-vault/`

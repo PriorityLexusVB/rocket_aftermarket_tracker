@@ -20,7 +20,6 @@ import { getPromiseIso } from '@/services/scheduleItemsService'
 import { formatEtDateLabel } from '@/utils/scheduleDisplay'
 import { isJobOnSite, getJobLocationType } from '@/utils/locationType'
 import { useToast } from '@/components/ui/ToastProvider'
-import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns'
 
 // Expand a job into the set of vendor slices (id + display name) it has line
 // items at. A multi-vendor job appears under EVERY vendor lane it has tagged
@@ -265,17 +264,6 @@ const RoundUpModal = ({
     return groupJobsByDay(jobs, baseDate)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [jobs, type, baseDateMs])
-
-  // Mirrors CalendarShell's date-fns range so export and modal display agree on
-  // boundaries. Memoized on baseDate's timestamp (Date refs churn across parent
-  // re-renders even when the value is identical).
-  const exportRange = useMemo(() => {
-    const target = baseDate instanceof Date && !Number.isNaN(baseDate.getTime()) ? baseDate : new Date()
-    if (type === 'weekly') return { start: startOfWeek(target, { weekStartsOn: 1 }), end: endOfWeek(target, { weekStartsOn: 1 }) }
-    if (type === 'monthly') return { start: startOfMonth(target), end: endOfMonth(target) }
-    return { start: startOfDay(target), end: endOfDay(target) }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [type, baseDate?.getTime?.()])
 
   const handleExport = async (format) => {
     if (exportBusy) return

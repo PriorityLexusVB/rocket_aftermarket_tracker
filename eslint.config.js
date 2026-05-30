@@ -84,8 +84,10 @@ export default [
       // Hooks rules
       'react-hooks/rules-of-hooks': 'error',
       'react-hooks/exhaustive-deps': 'warn',
-      // General JS hygiene
-      'no-unused-vars': 'warn',
+      // General JS hygiene — whitelist `_`-prefix as the intent-marker for
+      // intentionally-unused vars/args (covers stable API-surface parameters
+      // and reserved destructure slots that downstream consumers need).
+      'no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
       'no-console': 'off', // console used for operational diagnostics; refine later
       // Disabled initially to avoid overwhelming legacy code with strictness; revisit after refactor.
       'no-unsafe-optional-chaining': 'off',

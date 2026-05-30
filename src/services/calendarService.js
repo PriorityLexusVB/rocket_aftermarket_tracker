@@ -427,7 +427,9 @@ export const calendarService = {
    * deal sitting in pending status is more urgent than 3 deals that went
    * overdue yesterday.
    */
-  async getOverdueWithOldest(orgId = null) {
+  async getOverdueWithOldest(_orgId = null) {
+    // Param kept for callsite compatibility but unused — the get_overdue_jobs RPC
+    // applies RLS scoping itself; org filtering happens server-side.
     try {
       // Use the canonical get_overdue_jobs RPC (Wave XXX-B fixed it to use
       // COALESCE(promised_date, due_date) + correct status exclusions).
