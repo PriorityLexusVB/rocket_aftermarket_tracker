@@ -18,12 +18,13 @@ import RoundUpModal from '@/pages/calendar-flow-management-center/components/Rou
 import { useToast } from '@/components/ui/ToastProvider'
 import { calendarService } from '@/services/calendarService'
 import {
-  startOfWeek,
-  endOfWeek,
-  startOfMonth,
-  endOfMonth,
-} from 'date-fns'
-import { etStartOfDay, etEndOfDay } from '@/utils/etDateBoundaries'
+  etStartOfDay,
+  etEndOfDay,
+  etStartOfWeek,
+  etEndOfWeek,
+  etStartOfMonth,
+  etEndOfMonth,
+} from '@/utils/etDateBoundaries'
 import CalendarLegend from '@/components/calendar/CalendarLegend'
 import {
   buildCalendarSearchParams,
@@ -227,13 +228,16 @@ export default function CalendarShell() {
     if (!showRoundUp) return
     let cancelled = false
     const baseDate = date instanceof Date && !Number.isNaN(date.getTime()) ? date : new Date()
+    // ET-aware boundaries (Wave-B-followup 2026-05-30):
+    // Weekly/monthly previously used local-time date-fns startOfWeek/Month, which
+    // silently dropped or bled in late-evening jobs near midnight ET (23:45 ET = 03:45Z
+    // next day) on the weekly/monthly Round-Up coordinators use to build the BDC row.
+    // All three branches now use the ET-aware helpers from `etDateBoundaries.js`.
     const roundUpRange =
       roundUpType === 'weekly'
-        ? { start: startOfWeek(baseDate, { weekStartsOn: 1 }), end: endOfWeek(baseDate, { weekStartsOn: 1 }) }
+        ? { start: etStartOfWeek(baseDate), end: etEndOfWeek(baseDate) }
         : roundUpType === 'monthly'
-          ? { start: startOfMonth(baseDate), end: endOfMonth(baseDate) }
-          // Use ET-aware day boundaries so late-evening jobs (23:45 ET = 03:45Z next day)
-          // are not silently dropped from the daily round-up query.
+          ? { start: etStartOfMonth(baseDate), end: etEndOfMonth(baseDate) }
           : { start: etStartOfDay(baseDate), end: etEndOfDay(baseDate) }
 
     setRoundUpLoading(true)

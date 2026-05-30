@@ -79,3 +79,59 @@ export function etEndOfDay(date) {
   const d = date instanceof Date ? date : new Date(date)
   return zonedEndOfDay(d, ET_TIMEZONE)
 }
+
+/**
+ * Returns the Monday-of-the-week (in ET) as a UTC Date suitable for a .gte filter.
+ * Week starts on Monday (matches existing date-fns `weekStartsOn: 1` convention).
+ * Wave-B-followup 2026-05-30: weekly Round-Up was using local-time `startOfWeek`
+ * which could silently drop/include late-night ET jobs near midnight Sunday/Monday.
+ */
+export function etStartOfWeek(date) {
+  const d = date instanceof Date ? date : new Date(date)
+  const { year, month, day } = getZonedYmd(d, ET_TIMEZONE)
+  // Compute the day-of-week of the calendar date {year, month, day}.
+  // (intrinsic calendar property — same in any TZ on that date)
+  const dayOfWeek = new Date(Date.UTC(year, month - 1, day)).getUTCDay()
+  const mondayOffset = (dayOfWeek + 6) % 7 // Mon→0, Tue→1, ..., Sun→6
+  // Pass NOON-UTC to zonedStartOfDay so getZonedYmd reads the intended ET date
+  // (UTC midnight = previous ET day in any westward TZ — would shift by 1 day).
+  const mondayNoon = new Date(Date.UTC(year, month - 1, day - mondayOffset, 12))
+  return zonedStartOfDay(mondayNoon, ET_TIMEZONE)
+}
+
+/**
+ * Returns the Sunday-of-the-week (in ET) at 23:59:59.999 as a UTC Date suitable
+ * for a .lte filter. Mirrors `etStartOfWeek`'s Monday-anchored week convention.
+ */
+export function etEndOfWeek(date) {
+  const d = date instanceof Date ? date : new Date(date)
+  const { year, month, day } = getZonedYmd(d, ET_TIMEZONE)
+  const dayOfWeek = new Date(Date.UTC(year, month - 1, day)).getUTCDay()
+  const mondayOffset = (dayOfWeek + 6) % 7
+  // Noon-UTC to dodge the ET-vs-UTC date-shift trap (see etStartOfWeek comment).
+  const sundayNoon = new Date(Date.UTC(year, month - 1, day - mondayOffset + 6, 12))
+  return zonedEndOfDay(sundayNoon, ET_TIMEZONE)
+}
+
+/**
+ * Returns the 1st-of-the-month (in ET) as a UTC Date suitable for a .gte filter.
+ */
+export function etStartOfMonth(date) {
+  const d = date instanceof Date ? date : new Date(date)
+  const { year, month } = getZonedYmd(d, ET_TIMEZONE)
+  // Noon-UTC to dodge the ET-vs-UTC date-shift trap.
+  const firstNoon = new Date(Date.UTC(year, month - 1, 1, 12))
+  return zonedStartOfDay(firstNoon, ET_TIMEZONE)
+}
+
+/**
+ * Returns the last-day-of-the-month (in ET) at 23:59:59.999 as a UTC Date suitable
+ * for a .lte filter.
+ */
+export function etEndOfMonth(date) {
+  const d = date instanceof Date ? date : new Date(date)
+  const { year, month } = getZonedYmd(d, ET_TIMEZONE)
+  // Day 0 of next month = last day of current month; noon-UTC to dodge ET shift.
+  const lastNoon = new Date(Date.UTC(year, month, 0, 12))
+  return zonedEndOfDay(lastNoon, ET_TIMEZONE)
+}

@@ -1482,10 +1482,8 @@ const CalendarSchedulingCenter = ({
                     {visibleJobs.map((job) => {
                       const normalizedStatus =
                         job?.job_status === 'pending' ? 'scheduled' : job?.job_status
-                      const isPromiseOnly =
-                        job?.time_tbd === true || job?.schedule_state === 'scheduled_no_time'
                       const colors = getEventColors(job?.service_type, normalizedStatus)
-                      const statusLabel = isPromiseOnly
+                      const statusLabel = isPromiseOnly(job)
                         ? 'PROMISE'
                         : normalizedStatus
                           ? normalizedStatus === 'scheduled'
@@ -1620,10 +1618,8 @@ const CalendarSchedulingCenter = ({
             {jobs?.map((job) => {
               const jobStartTime = job?.time_tbd ? null : safeCreateDate(job?.scheduled_start_time)
               const normalizedStatus = job?.job_status === 'pending' ? 'scheduled' : job?.job_status
-              const isPromiseOnly =
-                job?.time_tbd === true || job?.schedule_state === 'scheduled_no_time'
               const colors = getEventColors(job?.service_type, normalizedStatus)
-              const statusLabel = isPromiseOnly
+              const statusLabel = isPromiseOnly(job)
                 ? 'PROMISE'
                 : normalizedStatus
                   ? normalizedStatus === 'scheduled'
