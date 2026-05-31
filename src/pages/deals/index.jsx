@@ -1579,7 +1579,8 @@ export default function DealsPage() {
                               const summary = getDealProductLabelSummary(deal, 2)
                               if (!summary.labels.length) return null
                               const label = `${summary.labels.join(', ')}${summary.extraCount ? ` +${summary.extraCount}` : ''}`
-                              return <Pill>Items: {label}</Pill>
+                              const title = `${summary.labels.map((item) => getWorkTagLabel(item) || item).join(', ')}${summary.extraCount ? ` plus ${summary.extraCount} more` : ''}`
+                              return <Pill title={title}>Items: {label}</Pill>
                             })()}
                             <ServiceLocationTag jobParts={deal?.job_parts} />
                             {deal?.loaner_number || deal?.has_active_loaner ? (

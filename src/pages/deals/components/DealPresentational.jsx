@@ -6,6 +6,7 @@ import Icon from '../../../components/ui/Icon'
 import Button from '../../../components/ui/Button'
 import { formatEtMonthDay } from '../../../utils/scheduleDisplay'
 import { getDealFinancials } from '../../../utils/dealKpis'
+import { getWorkTagLabel } from '../../../utils/workTags'
 import {
   formatMoney0OrDash,
   getDealVehicleDisplay,
@@ -51,8 +52,9 @@ export const LoanerBadge = ({ deal }) => {
 
 // ── Pill ────────────────────────────────────────────────────────────
 
-export const Pill = ({ children, className = '' }) => (
+export const Pill = ({ children, className = '', ...props }) => (
   <span
+    {...props}
     className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium bg-accent/50 text-foreground ${className}`}
   >
     {children}
@@ -233,6 +235,10 @@ export const DealCoreSnapshot = ({ deal }) => {
     productSummary.labels.length > 0
       ? `${productSummary.labels.join(', ')}${productSummary.extraCount ? ` +${productSummary.extraCount}` : ''}`
       : '—'
+  const itemsBoughtTitle =
+    productSummary.labels.length > 0
+      ? `${productSummary.labels.map((label) => getWorkTagLabel(label) || label).join(', ')}${productSummary.extraCount ? ` plus ${productSummary.extraCount} more` : ''}`
+      : ''
 
   return (
     <div
@@ -270,7 +276,7 @@ export const DealCoreSnapshot = ({ deal }) => {
         </div>
         <div>
           <div className="text-[10px] uppercase tracking-wide text-gray-500">Items Bought</div>
-          <div className="truncate font-semibold text-foreground" title={itemsBought}>
+          <div className="truncate font-semibold text-foreground" title={itemsBoughtTitle || itemsBought}>
             {itemsBought}
           </div>
         </div>

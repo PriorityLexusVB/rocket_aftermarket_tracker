@@ -19,6 +19,7 @@ import { formatTime, getStatusBadge } from '../../../lib/time'
 import { getPromiseIso } from '@/services/scheduleItemsService'
 import { formatEtDateLabel } from '@/utils/scheduleDisplay'
 import { isJobOnSite, getJobLocationType } from '@/utils/locationType'
+import { getWorkTagLabel, MAX_WORK_TAGS_VISIBLE } from '@/utils/workTags'
 import { useToast } from '@/components/ui/ToastProvider'
 
 // Expand a job into the set of vendor slices (id + display name) it has line
@@ -76,6 +77,33 @@ const groupByVendor = (jobList) => {
     }
     return acc
   }, {})
+}
+
+const getJobWorkTags = (job) => {
+  if (Array.isArray(job?.work_tags) && job.work_tags.length) {
+    return job.work_tags.filter(Boolean)
+  }
+
+  const parts = Array.isArray(job?.job_parts) ? job.job_parts : []
+  const tags = []
+  const seen = new Set()
+  for (const part of parts) {
+    const product = part?.product || part?.products || {}
+    const rawTag =
+      product?.op_code ||
+      product?.opCode ||
+      part?.op_code ||
+      part?.product_name ||
+      product?.name ||
+      ''
+    const tag = String(rawTag || '').trim()
+    if (!tag) continue
+    const key = tag.toUpperCase()
+    if (seen.has(key)) continue
+    seen.add(key)
+    tags.push(tag)
+  }
+  return tags
 }
 
 // Wave XXX-K: include promised-only jobs (no scheduled_start_time) when grouping.
@@ -340,6 +368,7 @@ const RoundUpModal = ({
     const statusBadge = getStatusBadge(job?.job_status)
     const promise = getPromiseIso(job)
     const isCompleted = String(job?.job_status || '').toLowerCase() === 'completed'
+    const workTags = getJobWorkTags(job)
 
     return (
       <div
@@ -373,6 +402,19 @@ const RoundUpModal = ({
               {job?.customer_name || job?.vehicle?.owner_name || '—'}
               {job?.vehicle?.stock_number ? ` · #${job.vehicle.stock_number}` : ''}
             </div>
+            {workTags.length ? (
+              <div className="mt-1 flex flex-wrap gap-1">
+                {workTags.slice(0, MAX_WORK_TAGS_VISIBLE).map((tag) => (
+                  <span
+                    key={tag}
+                    title={getWorkTagLabel(tag)}
+                    className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground"
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            ) : null}
           </div>
 
           {/* Promise Date */}

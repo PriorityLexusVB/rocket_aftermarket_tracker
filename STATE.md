@@ -3,7 +3,7 @@
 > Per-repo memory file. The repo's single source of truth for "where is this project."
 > Rewrite to current truth each working session — do NOT append session logs.
 
-**Last updated:** 2026-05-30 ~14:00 ET · **By:** WORK PC / Claude · **HEAD:** post-`5c4d1e7` (Wave B follow-up #1 ET-aware Round-Up shipped 5/30 13:00 ET; Wave 1 cleanup in flight — commit pending: hourLabels hoist + 7 unused-var sweep + eslint `_`-prefix whitelist)
+**Last updated:** 2026-05-31 ET · **By:** WORK PC / Codex · **HEAD before local edits:** `8dc1593` (current with `origin/main` after fetch; local product-chip tooltip closeout + STATE refresh in flight)
 
 ---
 
@@ -16,8 +16,8 @@ React 18 + Vite 7 + Tailwind 3 + Redux Toolkit + React Query. Supabase (Auth/Pos
 ## Current state — is it live?
 - Deployed: yes — Vercel: **https://rocket-aftermarket-tracker.vercel.app**
 - Auto-deploy: Vercel native GitHub integration on push to `main`.
-- Last shipped: Wave B Slices 1+2+4 — time-axis week view + mobile Agenda (HEAD `0a804d7`, 2026-05-28).
-- Pending ship this session: ET-aware weekly/monthly Round-Up + isPromiseOnly shadow cleanup (commit pending; auto-deploys on push).
+- Last shipped: post-recon cleanup at `8dc1593` after Wave B, Wave 1 cleanup, and npm minor/patch Dependabot PR #344.
+- Pending ship this session: product chip tooltip closeout on Round-Up rows and remaining deal item summaries, plus this STATE refresh.
 
 ## What works (trustworthy)
 - **Unified Calendar shell** (Board / Calendar / List) + Deal Drawer — ON in production.
@@ -25,7 +25,8 @@ React 18 + Vite 7 + Tailwind 3 + Redux Toolkit + React Query. Supabase (Auth/Pos
 - **Mobile (<768px) Agenda fallback** when week view active — 7-col grid is unreadable at 44px per column on iPhone.
 - Calendar Board, Flow Management Center (VendorLaneView, UnscheduledQueue, RoundUpModal).
 - Active Appointments deal sheet with bulk ops; Dashboard GP rows / overdue counts.
-- Round-Up CSV/Copy export — classifies products by op_code (RG/EXT/INT/WS/EN). **Daily, weekly, and monthly ranges all ET-aware** as of this session's ship (`etStartOf{Day,Week,Month}` / `etEndOf{Day,Week,Month}` from `src/utils/etDateBoundaries.js`).
+- Round-Up CSV/Copy export — classifies products by op_code (RG/EXT/INT/WS/EN). **Daily, weekly, and monthly ranges all ET-aware** via `etStartOf{Day,Week,Month}` / `etEndOf{Day,Week,Month}` from `src/utils/etDateBoundaries.js`.
+- Product/work-tag expansion labels are centralized in `src/utils/workTags.js`; calendar cards, vendor lanes, appointment cards, deal cards, Round-Up rows, and compact deal item summaries expose abbreviations like RG/EXT/INT/WS/EN3 via native `title` tooltips.
 - Multi-vendor per line-item routing (Wave XXX-H).
 - KPI dashboard action-first redesign (Wave XXX-P).
 - Test suite: 1073/1073 passing on Wave XXIII baseline (1 known flaky — `dealsPage.completeAutoReturnsLoaner`, re-run clears). Calendar surface tests passing post-Wave-B.
@@ -37,9 +38,9 @@ React 18 + Vite 7 + Tailwind 3 + Redux Toolkit + React Query. Supabase (Auth/Pos
 ## Open loops (post-Wave-B)
 - [ ] **Twilio Trust Hub Brand registration** — ~10 min Rob manual action in Twilio console (unblocks SMS delivery).
 - ✅ ~~**Appointments/List view overdue inconsistency**~~ — RESOLVED 2026-05-30. calendar-flow-specialist deep analysis revealed the two surfaces serve DIFFERENT workflows: Appointments = coordinator's full active working list (Ashley/Sam need quality_check + delivered + no_show visible); Deals overdue tile = narrow alarm (pending/in_progress/scheduled only). "Empty Appointments" is most likely a UI state issue (active filter chip in URL) NOT data exclusion. Added `'completed'` to local excluded set at `index.jsx:479` as documentation clarity (redundant safety net since `normalizeScheduleItemFromJob` already strips it). Loop closed.
-- [ ] **Product chip tooltip expansion** — EN3/RG/EXT/EVERNEW codes used in Round-Up export and deal cards without expansion labels. Touches DealDrawer.jsx, RoundUpModal.jsx, deal card renderers.
-- [ ] **Dependabot PR #345** — axios 1.15.2 → 1.16.0 security upgrade (1 CRITICAL CVSS 9.4 + 3 HIGH advisories). PRODUCTION DEP BUMP — Rob's call to merge. CI currently RED on the audit gate because of this; goes GREEN on merge.
-- [ ] **Dependabot PR #344** — npm-minor-patch group (31 deps). Rob decision.
+- ✅ ~~**Product chip tooltip expansion**~~ — CLOSED 2026-05-31. Existing `workTags.js` coverage already handled calendar cards, vendor lanes, appointment cards, and deal grid chips. Codex closed the remaining local gaps: Round-Up rows now render titled product/work-tag chips, `Pill` supports pass-through title props, compact deal `Items:` pills and deal core snapshots now expand labels like RG/EXT/INT/WS/EN3 on hover.
+- ✅ ~~**Dependabot PR #345**~~ — CLOSED before Codex session. `package.json` + `pnpm-lock.yaml` pin axios `1.16.1`; local `node_modules` refreshed with `corepack pnpm install --frozen-lockfile` and now contains axios `1.16.1`.
+- ✅ ~~**Dependabot PR #344**~~ — CLOSED before Codex session. Current HEAD includes `54a2216` (`chore(deps): bump the npm-minor-patch group across 1 directory with 31 updates (#344)`); local install refreshed from lockfile.
 - [ ] **RoundUpModal date-aware export verification** — Wave 1 deleted a dead `exportRange` useMemo from RoundUpModal.jsx. The deleted code was using local-time `date-fns` boundaries (same bug class as the CalendarShell weekly/monthly Round-Up). Since the export now flows through CalendarShell's date range, and CalendarShell is ET-aware as of `5c4d1e7`, the export is implicitly ET-aware too — BUT worth a coordinator-side eyeball verification on the next live weekly+monthly export.
 
 ## ✅ REJECTED open loops (closed without action)
@@ -47,7 +48,7 @@ React 18 + Vite 7 + Tailwind 3 + Redux Toolkit + React Query. Supabase (Auth/Pos
 - ~~Lint warning count "15"~~ — was actually 7 (count was stale); all 7 cleared in Wave 1.
 - ~~Dependabot PR #341 fast-uri~~ — was reported as moot; verified closed by Rob (no longer in open PR list).
 
-## ✅ Wave 1 cleanup shipped this session (commit pending)
+## ✅ Wave 1 cleanup shipped 2026-05-30 (`a4590d0`)
 - `hourLabels` hoisted from per-render build (inside week-view JSX) to module-scope `HOUR_LABELS` constant in `src/pages/calendar/index.jsx`.
 - `eslint.config.js` updated: `no-unused-vars` now whitelists `^_` prefix for both args (`argsIgnorePattern`) and vars (`varsIgnorePattern`) — standard JS intent-marker convention.
 - 7 unused-var lint warnings cleared:
@@ -58,7 +59,14 @@ React 18 + Vite 7 + Tailwind 3 + Redux Toolkit + React Query. Supabase (Auth/Pos
   - `orgId` (calendarService.getOverdueWithOldest) — renamed `_orgId` with comment explaining stable API surface
   - `_now` (scheduleItemsService.isOverdueJob) — now whitelisted by eslint config
   - `primaryAction` (dealDrawer.test) — unused locator deleted
-- Verified: `pnpm lint` 0 warnings · `pnpm typecheck` clean · `pnpm build` clean 5.48s.
+- Verified at original ship: `pnpm lint` 0 warnings · `pnpm typecheck` clean · `pnpm build` clean 5.48s.
+
+## ✅ Codex closeout 2026-05-31 (commit pending)
+- Repo current before edits: `git fetch origin`; `main`, `origin/main`, and `origin/HEAD` all at `8dc1593fc3aa8804e9d4de9edfbea0426784ae75`.
+- Local dependency install refreshed from lockfile with `corepack pnpm install --frozen-lockfile`; axios installed at `1.16.1`.
+- Remaining product chip tooltip gaps closed in `RoundUpModal.jsx`, `DealPresentational.jsx`, and `deals/index.jsx`.
+- Verified: `corepack pnpm lint` clean · `corepack pnpm typecheck` clean · `corepack pnpm build` clean, Vite output `assets/index-CKWo-fZE.js`, build time 6.94s.
+- Caveat: current shell is Node `24.15.0`; repo engine is Node `>=20 <21`, so future validation should run under Node 20 when possible.
 
 ## Credentials / access needed
 - Supabase — project `ogjtmtndgiqqdtwatsue`; keys in `.env.local` + `sb:link` scripts. Canonical encrypted copy: `OneDrive/claude-sync/env-vault/`
@@ -67,8 +75,8 @@ React 18 + Vite 7 + Tailwind 3 + Redux Toolkit + React Query. Supabase (Auth/Pos
 
 ## Next 3 actions
 1. Rob completes Twilio Trust Hub Brand registration (~10 min) — unblocks SMS delivery.
-2. Resolve Appointments/List vs Deals overdue discrepancy (decide intended scope, then align).
-3. Browser-walk the live deploy after this session's ship lands — verify weekly/monthly Round-Up boundary changes are correct in coordinator workflow.
+2. Browser-walk the live deploy after this session's ship lands — verify weekly/monthly Round-Up boundary changes are correct in coordinator workflow.
+3. Continue reviewing coordinator workflow surfaces for stale filters or confusing calendar/list state.
 
 ## Decisions log (newest first)
 - **2026-05-30 PM** — ET-aware weekly/monthly Round-Up. `CalendarShell.jsx:231-241` weekly + monthly Round-Up branches were using local-time `date-fns startOfWeek` / `startOfMonth`, which silently dropped/included late-evening jobs near midnight ET. Added `etStartOfWeek`/`etEndOfWeek`/`etStartOfMonth`/`etEndOfMonth` to `src/utils/etDateBoundaries.js` (Mon-anchored week, noon-UTC anchor to dodge ET-vs-UTC date-shift trap). Smoke-tested 4 cases: weekday EDT, last-day-of-EST-week, DST spring-forward day, late-night ET (May 31 23:30 ET = Jun 1 03:30 UTC) — all return correct ET boundaries. Same commit: removed 2 `isPromiseOnly` shadow declarations at `src/pages/calendar/index.jsx:1485` + `:1622`, replaced with calls to the module-scope helper at line 110 (Wave B deferred RECOMMENDED). Build clean 6.05s. Identified by `calendar-flow-specialist` audit.
