@@ -3,7 +3,7 @@
 > Per-repo memory file. The repo's single source of truth for "where is this project."
 > Rewrite to current truth each working session — do NOT append session logs.
 
-**Last updated:** 2026-05-31 ET · **By:** WORK PC / Codex · **HEAD before local edits:** `8dc1593` (current with `origin/main` after fetch; local product-chip tooltip closeout + STATE refresh in flight)
+**Last updated:** 2026-05-31 ET · **By:** WORK PC / Codex · **HEAD:** `3078065` (pushed to `origin/main`; product-chip tooltip closeout + STATE refresh)
 
 ---
 
@@ -16,8 +16,8 @@ React 18 + Vite 7 + Tailwind 3 + Redux Toolkit + React Query. Supabase (Auth/Pos
 ## Current state — is it live?
 - Deployed: yes — Vercel: **https://rocket-aftermarket-tracker.vercel.app**
 - Auto-deploy: Vercel native GitHub integration on push to `main`.
-- Last shipped: post-recon cleanup at `8dc1593` after Wave B, Wave 1 cleanup, and npm minor/patch Dependabot PR #344.
-- Pending ship this session: product chip tooltip closeout on Round-Up rows and remaining deal item summaries, plus this STATE refresh.
+- Last shipped: Codex product-chip tooltip closeout + STATE refresh at `3078065`.
+- Previous shipped baseline: post-recon cleanup at `8dc1593` after Wave B, Wave 1 cleanup, and npm minor/patch Dependabot PR #344.
 
 ## What works (trustworthy)
 - **Unified Calendar shell** (Board / Calendar / List) + Deal Drawer — ON in production.
@@ -61,7 +61,7 @@ React 18 + Vite 7 + Tailwind 3 + Redux Toolkit + React Query. Supabase (Auth/Pos
   - `primaryAction` (dealDrawer.test) — unused locator deleted
 - Verified at original ship: `pnpm lint` 0 warnings · `pnpm typecheck` clean · `pnpm build` clean 5.48s.
 
-## ✅ Codex closeout 2026-05-31 (commit pending)
+## ✅ Codex closeout 2026-05-31 (`3078065`)
 - Repo current before edits: `git fetch origin`; `main`, `origin/main`, and `origin/HEAD` all at `8dc1593fc3aa8804e9d4de9edfbea0426784ae75`.
 - Local dependency install refreshed from lockfile with `corepack pnpm install --frozen-lockfile`; axios installed at `1.16.1`.
 - Remaining product chip tooltip gaps closed in `RoundUpModal.jsx`, `DealPresentational.jsx`, and `deals/index.jsx`.
