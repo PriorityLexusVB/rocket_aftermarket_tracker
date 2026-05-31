@@ -3,7 +3,7 @@
 > Per-repo memory file. The repo's single source of truth for "where is this project."
 > Rewrite to current truth each working session — do NOT append session logs.
 
-**Last updated:** 2026-05-31 ET · **By:** WORK PC / Codex · **HEAD:** `3078065` (pushed to `origin/main`; product-chip tooltip closeout + STATE refresh)
+**Last updated:** 2026-05-31 ET · **By:** WORK PC / Codex · **HEAD:** latest pushed `origin/main` (code closeout `3078065`; state-only follow-up followed)
 
 ---
 
