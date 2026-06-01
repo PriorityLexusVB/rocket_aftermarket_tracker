@@ -36,10 +36,16 @@ React 18 + Vite 7 + Tailwind 3 + Redux Toolkit + React Query. Supabase (Auth/Pos
 - **Twilio SMS outbound** is built + edge functions deployed (`processOutbox` v5, `twilioInbound` v6 ACTIVE) but **not production-registered** — Trust Hub Brand registration incomplete. Outbound SMS will not deliver until done.
 - Production Supabase project `ogjtmtndgiqqdtwatsue` is SHARED with an unrelated eBay/deal-hunter app (tables brand_rules/size_rules/found_items + edge functions ebay-deletion-webhook/deal-hunter are NOT rocket's). The 3 RLS-disabled advisor ERRORs belong to that app, not rocket.
 
-## Open loops (post-Wave-F)
-**Wave F closed 5 of 7 remaining items. 2 design-decision items + 1 pre-existing:**
-- [ ] **Touch targets <44px on operational controls** (Codex F1, deferred design call). Bump h-8/p-1 to min-h-[44px] on Complete/Reopen/date-arrow buttons? Trade-off: 44px breaks chip layout; 32px is over WCAG AA 24×24 but under Apple HIG. Mobile vs desktop priority needs Rob input.
-- [ ] **Create vs Edit deal pattern inconsistency** (browser-tester F7, deferred design call). Calendar `+New Deal` → full page `/deals/new` while Deals page uses Modal pattern. Two paths: (A) Calendar opens modal too (requires URL-state or modal-mount lift), (B) Deals page navigates to /deals/new instead of modal (simpler — kills the modal). Pick one. Both have trade-offs.
+## Open loops (post-Wave-F + LEAD-ANALYST packet)
+
+**🎯 DECISIONS PACKET (5-agent + Codex synthesis, 2026-06-01):** `C:\Users\rob.brasco\OneDrive\claude-sync\notes\2026-06-01-rob-decisions-packet.md`
+
+Two design decisions queued for Rob — both fully analyzed (modern-ux-researcher + sense-check + frontend-builder + calendar-flow-specialist + Codex) with lead synthesis and explicit push-back on Codex's Q2 verdict per `rules/pushback-protocol.md`:
+
+- [ ] **Q1 — Touch targets on Calendar operational controls** — lead recommends Path B (selective Material M3 bump: prev/next arrows `p-1`→`p-2`, Complete/Reopen `h-8 w-8`→`h-10 w-10`, leave Filters/Help/Legend/RoundUp alone). All 4 agents reject blanket 44px (mobile/glass spec). ~6-10 LOC, 2 files, LOW risk.
+- [ ] **Q2 — Create vs Edit deal pattern + hidden DealForm V1/V2 bug** — lead recommends Path D (split-by-intent: modal-for-create + page-for-edit + V2-swap on EditDeal.jsx). **HIDDEN BLOCKER surfaced by calendar-flow-specialist + frontend-builder**: `EditDeal.jsx:103` uses OLD `DealForm` (1,355 LOC) while `EditDealModal.jsx:137` uses `DealFormV2` (1,513 LOC) — `NewDeal.jsx:28` redirects to /deals/:id/edit post-create → user creates in V2, gets dropped into V1 first-edit. Real behavioral bug regardless of Q2 architecture. Codex's "hybrid status quo + document" verdict REJECTED on false-symmetry argument (the two edit surfaces don't actually behave identically). ~15-30 LOC across 2 files, 3 sequenced commits, LOW risk with checkpoint between EditDeal swap and CalendarShell modal lift.
+
+Codex run log for this packet: `~/OneDrive/claude-sync/notes/codex-runs/codex-20260601-175502.md`
 
 **Pre-existing (carried forward):**
 - [ ] **Twilio Trust Hub Brand registration** — ~10 min Rob manual action in Twilio console (unblocks SMS delivery).
