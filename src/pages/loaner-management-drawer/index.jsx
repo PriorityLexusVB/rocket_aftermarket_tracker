@@ -225,6 +225,7 @@ export default function LoanerManagementDrawer() {
                     Available
                   </h3>
                   <p className="text-foreground text-2xl font-bold">{inventory?.available}</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">Ready for the next customer</p>
                 </div>
               </div>
             </div>
@@ -240,6 +241,7 @@ export default function LoanerManagementDrawer() {
                     Assigned
                   </h3>
                   <p className="text-foreground text-2xl font-bold">{inventory?.assigned}</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">Currently with a customer</p>
                 </div>
               </div>
             </div>
@@ -255,6 +257,7 @@ export default function LoanerManagementDrawer() {
                     Overdue
                   </h3>
                   <p className="text-foreground text-2xl font-bold">{inventory?.overdue}</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">Past expected return date</p>
                 </div>
               </div>
             </div>
@@ -270,6 +273,7 @@ export default function LoanerManagementDrawer() {
                     Pending
                   </h3>
                   <p className="text-foreground text-2xl font-bold">{jobsNeedingLoaners?.length}</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">Jobs needing a loaner</p>
                 </div>
               </div>
             </div>

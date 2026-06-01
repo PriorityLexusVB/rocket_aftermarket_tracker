@@ -46,16 +46,19 @@ const AuthenticationPortal = () => {
             </div>
             <LoginForm />
 
-            <div className="mt-6 rounded-xl border border-border bg-card p-4 text-center">
-              <h3 className="text-sm font-medium text-foreground">Customer Claims</h3>
+            <div className="mt-6 rounded-xl border border-dashed border-border bg-muted/30 p-4 text-center">
+              <p className="text-[11px] uppercase tracking-wide text-muted-foreground/80 mb-1">
+                Not a staff member?
+              </p>
+              <h3 className="text-sm font-medium text-foreground">For customers only</h3>
               <p className="mt-1 text-xs text-muted-foreground">
-                Customers can submit claims here instead of showing up unannounced.
+                Submit a warranty or aftermarket claim directly — no appointment needed.
               </p>
               <a
                 href="/guest-claims-submission-form"
-                className="mt-3 inline-flex items-center justify-center rounded-md border border-border 0 px-3 py-2 text-xs font-semibold text-foreground 0"
+                className="mt-3 inline-flex items-center justify-center rounded-md border border-border bg-background px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted"
               >
-                Open Claims Form
+                Open Customer Claims Form →
               </a>
             </div>
           </section>

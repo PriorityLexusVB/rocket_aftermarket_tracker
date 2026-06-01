@@ -171,7 +171,7 @@ export default function DealDrawer({ open, deal, onClose, onStatusChange }) {
       dealStatus === 'pending' ||
       dealStatus === 'draft'
     ) {
-      return { label: 'Not scheduled yet', disabled: true }
+      return { label: 'Not scheduled yet', disabled: true, needsScheduling: true }
     }
     return { label: 'Select action', disabled: true }
   }, [dealStatus])
@@ -517,19 +517,28 @@ export default function DealDrawer({ open, deal, onClose, onStatusChange }) {
                   Open deal
                 </a>
               ) : null}
-              <button
-                type="button"
-                disabled={primaryAction.disabled || actionLoading}
-                onClick={handlePrimaryAction}
-                className={`inline-flex items-center gap-1.5 rounded-md px-3 py-2 text-xs font-semibold ${
-                  primaryAction.disabled || actionLoading
-                    ? 'cursor-not-allowed bg-slate-200 text-slate-400'
-                    : 'bg-slate-900 text-white hover:bg-slate-700'
-                }`}
-              >
-                {actionLoading && <Loader2 className="h-3 w-3 animate-spin" />}
-                {primaryAction.label}
-              </button>
+              {primaryAction.needsScheduling ? (
+                <a
+                  href="/calendar?view=board&range=day"
+                  className="inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700"
+                >
+                  Schedule on Board →
+                </a>
+              ) : (
+                <button
+                  type="button"
+                  disabled={primaryAction.disabled || actionLoading}
+                  onClick={handlePrimaryAction}
+                  className={`inline-flex items-center gap-1.5 rounded-md px-3 py-2 text-xs font-semibold ${
+                    primaryAction.disabled || actionLoading
+                      ? 'cursor-not-allowed bg-slate-200 text-slate-400'
+                      : 'bg-slate-900 text-white hover:bg-slate-700'
+                  }`}
+                >
+                  {actionLoading && <Loader2 className="h-3 w-3 animate-spin" />}
+                  {primaryAction.label}
+                </button>
+              )}
             </div>
           </div>
         </div>

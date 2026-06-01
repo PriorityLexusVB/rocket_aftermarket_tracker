@@ -181,8 +181,8 @@ const SalesTrendsChart = ({ data, timeframe }) => {
       <div className="mb-8">
         <h4 className="text-lg font-semibold text-gray-800 mb-4">Revenue & Quantity Trends</h4>
         {data && data?.length > 0 ? (
-          <div className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
+          <div style={{ width: '100%', minWidth: 0, height: 320 }}>
+            <ResponsiveContainer width="100%" height={320} minWidth={0}>
               <LineChart data={data} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis
@@ -230,8 +230,8 @@ const SalesTrendsChart = ({ data, timeframe }) => {
       {categoryData?.length > 0 && allCategories?.length > 0 && (
         <div>
           <h4 className="text-lg font-semibold text-gray-800 mb-4">Revenue by Product Category</h4>
-          <div className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
+          <div style={{ width: '100%', minWidth: 0, height: 320 }}>
+            <ResponsiveContainer width="100%" height={320} minWidth={0}>
               <AreaChart data={categoryData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis

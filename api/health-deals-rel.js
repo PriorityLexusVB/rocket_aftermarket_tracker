@@ -3,7 +3,7 @@
 // Detects jobs -> job_parts -> vendors relationship health.
 
 import { createClient } from '@supabase/supabase-js'
-import { classifySchemaError, SchemaErrorCode } from '../src/utils/schemaErrorClassifier.js'
+import { classifySchemaError, SchemaErrorCode } from './_shared/schemaErrors.js'
 
 function safeJson(res, statusCode, body) {
   // In dev (Vite connect middleware), it’s possible for another middleware to

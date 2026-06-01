@@ -119,8 +119,8 @@ const VehicleTypeChart = ({ data }) => {
       <div className="mb-8">
         <h4 className="text-lg font-semibold text-gray-800 mb-4">Revenue Distribution</h4>
         {pieData?.length > 0 ? (
-          <div className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
+          <div style={{ width: '100%', minWidth: 0, height: 320 }}>
+            <ResponsiveContainer width="100%" height={320} minWidth={0}>
               <PieChart>
                 <Pie
                   data={pieData}
@@ -158,8 +158,8 @@ const VehicleTypeChart = ({ data }) => {
       <div>
         <h4 className="text-lg font-semibold text-gray-800 mb-4">Top Performing Models</h4>
         {popularModels?.length > 0 ? (
-          <div className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
+          <div style={{ width: '100%', minWidth: 0, height: 320 }}>
+            <ResponsiveContainer width="100%" height={320} minWidth={0}>
               <BarChart data={popularModels} margin={{ top: 20, right: 30, left: 20, bottom: 80 }}>
                 <XAxis dataKey="model" angle={-45} textAnchor="end" height={100} fontSize={12} />
                 <YAxis />

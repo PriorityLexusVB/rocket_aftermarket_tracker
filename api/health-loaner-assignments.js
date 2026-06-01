@@ -2,7 +2,7 @@
 // Checks read access (RLS) for loaner_assignments and provides policy remediation.
 
 import { createClient } from '@supabase/supabase-js'
-import { classifySchemaError } from '../src/utils/schemaErrorClassifier.js'
+import { classifySchemaError } from './_shared/schemaErrors.js'
 
 function getSupabase() {
   const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL
