@@ -122,7 +122,27 @@ export default async function handler(req, res) {
     restQueryOk: false,
   }
 
-  const { supabase, env } = getSupabase()
+  // Wrap getSupabase() because createClient() can throw on Node 20 without
+  // native WebSocket support (sibling endpoint health-loaner-assignments
+  // hits the same path and returns 200 with classification 'exception').
+  let supabase, env
+  try {
+    ;({ supabase, env } = getSupabase())
+  } catch (e) {
+    const response = {
+      ok: false,
+      classification: 'exception',
+      ...diagnostics,
+      error: e?.message || String(e),
+      ms: Date.now() - started,
+    }
+    if (typeof res.status === 'function') {
+      return res.status(200).json(response)
+    } else {
+      safeJson(res, 200, response)
+      return
+    }
+  }
   if (!supabase) {
     const response = {
       ok: false,
