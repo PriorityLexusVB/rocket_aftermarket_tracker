@@ -250,9 +250,13 @@ export default function DealDetailDrawer({ isOpen, onClose, deal, onComplete, on
             >
               <Icon name="Copy" size={16} className="mr-1" /> Copy Phone
             </Button>
-            <Button size="sm" variant="outline" className="h-9" disabled>
-              <Icon name="Calendar" size={16} className="mr-1" /> Schedule
-            </Button>
+            <a
+              href="/calendar?view=board&range=day"
+              className="inline-flex h-9 items-center rounded-md border border-input bg-background px-3 text-sm font-medium text-foreground hover:bg-muted"
+              title="Open the Calendar Board to drag this deal to a time slot"
+            >
+              <Icon name="Calendar" size={16} className="mr-1" /> Schedule on Board →
+            </a>
             <Button size="sm" variant="outline" className="h-9" disabled>
               <Icon name="FileText" size={16} className="mr-1" /> Note
             </Button>
