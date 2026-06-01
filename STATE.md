@@ -3,7 +3,7 @@
 > Per-repo memory file. The repo's single source of truth for "where is this project."
 > Rewrite to current truth each working session — do NOT append session logs.
 
-**Last updated:** 2026-05-31 ET · **By:** WORK PC / Codex · **HEAD:** latest pushed `origin/main` (code closeout `3078065`; state-only follow-up followed)
+**Last updated:** 2026-06-01 ~16:15 ET · **By:** WORK PC / Claude · **HEAD:** `f07ca04` (calendar contrast fix shipped + live-verified). Live bundle `index-CQ-A7JZI.js` (Vercel auto-deployed). Prior: `c8138a9` / `3078065` (Codex closeout).
 
 ---
 
@@ -20,6 +20,7 @@ React 18 + Vite 7 + Tailwind 3 + Redux Toolkit + React Query. Supabase (Auth/Pos
 - Previous shipped baseline: post-recon cleanup at `8dc1593` after Wave B, Wave 1 cleanup, and npm minor/patch Dependabot PR #344.
 
 ## What works (trustworthy)
+- **Calendar color/contrast (Wave C `f07ca04`)** — week/month/day views now legible on the actual light canvas. Hour gridlines visible (slate-200), hour labels bold+dark (slate-700 11px), day headers dark slate-800 with today=blue-700 for strong anchor, job tiles bold blue-200/purple-200 with blue-500/purple-500 borders, P/S/O badges opaque with borders, list cards opaque white with slate-300 borders. Live-verified at 1920/1366/375p.
 - **Unified Calendar shell** (Board / Calendar / List) + Deal Drawer — ON in production.
 - **Time-axis week view (Wave B):** 7am-7pm visible band, 64px/hr resolution, real `scheduled_end_time` with 1hr NULL fallback, promise-only band above grid, red "now" line on today's column, layoutOverlaps greedy column-packing for same-hour conflicts. Progressive disclosure (customer ≥48px, vendor ≥64px, details ≥128px).
 - **Mobile (<768px) Agenda fallback** when week view active — 7-col grid is unreadable at 44px per column on iPhone.
@@ -79,6 +80,7 @@ React 18 + Vite 7 + Tailwind 3 + Redux Toolkit + React Query. Supabase (Auth/Pos
 3. Continue reviewing coordinator workflow surfaces for stale filters or confusing calendar/list state.
 
 ## Decisions log (newest first)
+- **2026-06-01 PM (`f07ca04`)** — Calendar contrast fix. Root cause: `darkUi` flag (always true in prod via `isEmbedded && unifiedShellEnabled`) applied alpha-on-dark Tailwind classes (`bg-white/5`, `border-white/5`, `border-white/10`, `text-gray-200`, `bg-amber-500/20 text-amber-200` badges) — but the canvas is actually LIGHT (`bg-background` → slate-50; nothing sets `[data-theme='dark']` on the document root). Alpha-white-on-near-white disappears. Fix is surgical class swaps in `darkUi` branches only — opaque slate equivalents that contrast against the light canvas. Light branches unchanged. Wave A sticky-header strategy preserved + extended (today now `bg-blue-700` for stronger visual anchor). Bumped `calendarColors.js` service-type tile bgs `bg-{blue,purple}-100` → `-200` and borders `-300` → `-500` for stronger tile-vs-grid contrast. Browser-tester PASS at 1920/1366/375; lead personally Read week + month + mobile screenshots — all surfaces SHIP. Bundle 431.48 KB / 118.91 KB gz (was 414.22 / 114.15 — +5 KB gz from redundant class strings, no new logic). 2 files changed: `src/pages/calendar/index.jsx` (96 lines), `src/utils/calendarColors.js` (12 lines).
 - **2026-05-30 PM** — ET-aware weekly/monthly Round-Up. `CalendarShell.jsx:231-241` weekly + monthly Round-Up branches were using local-time `date-fns startOfWeek` / `startOfMonth`, which silently dropped/included late-evening jobs near midnight ET. Added `etStartOfWeek`/`etEndOfWeek`/`etStartOfMonth`/`etEndOfMonth` to `src/utils/etDateBoundaries.js` (Mon-anchored week, noon-UTC anchor to dodge ET-vs-UTC date-shift trap). Smoke-tested 4 cases: weekday EDT, last-day-of-EST-week, DST spring-forward day, late-night ET (May 31 23:30 ET = Jun 1 03:30 UTC) — all return correct ET boundaries. Same commit: removed 2 `isPromiseOnly` shadow declarations at `src/pages/calendar/index.jsx:1485` + `:1622`, replaced with calls to the module-scope helper at line 110 (Wave B deferred RECOMMENDED). Build clean 6.05s. Identified by `calendar-flow-specialist` audit.
 - 2026-05-28 — Wave B Slices 1+2+4 (`0a804d7`): time-axis week view rewrite, mobile Agenda fallback, greedy column-packing for overlap. Wave B Slice 3 (`c8842e7`): Calendar tab defaults to Week not Month. Wave A (`ec2ef98`): calendar readability quick wins.
 - 2026-05-19 — Wave XXIII launch pass (XXIII-A..D): removed unused `next` dep (.npmrc auto-install-peers=false) — 17 vulns → 0, fixes red CI; `.env.production` committed to turn the unified Calendar shell ON in prod; migration 20260519000001 NOTIFY pgrst reload (fixes rls-drift-nightly); calendar month-boundary, vendor-lane feedback, responsive UnscheduledQueue, DealDrawer portal, Round-Up op_code classifier fixed. XXIII-C: fixed blank prod page — vendor-chunk circular import. XXIII-D: fixed stuck login spinner — direct nav after signIn.
