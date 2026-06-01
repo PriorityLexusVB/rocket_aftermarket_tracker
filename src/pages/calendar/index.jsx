@@ -12,7 +12,7 @@ import {
   isOverdueJob,
 } from '@/services/scheduleItemsService'
 import { jobService } from '@/services/jobService'
-import { handleAuthError, isTechNoiseMessage } from '@/lib/authErrorHandler'
+import { handleAuthError } from '@/lib/authErrorHandler'
 import CalendarLegend from '@/components/calendar/CalendarLegend'
 import CalendarViewTabs from '@/components/calendar/CalendarViewTabs'
 import EventDetailPopover from '@/components/calendar/EventDetailPopover'
@@ -619,13 +619,9 @@ const CalendarSchedulingCenter = ({
       if (handleAuthError(error)) return
       setConsistency({ rpcCount: 0, jobCount: 0, missingCount: 0 })
       const raw = String(error?.message || '')
-      setError(
-        isTechNoiseMessage(raw)
-          ? "Couldn't load calendar data. Please refresh the page."
-          : raw
-            ? `Failed to load calendar data: ${raw}`
-            : 'Failed to load calendar data'
-      )
+      // Never leak raw DB/API error strings to the UI — log them instead.
+      if (raw) console.error('Calendar load error:', raw)
+      setError("Couldn't load calendar data. Try refreshing the page.")
     } finally {
       setLoading(false)
     }
@@ -876,7 +872,7 @@ const CalendarSchedulingCenter = ({
       if (!startDate) {
         return (
           <div className="p-4 text-center text-red-500">
-            Error: Unable to create calendar view - Invalid date range
+            Couldn&apos;t build the calendar view. Try changing the date range or refreshing.
           </div>
         )
       }
@@ -985,10 +981,10 @@ const CalendarSchedulingCenter = ({
                         job?.job_status === 'pending' ? 'scheduled' : job?.job_status
                       const colors = getEventColors(job?.service_type, normalizedStatus)
                       const statusLabel = promiseOnly
-                        ? 'PROMISE'
+                        ? 'Promise'
                         : normalizedStatus === 'scheduled'
-                          ? 'BOOKED'
-                          : String(normalizedStatus || 'SCHEDULED').replace(/_/g, ' ').toUpperCase()
+                          ? 'Booked'
+                          : String(normalizedStatus || 'Scheduled').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
                       const jobNumber = job?.job_number?.split?.('-')?.pop?.() || ''
                       const customerName = getAppointmentCustomerName(job)
                       const titleText = job?.title || ''
@@ -1107,8 +1103,8 @@ const CalendarSchedulingCenter = ({
                       job?.job_status === 'pending' ? 'scheduled' : job?.job_status
                     const colors = getEventColors(job?.service_type, normalizedStatus)
                     const statusLabel = normalizedStatus === 'scheduled'
-                      ? 'BOOKED'
-                      : String(normalizedStatus || 'SCHEDULED').replace(/_/g, ' ').toUpperCase()
+                      ? 'Booked'
+                      : String(normalizedStatus || 'Scheduled').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
                     const jobNumber = job?.job_number?.split?.('-')?.pop?.() || ''
                     const vendorLabel = job?.vendor_name || (job?.vendor_id ? 'Vendor' : 'On-site')
                     const vehicleLabel = job?.vehicle_info || ''
@@ -1259,7 +1255,7 @@ const CalendarSchedulingCenter = ({
       if (!monthStart || !monthEnd) {
         return (
           <div className="p-4 text-center text-red-500">
-            Error: Unable to create month view - Invalid date range
+            Couldn&apos;t build the month view. Try changing the date range or refreshing.
           </div>
         )
       }
@@ -1279,7 +1275,7 @@ const CalendarSchedulingCenter = ({
       if (isNaN(gridStart?.getTime()) || isNaN(gridEnd?.getTime())) {
         return (
           <div className="p-4 text-center text-red-500">
-            Error: Unable to create month view - Invalid grid range
+            Couldn&apos;t build the month grid. Try changing the date range or refreshing.
           </div>
         )
       }
@@ -1491,12 +1487,12 @@ const CalendarSchedulingCenter = ({
                         job?.job_status === 'pending' ? 'scheduled' : job?.job_status
                       const colors = getEventColors(job?.service_type, normalizedStatus)
                       const statusLabel = isPromiseOnly(job)
-                        ? 'PROMISE'
+                        ? 'Promise'
                         : normalizedStatus
                           ? normalizedStatus === 'scheduled'
-                            ? 'BOOKED'
-                            : String(normalizedStatus).replace(/_/g, ' ').toUpperCase()
-                          : 'SCHEDULED'
+                            ? 'Booked'
+                            : String(normalizedStatus).replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+                          : 'Scheduled'
                       const jobStartTime = job?.time_tbd
                         ? null
                         : safeCreateDate(job?.scheduled_start_time)
@@ -1627,12 +1623,12 @@ const CalendarSchedulingCenter = ({
               const normalizedStatus = job?.job_status === 'pending' ? 'scheduled' : job?.job_status
               const colors = getEventColors(job?.service_type, normalizedStatus)
               const statusLabel = isPromiseOnly(job)
-                ? 'PROMISE'
+                ? 'Promise'
                 : normalizedStatus
                   ? normalizedStatus === 'scheduled'
-                    ? 'BOOKED'
-                    : String(normalizedStatus).replace(/_/g, ' ').toUpperCase()
-                  : 'SCHEDULED'
+                    ? 'Booked'
+                    : String(normalizedStatus).replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+                  : 'Scheduled'
               const timeLabel = job?.time_tbd
                 ? `Time TBD • Promise: ${
                     safeFormatDate(job?.scheduled_start_time, {

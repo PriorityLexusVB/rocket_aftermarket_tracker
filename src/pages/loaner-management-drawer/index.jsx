@@ -350,7 +350,8 @@ export default function LoanerManagementDrawer() {
               ) : (
                 <>
                   <Icon name="Car" size={48} className="mx-auto mb-4 text-muted-foreground/50" />
-                  <p>No loaner vehicles available</p>
+                  <p>No active loaner assignments</p>
+                  <p className="text-xs mt-1 text-muted-foreground/70">Loaners assigned to a customer will appear here.</p>
                 </>
               )}
             </div>

@@ -472,7 +472,7 @@ export default function CalendarShell() {
                   <Search className="pointer-events-none absolute left-2 top-2 h-4 w-4 text-muted-foreground" />
                   <input
                     type="text"
-                    placeholder="Search stock/customer/phone"
+                    placeholder="Search by customer, VIN, stock #, or phone"
                     className="h-8 w-56 max-w-full rounded-md border border-input bg-background pl-8 pr-2 text-xs text-foreground placeholder:text-muted-foreground"
                     aria-label="Search calendar"
                     value={searchValue}
@@ -609,7 +609,7 @@ export default function CalendarShell() {
                     <Search className="pointer-events-none absolute left-2 top-2 h-4 w-4 text-muted-foreground" />
                     <input
                       type="text"
-                      placeholder="Search stock/customer/phone"
+                      placeholder="Search by customer, VIN, stock #, or phone"
                       className="h-8 w-full rounded-md border border-input bg-background pl-8 pr-2 text-xs text-foreground placeholder:text-muted-foreground"
                       aria-label="Search calendar (mobile menu)"
                       value={searchValue}

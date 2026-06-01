@@ -251,7 +251,7 @@ export default function OverdueInbox() {
               <p className="text-sm text-muted-foreground">
                 Past-due items waiting for delivery coordinator action.
               </p>
-              <p className="text-xs font-medium text-muted-foreground mt-1">{filteredRows.length} items</p>
+              <p className="text-xs font-medium text-muted-foreground mt-1">{filteredRows.length} {filteredRows.length === 1 ? 'item' : 'items'}</p>
             </div>
             <input
               type="text"
