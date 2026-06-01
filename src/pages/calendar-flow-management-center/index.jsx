@@ -1051,7 +1051,7 @@ const CalendarFlowManagementCenter = ({
     const hasTimeWindow = !!job?.scheduled_start_time
     const promise = getPromiseIso(job)
     const isPromiseOnly = !hasTimeWindow && !!promise
-    const allDayLabel = promise ? `Time TBD • Due: ${formatEtDateLabel(promise)}` : 'Time TBD'
+    const allDayLabel = promise ? `Needs time • Due: ${formatEtDateLabel(promise)}` : 'Needs time'
 
     // In scheduling UIs, a promised day without a time window is treated as scheduled (all-day).
     // Avoid confusing "Pending" badges for these rows.
@@ -1184,7 +1184,7 @@ const CalendarFlowManagementCenter = ({
                 isPromiseOnly ? 'bg-amber-100 text-amber-900' : statusBadge?.bg || 'bg-gray-100'
               } ${isPromiseOnly ? '' : statusBadge?.textColor || 'text-gray-800'}`}
             >
-              {isPromiseOnly ? 'Time TBD' : statusBadge?.label || statusForBadge || job?.job_status}
+              {isPromiseOnly ? 'Needs time' : statusBadge?.label || statusForBadge || job?.job_status}
             </div>
           </div>
 
@@ -1903,7 +1903,7 @@ const CalendarFlowManagementCenter = ({
                       }}
                       className="px-4 py-2 rounded-lg border border-gray-200 text-sm hover:bg-gray-50"
                     >
-                      View Time TBD
+                      View Needs Time
                     </button>
                   </div>
                 </div>

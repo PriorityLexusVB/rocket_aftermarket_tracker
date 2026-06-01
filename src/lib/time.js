@@ -202,13 +202,13 @@ export const getStatusBadge = (status) => {
       color: 'bg-purple-500',
     },
     completed: {
-      label: 'DONE',
+      label: 'Done',
       bg: 'bg-green-100',
       textColor: 'text-green-800',
       color: 'bg-green-500',
     },
     delivered: {
-      label: 'DONE',
+      label: 'Done',
       bg: 'bg-teal-100',
       textColor: 'text-teal-800',
       color: 'bg-teal-500',

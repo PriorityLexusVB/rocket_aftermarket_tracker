@@ -187,7 +187,11 @@ const Navbar = () => {
   }
 
   const isActivePath = (path) => {
-    return location?.pathname === path || location?.pathname?.startsWith(path + '/')
+    // Some nav hrefs include query strings (e.g. Calendar → /calendar?view=board).
+    // Compare on pathname only, not the full href, so the active state matches.
+    const pathOnly = (path || '').split('?')[0].split('#')[0]
+    if (!pathOnly) return false
+    return location?.pathname === pathOnly || location?.pathname?.startsWith(pathOnly + '/')
   }
 
   const formatNotificationTime = (timestamp) => {
@@ -272,8 +276,9 @@ const Navbar = () => {
                     draggable="false"
                   />
                 </div>
-                {/* Reserved space for future logo - no text for now */}
-                <div className="w-1"></div>
+                <span className="hidden lg:inline text-sm font-semibold tracking-tight text-foreground whitespace-nowrap">
+                  Aftermarket Tracker
+                </span>
               </Link>
             </div>
 
@@ -337,7 +342,7 @@ const Navbar = () => {
                   <div className="absolute right-0 mt-2 w-80 bg-card rounded-lg shadow-lg border border-border py-2 z-50 max-h-96 overflow-y-auto text-foreground">
                     <div className="px-4 py-3 border-b border-border">
                       <div className="flex items-center justify-between">
-                        <h3 className="text-sm font-medium text-foreground">Notifications &amp; Activity</h3>
+                        <h3 className="text-sm font-medium text-foreground">Notifications</h3>
                         {notificationLoading && (
                           <div className="text-xs text-muted-foreground">Loading...</div>
                         )}
@@ -527,7 +532,7 @@ const Navbar = () => {
         {isNotificationOpen && (
           <div className="border-t border-border bg-card max-h-60 overflow-y-auto">
             <div className="px-4 py-3 border-b border-border">
-              <h3 className="text-sm font-medium text-foreground">Recent Activity</h3>
+              <h3 className="text-sm font-medium text-foreground">Notifications</h3>
             </div>
             {notifications?.length > 0 ? (
               notifications?.slice(0, 3)?.map((notification) => (

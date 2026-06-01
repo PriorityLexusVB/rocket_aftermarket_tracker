@@ -962,7 +962,7 @@ export default function CalendarAgenda({ embedded = false, shellState, onOpenDea
                 const popoverId = showDetailPopovers ? `agenda-popover-${r.id}` : undefined
                 const popoverLines = showDetailPopovers
                   ? [
-                      timeRange ? `Time: ${timeRange}` : 'Time: Time TBD',
+                      timeRange ? `Time: ${timeRange}` : 'Time: Needs time',
                       customerName ? `Customer: ${customerName}` : null,
                       vehicleLabel ? `Vehicle: ${vehicleLabel}` : null,
                     ]
@@ -992,7 +992,7 @@ export default function CalendarAgenda({ embedded = false, shellState, onOpenDea
                           {timeRange}
                         </span>
                       ) : (
-                        <span className="text-slate-400">Time TBD</span>
+                        <span className="text-slate-400">Needs time</span>
                       )}
                     </div>
 

@@ -667,7 +667,7 @@ const DashboardPage = () => {
                               hour: 'numeric',
                               minute: '2-digit',
                             })
-                          : 'Time TBD'
+                          : 'Needs time'
 
                       // Wave XXX-M: show promise context when meaningful.
                       // - Promise-only-today (no scheduled time) → "Promised today"

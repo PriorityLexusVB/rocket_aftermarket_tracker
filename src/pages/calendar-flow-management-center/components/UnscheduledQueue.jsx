@@ -84,7 +84,7 @@ export default function UnscheduledQueue({
             aria-pressed={highlightNeedsTime}
             title="Filter to jobs that have a promise date but no scheduled time window"
           >
-            Needs Time Set
+            Needs Time
             <span className="rounded-full bg-white/70 px-1.5 py-0.5 text-[10px] font-semibold">
               {needsTimeTotal}
             </span>
@@ -140,7 +140,7 @@ export default function UnscheduledQueue({
                       {raw?.title || raw?.vehicle_description || '(Untitled)'}
                     </div>
                     <span className="inline-flex items-center rounded-full bg-slate-200/60 px-2 py-0.5 text-[11px] font-medium text-slate-700">
-                      No Time Set
+                      Needs Time
                     </span>
                   </div>
                   <div className="mt-0.5 truncate text-[11px] text-gray-600">

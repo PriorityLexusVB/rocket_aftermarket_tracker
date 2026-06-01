@@ -550,10 +550,10 @@ export default function CalendarShell() {
                     setRoundUpType('daily')
                     setShowRoundUp(true)
                   }}
-                  title="End-of-day deal summary — Daily/Weekly/Monthly export to Excel/CSV"
+                  title="Round-Up — end-of-day deal summary. Daily / Weekly / Monthly export to Excel or CSV."
                   className="inline-flex items-center gap-2 rounded-md border border-border bg-background px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-muted"
                 >
-                  <ClipboardList className="h-4 w-4" /> Round-Up
+                  <ClipboardList className="h-4 w-4" /> Daily Export
                 </button>
 
                 <details className="group relative">
@@ -644,7 +644,7 @@ export default function CalendarShell() {
                       }}
                       className="inline-flex items-center gap-2 rounded-md border border-border bg-background px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-muted"
                     >
-                      <ClipboardList className="h-4 w-4" /> Round-Up
+                      <ClipboardList className="h-4 w-4" /> Daily Export
                     </button>
                     <button
                       type="button"

@@ -160,7 +160,7 @@ export default function DealDrawer({ open, deal, onClose, onStatusChange }) {
       return { label: 'Mark In Progress', targetStatus: 'in_progress' }
     }
     if (dealStatus === 'in_progress') {
-      return { label: 'Move to QC', targetStatus: 'quality_check' }
+      return { label: 'Move to Quality Check', targetStatus: 'quality_check' }
     }
     if (dealStatus === 'quality_check' || dealStatus === 'qc') {
       return { label: 'Mark Complete', targetStatus: 'completed' }

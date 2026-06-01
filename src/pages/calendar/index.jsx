@@ -1513,7 +1513,7 @@ const CalendarSchedulingCenter = ({
                           })
                         : ''
                       const timeLabel = job?.time_tbd
-                        ? `Time TBD • Promise: ${promiseLabel || '—'}`
+                        ? `Needs time • Promise: ${promiseLabel || '—'}`
                         : jobStartTime
                           ? safeFormatTime(jobStartTime, {
                               hour: 'numeric',
@@ -1578,7 +1578,7 @@ const CalendarSchedulingCenter = ({
                           )}
                           <div className="text-[10px] opacity-80">
                             {job?.time_tbd
-                              ? `Time TBD • Promise: ${promiseLabel || '—'}`
+                              ? `Needs time • Promise: ${promiseLabel || '—'}`
                               : jobStartTime
                                 ? safeFormatTime(jobStartTime, {
                                     hour: 'numeric',
@@ -1630,7 +1630,7 @@ const CalendarSchedulingCenter = ({
                     : String(normalizedStatus).replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
                   : 'Scheduled'
               const timeLabel = job?.time_tbd
-                ? `Time TBD • Promise: ${
+                ? `Needs time • Promise: ${
                     safeFormatDate(job?.scheduled_start_time, {
                       weekday: 'short',
                       month: 'short',

@@ -57,7 +57,7 @@ const STATUS_OVERLAYS = {
   },
   quality_check: {
     opacity: 'opacity-80',
-    badge: 'bg-emerald-700 text-white',
+    badge: 'bg-purple-500 text-white',
   },
 }
 
