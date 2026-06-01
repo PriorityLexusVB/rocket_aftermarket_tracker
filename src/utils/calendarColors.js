@@ -11,23 +11,23 @@
  */
 const SERVICE_TYPE_COLORS = {
   onsite: {
-    bg: 'bg-blue-100',
-    border: 'border-blue-300',
+    bg: 'bg-blue-200',
+    border: 'border-blue-500',
     text: 'text-blue-900',
     gradient: 'from-blue-500 to-blue-600',
     hex: '#3B82F6', // blue-500
   },
   vendor: {
-    bg: 'bg-purple-100',
-    border: 'border-purple-300',
+    bg: 'bg-purple-200',
+    border: 'border-purple-500',
     text: 'text-purple-900',
     gradient: 'from-purple-500 to-purple-600',
     hex: '#A855F7', // purple-500
   },
   offsite: {
     // Alias for vendor
-    bg: 'bg-purple-100',
-    border: 'border-purple-300',
+    bg: 'bg-purple-200',
+    border: 'border-purple-500',
     text: 'text-purple-900',
     gradient: 'from-purple-500 to-purple-600',
     hex: '#A855F7', // purple-500
