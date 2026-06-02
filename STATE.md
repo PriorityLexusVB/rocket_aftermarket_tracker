@@ -3,7 +3,7 @@
 > Per-repo memory file. The repo's single source of truth for "where is this project."
 > Rewrite to current truth each working session — do NOT append session logs.
 
-**Last updated:** 2026-06-02 ~14:50 ET · **By:** WORK PC / Claude · **HEAD:** `eab0dda` (Wave G + G.1 — EditDeal V1→V2 swap + Codex SHIP-WITH-CAVEAT cleanups). Live bundle `index-Uue4CCRu.js` or newer. Prior: `d79247e` (Wave G) → `62fbd9d` (Wave F) → `a8dbc06` (Wave E) → `33c85f2` (Wave D) → `f07ca04` (Wave C).
+**Last updated:** 2026-06-02 ~15:30 ET · **By:** WORK PC / Claude · **HEAD:** _will update after Wave H commit_ (Wave H — Q1 Path B selective touch-target bump, 2 files / 4 LOC). Prior: `b4483cb` (G.1 STATE) → `eab0dda` (Wave G.1) → `d79247e` (Wave G V1→V2) → `62fbd9d` (Wave F).
 
 ---
 
@@ -16,8 +16,9 @@ React 18 + Vite 7 + Tailwind 3 + Redux Toolkit + React Query. Supabase (Auth/Pos
 ## Current state — is it live?
 - Deployed: yes — Vercel: **https://rocket-aftermarket-tracker.vercel.app**
 - Auto-deploy: Vercel native GitHub integration on push to `main`.
-- Last shipped: Wave G.1 cleanup at `eab0dda` (dead lastSavedAt UI + stale doc tests, 2026-06-02 ~14:50 ET).
-- Previous shipped: Wave G EditDeal V1→V2 swap at `d79247e` (2026-06-02 ~14:30 ET).
+- Last shipped: STATE pointer commit `b4483cb` (live bundle now `index-CzqkU6zq.js` after Vercel rebuilt on the STATE-only commit, 2026-06-02 ~14:55 ET).
+- Previous shipped: Wave G.1 cleanup at `eab0dda` (dead lastSavedAt UI + stale doc tests).
+- Wave G EditDeal V1→V2 swap at `d79247e` (2026-06-02 ~14:30 ET).
 - Before that: Wave F deferred-items sweep at `62fbd9d` + `0d781ef` + state pointers (`7c0bb53`, `150bae6`).
 
 ## What works (trustworthy)
@@ -37,14 +38,13 @@ React 18 + Vite 7 + Tailwind 3 + Redux Toolkit + React Query. Supabase (Auth/Pos
 - **Twilio SMS outbound** is built + edge functions deployed (`processOutbox` v5, `twilioInbound` v6 ACTIVE) but **not production-registered** — Trust Hub Brand registration incomplete. Outbound SMS will not deliver until done.
 - Production Supabase project `ogjtmtndgiqqdtwatsue` is SHARED with an unrelated eBay/deal-hunter app (tables brand_rules/size_rules/found_items + edge functions ebay-deletion-webhook/deal-hunter are NOT rocket's). The 3 RLS-disabled advisor ERRORs belong to that app, not rocket.
 
-## Open loops (post-Wave-G + LEAD-ANALYST packet)
+## Open loops (post-Wave-H + LEAD-ANALYST packet)
 
 **🎯 DECISIONS PACKET (5-agent + Codex synthesis, 2026-06-01):** `C:\Users\rob.brasco\OneDrive\claude-sync\notes\2026-06-01-rob-decisions-packet.md`
 
-Two design decisions queued for Rob (V1/V2 BLOCKER from the packet shipped autonomously as Wave G — see Decisions Log):
+Q1 V1/V2 + Q1 touch targets shipped autonomously (Waves G/G.1/H). Q2's architectural piece is what's left:
 
-- [ ] **Q1 — Touch targets on Calendar operational controls** — lead recommends Path B (selective Material M3 bump: prev/next arrows `p-1`→`p-2`, Complete/Reopen `h-8 w-8`→`h-10 w-10`, leave Filters/Help/Legend/RoundUp alone). All 4 agents reject blanket 44px (mobile/glass spec). ~6-10 LOC, 2 files, LOW risk.
-- [ ] **Q2 — Create vs Edit deal pattern (V1/V2 portion CLOSED by Wave G)** — V1/V2 form mismatch on EditDeal.jsx was the hidden BLOCKER in the packet; that's now shipped (commit `d79247e`). The remaining Q2 question is purely architectural: should Calendar's `+ New Deal` (full-page `/deals/new`) be lifted into a modal to match Deals-page consistency? Lead recommends Path D (split-by-intent: modal-for-create + page-for-edit). ~10-20 LOC across 1 file, LOW risk.
+- [ ] **Q2 — Calendar `+ New Deal` modal lift** (V1/V2 portion CLOSED by Wave G; touch-target portion CLOSED by Wave H). The remaining piece is purely architectural: should Calendar's `+ New Deal` button (currently `navigate('/deals/new')` at `CalendarShell.jsx:441`) be lifted into a modal to match Deals-page consistency? Lead recommends Path D (split-by-intent: modal-for-create + page-for-edit). ~10-20 LOC across 1 file, LOW risk. **DEFERRED to Rob's eyeball because it changes a primary CTA's user-visible behavior.**
 
 Codex run log for this packet: `~/OneDrive/claude-sync/notes/codex-runs/codex-20260601-175502.md`
 
@@ -52,9 +52,10 @@ Codex run log for this packet: `~/OneDrive/claude-sync/notes/codex-runs/codex-20
 - [ ] **Twilio Trust Hub Brand registration** — ~10 min Rob manual action in Twilio console (unblocks SMS delivery).
 - [ ] **RoundUpModal weekly+monthly export coordinator-side eyeball verification** — ET-aware math shipped 2026-05-30. Worth Rob confirming live output looks right next time he runs weekly/monthly export.
 
-## Carried out (post-Wave-G)
+## Carried out (post-Wave-H)
+- ✅ ~~Q1 Path B touch-target bump~~ — Wave H (commit _pending_): `CalendarShell.jsx:412,429` prev/next arrows `p-1`→`p-2` (now ~32px touch target up from ~24px); `UnscheduledQueue.jsx:188,191` Complete/Reopen chip `h-8 w-8`→`h-10 w-10` (40px Material M3 target, was 32px Apple HIG fail). Filters/Help/Legend/RoundUp left at compact size per 4-agent consensus. 2 files / 4 LOC. Build 431.64 / 118.93 KB gz (identical to G.1). Codex final SHIP confirmation gated on browser-tester live verify.
 - ✅ ~~Q2 hidden V1/V2 BLOCKER — EditDeal.jsx V1→V2 swap~~ — Wave G (`d79247e`): mirror EditDealModal pattern. `DealFormV2` `job=` prop + parent-owned handleSave + direct `mapDbDealToForm` import. Build 431.64 / 118.93 KB gz (essentially identical to Wave F). 40 dealForm V1 tests still passing. Live-verified bundle `index-1z2L0cYn.js`.
-- ✅ ~~Wave G.1 Codex caveats~~ — `eab0dda` (2026-06-02): removed dead `lastSavedAt` state + UI in `EditDeal.jsx` (V2 navigates away before it renders — mirrors modal which has no such state); refreshed stale "Flag Toggle Documentation" tests in `dealService.featureFlagToggle.test.js` (lines 173, 183 falsely claimed EditDeal used entity adapters / dealService.mapDbDealToForm fallback). 47/47 relevant tests pass. Live `index-Uue4CCRu.js`.
+- ✅ ~~Wave G.1 Codex caveats~~ — `eab0dda` (2026-06-02): removed dead `lastSavedAt` state + UI in `EditDeal.jsx` (V2 navigates away before it renders — mirrors modal which has no such state); refreshed stale "Flag Toggle Documentation" tests in `dealService.featureFlagToggle.test.js` (lines 173, 183 falsely claimed EditDeal used entity adapters / dealService.mapDbDealToForm fallback). 47/47 relevant tests pass. Live `index-CzqkU6zq.js` (Vercel rebuilt on the STATE-only `b4483cb` commit). Browser-tester re-run on stable bundle: 9/9 PASS, V2 wizard hydrates on both modal-from-Deals AND page-route surfaces.
 
 ## Carried out (Wave F and prior — collapsed to one line each)
 - ✅ Wave F (`62fbd9d` + `0d781ef` + `7c0bb53`) — health-deals-rel 500→200, Recharts dims, Loaner sublabels, Customer Claims login disambiguation, Deal→Schedule shortcut on both drawer surfaces.

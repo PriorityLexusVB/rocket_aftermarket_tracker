@@ -185,10 +185,10 @@ export default function UnscheduledQueue({
                   disabled={isBusy}
                   className={
                     isCompleted
-                      ? `inline-flex h-8 w-8 items-center justify-center rounded-md border border-indigo-200 bg-indigo-50 text-indigo-800 ${
+                      ? `inline-flex h-10 w-10 items-center justify-center rounded-md border border-indigo-200 bg-indigo-50 text-indigo-800 ${
                           isBusy ? 'opacity-50 cursor-not-allowed' : 'hover:bg-indigo-100'
                         }`
-                      : `inline-flex h-8 w-8 items-center justify-center rounded-md border border-emerald-200 bg-emerald-50 text-emerald-800 ${
+                      : `inline-flex h-10 w-10 items-center justify-center rounded-md border border-emerald-200 bg-emerald-50 text-emerald-800 ${
                           isBusy ? 'opacity-50 cursor-not-allowed' : 'hover:bg-emerald-100'
                         }`
                   }

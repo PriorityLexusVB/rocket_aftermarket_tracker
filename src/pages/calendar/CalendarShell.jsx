@@ -409,7 +409,7 @@ export default function CalendarShell() {
                 <button
                   type="button"
                   onClick={handlePrev}
-                  className="rounded-md p-1 text-muted-foreground hover:bg-muted"
+                  className="rounded-md p-2 text-muted-foreground hover:bg-muted"
                   aria-label="Previous period"
                   title="Previous period"
                 >
@@ -426,7 +426,7 @@ export default function CalendarShell() {
                 <button
                   type="button"
                   onClick={handleNext}
-                  className="rounded-md p-1 text-muted-foreground hover:bg-muted"
+                  className="rounded-md p-2 text-muted-foreground hover:bg-muted"
                   aria-label="Next period"
                   title="Next period"
                 >
