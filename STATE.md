@@ -3,7 +3,7 @@
 > Per-repo memory file. The repo's single source of truth for "where is this project."
 > Rewrite to current truth each working session — do NOT append session logs.
 
-**Last updated:** 2026-06-02 ~17:15 ET · **By:** WORK PC / Claude · **HEAD:** `1ef8678` (Wave J + J.1 + J.1a — Lexus highline polish mega: masthead + Dashboard/Calendar Hero strips + reframed CATCH UP + Today's Schedule + Quick Links polish + name humanization + mobile-clip fix; Codex SHIP-WITH-CAVEAT, browser-tester all PASS). Live bundle `index-BSbgb9hT.js`. Prior: `c729e22` (Wave I close-out STATE) → `827e713` (Wave I modal lift) → `33c957f` (Wave H STATE) → `18c850b` (Wave H Q1) → `b4483cb` (G.1 STATE) → `eab0dda` (Wave G.1) → `d79247e` (Wave G V1→V2) → `62fbd9d` (Wave F).
+**Last updated:** 2026-06-02 ~17:25 ET · **By:** WORK PC / Claude · **HEAD:** `3c1ddcd` (Wave J + J.1 + J.1a Lexus highline polish — close-out STATE record). Live bundle `index-XU-KnV_Q.js` (rotated from `index-BSbgb9hT.js` on the `3c1ddcd` STATE-only Vercel rebuild — harmless identical-content rebuild). Source-of-truth code at `1ef8678` (Wave J.1a mobile fix). Prior: `1ef8678` (J.1a) → `b9b2ab0` (J.1) → `9a9846d` (J) → `c729e22` (Wave I STATE) → `827e713` (Wave I modal lift) → `33c957f` (Wave H STATE) → `18c850b` (Wave H Q1) → `b4483cb` (G.1 STATE) → `eab0dda` (Wave G.1) → `d79247e` (Wave G V1→V2) → `62fbd9d` (Wave F).
 
 ---
 
