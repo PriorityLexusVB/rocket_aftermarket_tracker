@@ -3,7 +3,7 @@
 > Per-repo memory file. The repo's single source of truth for "where is this project."
 > Rewrite to current truth each working session — do NOT append session logs.
 
-**Last updated:** 2026-06-02 ~15:30 ET · **By:** WORK PC / Claude · **HEAD:** _will update after Wave H commit_ (Wave H — Q1 Path B selective touch-target bump, 2 files / 4 LOC). Prior: `b4483cb` (G.1 STATE) → `eab0dda` (Wave G.1) → `d79247e` (Wave G V1→V2) → `62fbd9d` (Wave F).
+**Last updated:** 2026-06-02 ~15:35 ET · **By:** WORK PC / Claude · **HEAD:** `18c850b` (Wave H — Q1 Path B selective touch-target bump, browser-tester SHIP-AS-IS + Codex SHIP-WITH-CAVEAT, only caveat is this STATE.md re-sync). Live bundle `index-C95tB8ZB.js`. Prior: `b4483cb` (G.1 STATE) → `eab0dda` (Wave G.1) → `d79247e` (Wave G V1→V2) → `62fbd9d` (Wave F).
 
 ---
 
@@ -16,8 +16,9 @@ React 18 + Vite 7 + Tailwind 3 + Redux Toolkit + React Query. Supabase (Auth/Pos
 ## Current state — is it live?
 - Deployed: yes — Vercel: **https://rocket-aftermarket-tracker.vercel.app**
 - Auto-deploy: Vercel native GitHub integration on push to `main`.
-- Last shipped: STATE pointer commit `b4483cb` (live bundle now `index-CzqkU6zq.js` after Vercel rebuilt on the STATE-only commit, 2026-06-02 ~14:55 ET).
-- Previous shipped: Wave G.1 cleanup at `eab0dda` (dead lastSavedAt UI + stale doc tests).
+- Last shipped: Wave H Q1 Path B touch-target bump at `18c850b` (live `index-C95tB8ZB.js`, 2026-06-02 ~15:30 ET).
+- Previous: STATE pointer commit `b4483cb` (live bundle previously `index-CzqkU6zq.js`).
+- Wave G.1 cleanup at `eab0dda` (dead lastSavedAt UI + stale doc tests).
 - Wave G EditDeal V1→V2 swap at `d79247e` (2026-06-02 ~14:30 ET).
 - Before that: Wave F deferred-items sweep at `62fbd9d` + `0d781ef` + state pointers (`7c0bb53`, `150bae6`).
 
@@ -53,7 +54,7 @@ Codex run log for this packet: `~/OneDrive/claude-sync/notes/codex-runs/codex-20
 - [ ] **RoundUpModal weekly+monthly export coordinator-side eyeball verification** — ET-aware math shipped 2026-05-30. Worth Rob confirming live output looks right next time he runs weekly/monthly export.
 
 ## Carried out (post-Wave-H)
-- ✅ ~~Q1 Path B touch-target bump~~ — Wave H (commit _pending_): `CalendarShell.jsx:412,429` prev/next arrows `p-1`→`p-2` (now ~32px touch target up from ~24px); `UnscheduledQueue.jsx:188,191` Complete/Reopen chip `h-8 w-8`→`h-10 w-10` (40px Material M3 target, was 32px Apple HIG fail). Filters/Help/Legend/RoundUp left at compact size per 4-agent consensus. 2 files / 4 LOC. Build 431.64 / 118.93 KB gz (identical to G.1). Codex final SHIP confirmation gated on browser-tester live verify.
+- ✅ ~~Q1 Path B touch-target bump~~ — Wave H (`18c850b`): `CalendarShell.jsx:412,429` prev/next arrows `p-1`→`p-2` (now ~32px touch target up from ~24px); `UnscheduledQueue.jsx:188,191` Complete/Reopen chip `h-8 w-8`→`h-10 w-10` (40px Material M3 target, was 32px Apple HIG fail). Filters/Help/Legend/RoundUp left at compact size per 4-agent consensus. 2 files / 4 LOC class-string changes. Build 431.64 / 118.93 KB gz (identical to G.1). Live `index-C95tB8ZB.js` — browser-tester PASS 7/7 (prev/next measured 32×32px at x:327+x:426 y:102, toolbar no-wrap, 375px no horizontal scroll, low-freq controls untouched, Wave G+G.1 regression PASS) + Codex SHIP-WITH-CAVEAT (caveat: STATE.md re-sync — done in this commit). Codex flagged but did not block: `UnscheduledQueue.jsx:167` inline-text Edit-overdue affordance (`px-1.5 py-0.5 text-[11px]` + `h-3 w-3` icon) was NOT in Path B scope and remains compact; can be addressed in a follow-up if Rob notices on walkthrough.
 - ✅ ~~Q2 hidden V1/V2 BLOCKER — EditDeal.jsx V1→V2 swap~~ — Wave G (`d79247e`): mirror EditDealModal pattern. `DealFormV2` `job=` prop + parent-owned handleSave + direct `mapDbDealToForm` import. Build 431.64 / 118.93 KB gz (essentially identical to Wave F). 40 dealForm V1 tests still passing. Live-verified bundle `index-1z2L0cYn.js`.
 - ✅ ~~Wave G.1 Codex caveats~~ — `eab0dda` (2026-06-02): removed dead `lastSavedAt` state + UI in `EditDeal.jsx` (V2 navigates away before it renders — mirrors modal which has no such state); refreshed stale "Flag Toggle Documentation" tests in `dealService.featureFlagToggle.test.js` (lines 173, 183 falsely claimed EditDeal used entity adapters / dealService.mapDbDealToForm fallback). 47/47 relevant tests pass. Live `index-CzqkU6zq.js` (Vercel rebuilt on the STATE-only `b4483cb` commit). Browser-tester re-run on stable bundle: 9/9 PASS, V2 wizard hydrates on both modal-from-Deals AND page-route surfaces.
 
