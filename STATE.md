@@ -3,7 +3,7 @@
 > Per-repo memory file. The repo's single source of truth for "where is this project."
 > Rewrite to current truth each working session — do NOT append session logs.
 
-**Last updated:** 2026-06-02 ~14:45 ET · **By:** WORK PC / Claude · **HEAD:** `d79247e` (Wave G — EditDeal V1→V2 swap shipped + live-verified). Live bundle `index-1z2L0cYn.js` or newer. Prior: `62fbd9d` (Wave F) → `a8dbc06` (Wave E) → `33c85f2` (Wave D) → `f07ca04` (Wave C).
+**Last updated:** 2026-06-02 ~14:50 ET · **By:** WORK PC / Claude · **HEAD:** `eab0dda` (Wave G + G.1 — EditDeal V1→V2 swap + Codex SHIP-WITH-CAVEAT cleanups). Live bundle `index-Uue4CCRu.js` or newer. Prior: `d79247e` (Wave G) → `62fbd9d` (Wave F) → `a8dbc06` (Wave E) → `33c85f2` (Wave D) → `f07ca04` (Wave C).
 
 ---
 
@@ -16,8 +16,9 @@ React 18 + Vite 7 + Tailwind 3 + Redux Toolkit + React Query. Supabase (Auth/Pos
 ## Current state — is it live?
 - Deployed: yes — Vercel: **https://rocket-aftermarket-tracker.vercel.app**
 - Auto-deploy: Vercel native GitHub integration on push to `main`.
-- Last shipped: Wave G EditDeal V1→V2 swap at `d79247e` (2026-06-02 ~14:30 ET).
-- Previous shipped: Wave F deferred-items sweep at `62fbd9d` + `0d781ef` + state pointers (`7c0bb53`, `150bae6`).
+- Last shipped: Wave G.1 cleanup at `eab0dda` (dead lastSavedAt UI + stale doc tests, 2026-06-02 ~14:50 ET).
+- Previous shipped: Wave G EditDeal V1→V2 swap at `d79247e` (2026-06-02 ~14:30 ET).
+- Before that: Wave F deferred-items sweep at `62fbd9d` + `0d781ef` + state pointers (`7c0bb53`, `150bae6`).
 
 ## What works (trustworthy)
 - **Calendar color/contrast (Wave C `f07ca04`)** — week/month/day views now legible on the actual light canvas. Hour gridlines visible (slate-200), hour labels bold+dark (slate-700 11px), day headers dark slate-800 with today=blue-700 for strong anchor, job tiles bold blue-200/purple-200 with blue-500/purple-500 borders, P/S/O badges opaque with borders, list cards opaque white with slate-300 borders. Live-verified at 1920/1366/375p.
@@ -53,6 +54,7 @@ Codex run log for this packet: `~/OneDrive/claude-sync/notes/codex-runs/codex-20
 
 ## Carried out (post-Wave-G)
 - ✅ ~~Q2 hidden V1/V2 BLOCKER — EditDeal.jsx V1→V2 swap~~ — Wave G (`d79247e`): mirror EditDealModal pattern. `DealFormV2` `job=` prop + parent-owned handleSave + direct `mapDbDealToForm` import. Build 431.64 / 118.93 KB gz (essentially identical to Wave F). 40 dealForm V1 tests still passing. Live-verified bundle `index-1z2L0cYn.js`.
+- ✅ ~~Wave G.1 Codex caveats~~ — `eab0dda` (2026-06-02): removed dead `lastSavedAt` state + UI in `EditDeal.jsx` (V2 navigates away before it renders — mirrors modal which has no such state); refreshed stale "Flag Toggle Documentation" tests in `dealService.featureFlagToggle.test.js` (lines 173, 183 falsely claimed EditDeal used entity adapters / dealService.mapDbDealToForm fallback). 47/47 relevant tests pass. Live `index-Uue4CCRu.js`.
 
 ## Carried out (Wave F and prior — collapsed to one line each)
 - ✅ Wave F (`62fbd9d` + `0d781ef` + `7c0bb53`) — health-deals-rel 500→200, Recharts dims, Loaner sublabels, Customer Claims login disambiguation, Deal→Schedule shortcut on both drawer surfaces.
