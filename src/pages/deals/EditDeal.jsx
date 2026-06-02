@@ -15,7 +15,6 @@ export default function EditDeal() {
   const [dealData, setDealData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [lastSavedAt, setLastSavedAt] = useState(null)
 
   useEffect(() => {
     let alive = true
@@ -40,9 +39,9 @@ export default function EditDeal() {
   const handleSave = async (payload) => {
     try {
       await dealService?.updateDeal(id, payload)
-      const fresh = await dealService?.getDeal(id)
-      setDealData(mapDbDealToForm(fresh))
-      setLastSavedAt(new Date())
+      // V2 calls onCancel after a successful save, which navigates back to
+      // /deals. No need to refetch+rehydrate locally — the destination page
+      // refetches on mount. Mirrors EditDealModal.jsx:62-79.
     } catch (e) {
       setError(e?.message || 'Failed to save deal')
       throw e
@@ -71,17 +70,6 @@ export default function EditDeal() {
               <p className="mt-1 text-sm text-muted-foreground">
                 Deal {dealNumber} / Stock # {stockNumber}
               </p>
-              {lastSavedAt ? (
-                <p className="mt-1 text-xs text-muted-foreground" data-testid="last-saved-timestamp">
-                  Last saved:{' '}
-                  {lastSavedAt.toLocaleTimeString('en-US', {
-                    hour12: false,
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    second: '2-digit',
-                  })}
-                </p>
-              ) : null}
             </div>
 
             <button

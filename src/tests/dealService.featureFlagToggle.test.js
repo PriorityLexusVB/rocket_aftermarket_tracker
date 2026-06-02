@@ -167,32 +167,29 @@ describe('VITE_DEAL_FORM_V2 Toggle Behavior', () => {
   })
 
   describe('Flag Toggle Documentation', () => {
-    it('should document the expected behavior when flag is true', () => {
-      // When VITE_DEAL_FORM_V2=true:
-      // 1. NewDeal.jsx uses draftToCreatePayload adapter
-      // 2. EditDeal.jsx uses entityToDraft and draftToUpdatePayload adapters
-      // 3. Phone numbers are normalized to E.164 format
-      // 4. Loaner data is properly structured
-      // 5. Line items include both snake_case and camelCase keys for compatibility
-      expect(true).toBe(true) // Documentation test
-    })
-
-    it('should document the expected behavior when flag is false', () => {
-      // When VITE_DEAL_FORM_V2=false:
-      // 1. NewDeal.jsx passes form state directly to dealService
-      // 2. EditDeal.jsx uses dealService.mapDbDealToForm (if available) or raw data
-      // 3. No adapter transformations are applied
-      // 4. Legacy behavior is preserved for safe rollback
+    it('should document the current state of the VITE_DEAL_FORM_V2 flag', () => {
+      // As of Wave G (2026-06-02), the V1→V2 transition is complete:
+      //   - NewDeal.jsx, NewDealModal, EditDealModal, and EditDeal.jsx all render DealFormV2
+      //     and provide a parent `onSave` handler.
+      //   - V2 only consults `VITE_DEAL_FORM_V2` in its NO-PARENT-onSave fallback branch
+      //     (src/components/deals/DealFormV2.jsx:790-796). Every production consumer passes
+      //     a parent onSave, so the flag's adapter branch effectively never fires.
+      //   - `EditDeal.jsx` imports `mapDbDealToForm` directly from `dealMappers` and lets
+      //     V2 emit the payload (with `lineItems`), which `dealService.updateDeal` →
+      //     `dealCRUD.updateDeal` → `mapFormToDb` already handles natively. No
+      //     entityToDraft / draftToUpdatePayload adapter is invoked on the page route.
+      //   - The adapter unit tests above still exercise the `draftTo*` functions directly
+      //     (which V2 itself can call in its fallback branch); the prod path no longer
+      //     gates on the env flag.
       expect(true).toBe(true) // Documentation test
     })
 
     it('should document the safe rollback mechanism', () => {
-      // To revert to legacy behavior:
-      // 1. Set VITE_DEAL_FORM_V2=false in .env.development or .env.local
-      // 2. Restart dev server (pnpm dev)
-      // 3. No database migrations or service changes needed
-      // 4. No production data is affected
-      // 5. UI instantly reverts to legacy behavior
+      // The flag is preserved as a kill-switch on V2's internal fallback branch.
+      // To rollback the page-route edit specifically, revert `EditDeal.jsx` back to
+      // the V1 `DealForm` import (pre-Wave G — commit d79247e). The env flag alone
+      // does NOT revert EditDeal because Wave G removed its consumption of any
+      // adapter path.
       expect(true).toBe(true) // Documentation test
     })
   })
