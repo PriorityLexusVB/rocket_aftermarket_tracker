@@ -160,7 +160,31 @@ export function buildUserProfileSelectFragment() {
   return `(${parts.join(', ')})`
 }
 
-// Resolve a friendly display name from a user_profiles row
+/**
+ * Wave J — humanize an email handle into a readable name.
+ * "cameron.delaune" → "Cameron Delaune"
+ * "ashley.terminello" → "Ashley Terminello"
+ * "rob.brasco" → "Rob Brasco"
+ *
+ * Splits on `.`, `_`, `-`, `+`; trims numeric suffixes; title-cases each token.
+ * NOT perfect for compound surnames ("DeLaune" stays "Delaune") — when admins
+ * want the canonical capitalization, they should set `profile.display_name`
+ * directly. This is the dignified fallback for the un-set case.
+ */
+export function humanizeEmailHandle(handle) {
+  if (!handle || typeof handle !== 'string') return ''
+  const base = handle.replace(/\d+$/, '').trim()
+  if (!base) return ''
+  const tokens = base.split(/[._+-]+/).filter(Boolean)
+  if (tokens.length === 0) return ''
+  return tokens
+    .map((t) => t.charAt(0).toUpperCase() + t.slice(1).toLowerCase())
+    .join(' ')
+}
+
+// Resolve a friendly display name from a user_profiles row.
+// Wave J: when falling back to the email handle, humanize it
+// (title-case + split on `.`) instead of leaving the raw handle.
 export function resolveUserProfileName(profile) {
   if (!profile || typeof profile !== 'object') return null
   const name = (profile.name || '').trim()
@@ -170,7 +194,10 @@ export function resolveUserProfileName(profile) {
   if (full) return full
   if (display) return display
   const email = (profile.email || '').trim()
-  if (email && email.includes('@')) return email.split('@')[0]
+  if (email && email.includes('@')) {
+    const handle = email.split('@')[0]
+    return humanizeEmailHandle(handle) || handle
+  }
   return null
 }
 

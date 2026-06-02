@@ -1873,11 +1873,11 @@ const CalendarFlowManagementCenter = ({
               ) : filteredJobs?.length + filteredOnSiteJobs?.length === 0 &&
                 (needsSchedulingJobsForView?.length || 0) === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center p-8 text-center">
-                  <div className="text-lg font-semibold text-gray-900">
-                    No jobs this {viewMode === 'day' ? 'day' : 'week'}.
+                  <div className="font-display text-xl font-semibold text-gray-900 tracking-tight">
+                    Quiet {viewMode === 'day' ? 'day' : 'week'} on the calendar.
                   </div>
-                  <div className="text-sm text-gray-600 mt-1">
-                    Try jumping forward to the next scheduled job.
+                  <div className="text-sm text-gray-600 mt-1.5">
+                    Skip ahead when you're ready.
                   </div>
                   <div className="mt-4 flex items-center gap-3">
                     <button

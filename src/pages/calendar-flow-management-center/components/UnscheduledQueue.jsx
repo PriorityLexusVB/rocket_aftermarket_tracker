@@ -111,7 +111,7 @@ export default function UnscheduledQueue({
       <div className="divide-y divide-gray-100">
         {loading ? <div className="p-4 text-sm text-gray-500">Loading…</div> : null}
         {!loading && rows.length === 0 ? (
-          <div className="p-4 text-sm text-gray-500">No unscheduled jobs.</div>
+          <div className="p-4 text-sm text-gray-500">Nothing waiting for a slot.</div>
         ) : null}
 
         {rows.map((job) => {

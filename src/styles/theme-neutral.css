@@ -42,6 +42,28 @@
   /* Service location exact colors per requirements */
   --service-onsite: #22c55e; /* exact green On-Site */
   --service-offsite: #f97316; /* exact orange Off-Site */
+
+  /* ============================================================
+   * Wave J — Lexus brand tokens (extracted from Sales Tracker
+   * DESIGN.md). These power the masthead identity surface + any
+   * future Lexus-register Hero strip. They DO NOT replace the
+   * ops-surface palette above — light cards stay light.
+   * Discipline: Gold (#C7A858) is RESERVED for legendary tiers in
+   * Sales Tracker and DOES NOT APPEAR in rocket. L-Red (#CE0A26)
+   * is reserved for true overdue/urgency only — never errors.
+   * Reference: sales-tracker/DESIGN.md "Palette" + claude-sync
+   * memory feedback_lexus_brand_palette.md.
+   * ============================================================ */
+  --lex-brand: #0E1418; /* polished-metal-under-low-light, hero surface */
+  --lex-brand-rgb: 14 20 24; /* RGB triple for rgba() use */
+  --lex-card-elevated: #162033; /* one step lighter than brand */
+  --lex-ink-inv: #F8FAFC; /* warm white text on dark */
+  --lex-ink-inv-muted: #94A3B8; /* slate-400 — secondary on dark */
+  --lex-platinum: #D6DAE0; /* elite default rim/accent on dark */
+  --lex-rim: rgba(255, 255, 255, 0.08); /* hairline ring on dark */
+  --lex-rim-stronger: rgba(255, 255, 255, 0.12); /* slightly stronger hairline */
+  --lex-urgent: #CE0A26; /* L-Finesse Red — overdue/urgency ONLY */
+  --lex-success: #15803D; /* deep emerald — on-pace, on-time */
 }
 
 [data-theme='dark'] {

@@ -344,39 +344,64 @@ const DashboardPage = () => {
     openOpp: money0OrDash(openOppSummary?.open_amount),
   }
 
+  // Wave J — Lexus Hero strip eyebrow ("TODAY · MON · JUN 2") computed live.
+  const todayEyebrow = useMemo(() => {
+    const d = new Date()
+    const wk = d.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase()
+    const mo = d.toLocaleDateString('en-US', { month: 'short' }).toUpperCase()
+    const day = d.getDate()
+    return `TODAY · ${wk} · ${mo} ${day}`
+  }, [])
+
   return (
     <AppLayout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-            <div className="mt-1 text-sm text-gray-600">Today at a glance</div>
+        {/* Wave J — Lexus Hero strip: page identity moment + key actions.
+            Replaces the prior plain h1+subtitle row with a dark-surface band
+            that anchors the Dashboard as the operational truth surface. */}
+        <section
+          className="rounded-2xl bg-lex-brand text-lex-ink-inv shadow-lex-hero relative overflow-hidden"
+          aria-label="Dashboard header"
+        >
+          <div className="absolute inset-0 pointer-events-none bg-gradient-to-br from-white/[0.04] via-transparent to-transparent" />
+          <div className="relative flex flex-col gap-4 px-6 py-5 sm:flex-row sm:items-end sm:justify-between sm:gap-6">
+            <div>
+              <div className="text-[10px] font-semibold tracking-[0.32em] text-lex-platinum/80">
+                {todayEyebrow}
+              </div>
+              <h1 className="mt-1 font-display text-[28px] sm:text-[32px] font-bold tracking-tight text-lex-ink-inv leading-none">
+                Dashboard
+              </h1>
+              <div className="mt-2 text-sm text-lex-ink-inv-muted">
+                Today's pipeline, at a glance.
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={refresh}
+                className="px-3 py-2 rounded-md text-[13px] font-medium text-lex-ink-inv-muted hover:text-lex-ink-inv bg-white/[0.04] hover:bg-white/[0.08] ring-1 ring-white/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={loading}
+              >
+                Refresh
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  openCalendar({
+                    navigate,
+                    target: SIMPLE_AGENDA_ENABLED ? 'agenda' : 'calendar',
+                    source: 'Dashboard.OpenCalendar',
+                    context: { from: `${location?.pathname || ''}${location?.search || ''}` },
+                  })
+                }}
+                className="px-4 py-2 rounded-md text-[13px] font-semibold bg-lex-ink-inv text-lex-brand hover:bg-lex-platinum transition-colors"
+              >
+                Open Calendar
+              </button>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={refresh}
-              className="px-3 py-2 rounded bg-gray-100 text-gray-800 hover:bg-gray-200 transition-colors"
-              disabled={loading}
-            >
-              Refresh
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                openCalendar({
-                  navigate,
-                  target: SIMPLE_AGENDA_ENABLED ? 'agenda' : 'calendar',
-                  source: 'Dashboard.OpenCalendar',
-                  context: { from: `${location?.pathname || ''}${location?.search || ''}` },
-                })
-              }}
-              className="px-3 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 transition-colors"
-            >
-              Open Calendar
-            </button>
-          </div>
-        </div>
+        </section>
 
         {error ? (
           <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">

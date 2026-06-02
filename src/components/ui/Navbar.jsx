@@ -261,24 +261,35 @@ const Navbar = () => {
         </nav>
       )}
 
-      {/* Desktop Header Navigation - Streamlined for space */}
-      <nav className="hidden md:block fixed top-0 left-0 right-0 z-50 bg-card/90 backdrop-blur-xl border-b border-border/80 shadow-sm">
+      {/* Desktop Header Navigation — Wave J Lexus masthead surface */}
+      <nav
+        className="hidden md:block fixed top-0 left-0 right-0 z-50 bg-lex-brand border-b border-white/[0.06] shadow-[0_1px_0_rgba(255,255,255,0.04)_inset,0_8px_24px_-12px_rgba(0,0,0,0.6)]"
+      >
         <div className="w-full px-4 lg:px-6">
           <div className="flex justify-between items-center h-16">
-            {/* Logo - Compact for space */}
+            {/* Logo — Wave J: two-line identity (Priority Lexus eyebrow + display wordmark) */}
             <div className="flex items-center">
-              <Link to="/" className="flex items-center space-x-2 group">
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center">
+              <Link
+                to="/"
+                className="flex items-center space-x-3 group"
+                aria-label="Priority Lexus Aftermarket Tracker — home"
+              >
+                <div className="w-9 h-9 rounded-lg flex items-center justify-center ring-1 ring-white/10 bg-white/[0.04]">
                   <img
                     src="/brand/rat-icon-master.svg"
-                    alt="Rocket Aftermarket Tracker"
-                    className="h-8 w-8 object-contain opacity-100 saturate-100 grayscale-0"
+                    alt=""
+                    className="h-7 w-7 object-contain"
                     draggable="false"
                   />
                 </div>
-                <span className="hidden lg:inline text-sm font-semibold tracking-tight text-foreground whitespace-nowrap">
-                  Aftermarket Tracker
-                </span>
+                <div className="hidden lg:flex flex-col leading-none">
+                  <span className="text-[9px] font-semibold tracking-[0.28em] uppercase text-lex-platinum/80">
+                    Priority Lexus
+                  </span>
+                  <span className="mt-0.5 font-display text-[15px] font-semibold tracking-tight text-lex-ink-inv whitespace-nowrap">
+                    Aftermarket Tracker
+                  </span>
+                </div>
               </Link>
             </div>
 
@@ -293,10 +304,10 @@ const Navbar = () => {
                     to={link?.href}
                     title={link?.name}
                     aria-label={link?.name}
-                    className={`flex items-center space-x-1 px-2 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                    className={`flex items-center space-x-1.5 px-3 py-2 rounded-md text-[13px] font-medium transition-all duration-150 ${
                       isActive
-                        ? 'bg-accent/25 text-foreground border border-border'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-accent/35'
+                        ? 'bg-white/[0.08] text-lex-ink-inv ring-1 ring-white/15'
+                        : 'text-lex-ink-inv-muted hover:text-lex-ink-inv hover:bg-white/[0.04]'
                     }`}
                     aria-current={isActive ? 'page' : undefined}
                   >
@@ -319,19 +330,19 @@ const Navbar = () => {
                 <ThemeSelector />
               </div>
 
-              {/* Enhanced Notifications with Real Data */}
+              {/* Enhanced Notifications with Real Data — Wave J: dark-surface */}
               <div className="relative">
                 <button
                   type="button"
                   onClick={() => setIsNotificationOpen(!isNotificationOpen)}
-                  className="relative p-2 text-muted-foreground hover:text-foreground transition-colors duration-200 rounded-lg hover:bg-accent/35"
+                  className="relative p-2 text-lex-ink-inv-muted hover:text-lex-ink-inv transition-colors duration-150 rounded-md hover:bg-white/[0.06]"
                   aria-label="Notifications"
                   aria-haspopup="menu"
                   aria-expanded={isNotificationOpen}
                 >
                   <Bell className="w-5 h-5" />
                   {notificationCount > 0 && (
-                    <div className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-red-500 rounded-full text-xs text-white flex items-center justify-center font-bold px-1">
+                    <div className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-lex-urgent rounded-full text-[10px] text-white flex items-center justify-center font-bold px-1 ring-2 ring-lex-brand">
                       {notificationCount > 99 ? '99+' : notificationCount}
                     </div>
                   )}
@@ -478,37 +489,43 @@ const Navbar = () => {
         </div>
       </nav>
 
-      {/* Mobile Top Header - Simplified */}
-      <nav className="md:hidden bg-card/90 backdrop-blur-xl border-b border-border/80 shadow-sm sticky top-0 z-[70]">
+      {/* Mobile Top Header — Wave J Lexus masthead */}
+      <nav className="md:hidden bg-lex-brand border-b border-white/[0.06] shadow-[0_1px_0_rgba(255,255,255,0.04)_inset,0_8px_24px_-12px_rgba(0,0,0,0.6)] sticky top-0 z-[70]">
         <div className="flex items-center justify-between h-16 px-4">
-          {/* Logo - Compact */}
-          <Link to="/" className="flex items-center space-x-2">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center">
+          {/* Logo — Wave J: Priority Lexus identity stack */}
+          <Link to="/" className="flex items-center space-x-3" aria-label="Priority Lexus Aftermarket Tracker — home">
+            <div className="w-9 h-9 rounded-lg flex items-center justify-center ring-1 ring-white/10 bg-white/[0.04]">
               <img
                 src="/brand/rat-icon-master.svg"
-                alt="Rocket Aftermarket Tracker"
-                className="h-8 w-8 object-contain opacity-100 saturate-100 grayscale-0"
+                alt=""
+                className="h-7 w-7 object-contain"
                 draggable="false"
               />
             </div>
-            {/* Reserved minimal space for future logo */}
-            <div className="w-1"></div>
+            <div className="flex flex-col leading-none">
+              <span className="text-[8.5px] font-semibold tracking-[0.26em] uppercase text-lex-platinum/80">
+                Priority Lexus
+              </span>
+              <span className="mt-0.5 font-display text-[13.5px] font-semibold tracking-tight text-lex-ink-inv">
+                Aftermarket Tracker
+              </span>
+            </div>
           </Link>
 
-          {/* Mobile Actions */}
-          <div className="flex items-center space-x-3">
+          {/* Mobile Actions — Wave J: dark-surface treatment */}
+          <div className="flex items-center space-x-2">
             {/* Mobile Notifications */}
             <button
               type="button"
               onClick={() => setIsNotificationOpen(!isNotificationOpen)}
-              className="relative p-2 text-muted-foreground hover:text-foreground"
+              className="relative p-2 text-lex-ink-inv-muted hover:text-lex-ink-inv rounded-md hover:bg-white/[0.06] transition-colors"
               aria-label="Notifications"
               aria-haspopup="menu"
               aria-expanded={isNotificationOpen}
             >
               <Bell className="w-5 h-5" />
               {notificationCount > 0 && (
-                <div className="absolute -top-1 -right-1 min-w-[16px] h-[16px] bg-red-500 rounded-full text-xs text-white flex items-center justify-center font-bold px-1">
+                <div className="absolute -top-1 -right-1 min-w-[16px] h-[16px] bg-lex-urgent rounded-full text-[10px] text-white flex items-center justify-center font-bold px-1 ring-2 ring-lex-brand">
                   {notificationCount > 99 ? '99+' : notificationCount}
                 </div>
               )}
@@ -518,7 +535,7 @@ const Navbar = () => {
             <button
               type="button"
               onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="p-2 text-muted-foreground hover:text-foreground rounded-lg hover:bg-accent/35"
+              className="p-2 text-lex-ink-inv-muted hover:text-lex-ink-inv rounded-md hover:bg-white/[0.06] transition-colors"
               aria-label={isMenuOpen ? 'Close menu' : 'Open menu'}
               aria-haspopup="menu"
               aria-expanded={isMenuOpen}

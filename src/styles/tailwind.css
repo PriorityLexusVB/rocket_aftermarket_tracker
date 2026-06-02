@@ -5,6 +5,9 @@
 @import './util-neutral.css';
 @import './util-inputs.css';
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+/* Wave J — Inter Tight for display-grade headlines on the Lexus masthead
+   + page Hero strips. Loaded once at app boot, used via class `font-display`. */
+@import url('https://fonts.googleapis.com/css2?family=Inter+Tight:wght@500;600;700;800;900&display=swap');
 
 @tailwind base;
 @tailwind components;
