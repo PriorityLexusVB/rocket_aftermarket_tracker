@@ -3,7 +3,7 @@
 > Per-repo memory file. The repo's single source of truth for "where is this project."
 > Rewrite to current truth each working session — do NOT append session logs.
 
-**Last updated:** 2026-06-02 ~15:35 ET · **By:** WORK PC / Claude · **HEAD:** `18c850b` (Wave H — Q1 Path B selective touch-target bump, browser-tester SHIP-AS-IS + Codex SHIP-WITH-CAVEAT, only caveat is this STATE.md re-sync). Live bundle `index-C95tB8ZB.js`. Prior: `b4483cb` (G.1 STATE) → `eab0dda` (Wave G.1) → `d79247e` (Wave G V1→V2) → `62fbd9d` (Wave F).
+**Last updated:** 2026-06-02 ~16:10 ET · **By:** WORK PC / Claude · **HEAD:** `827e713` (Wave I — Q2 Path D modal lift on Calendar `+ New Deal`, browser-tester SHIP-AS-IS + Codex post-ship SHIP-WITH-CAVEAT). Live bundle `index-DXqId2de.js` (will rotate to a new hash on the next STATE-only commit — harmless identical-content rebuild). Prior: `18c850b` (Wave H) → `b4483cb` (G.1 STATE) → `eab0dda` (Wave G.1) → `d79247e` (Wave G V1→V2) → `62fbd9d` (Wave F).
 
 ---
 
@@ -16,8 +16,8 @@ React 18 + Vite 7 + Tailwind 3 + Redux Toolkit + React Query. Supabase (Auth/Pos
 ## Current state — is it live?
 - Deployed: yes — Vercel: **https://rocket-aftermarket-tracker.vercel.app**
 - Auto-deploy: Vercel native GitHub integration on push to `main`.
-- Last shipped: Wave H Q1 Path B touch-target bump at `18c850b` (live `index-C95tB8ZB.js`, 2026-06-02 ~15:30 ET).
-- Previous: STATE pointer commit `b4483cb` (live bundle previously `index-CzqkU6zq.js`).
+- Last shipped: Wave I Q2 Path D modal lift at `827e713` (live `index-DXqId2de.js`, 2026-06-02 ~16:00 ET) — `+ New Deal` on Calendar now opens NewDealModal in place + creates auto-refresh active calendar/board/agenda child.
+- Previous: Wave H Q1 Path B touch-target bump at `18c850b` (browser-tester measured 32×32px prev/next + 40×40px Complete/Reopen).
 - Wave G.1 cleanup at `eab0dda` (dead lastSavedAt UI + stale doc tests).
 - Wave G EditDeal V1→V2 swap at `d79247e` (2026-06-02 ~14:30 ET).
 - Before that: Wave F deferred-items sweep at `62fbd9d` + `0d781ef` + state pointers (`7c0bb53`, `150bae6`).
@@ -39,13 +39,15 @@ React 18 + Vite 7 + Tailwind 3 + Redux Toolkit + React Query. Supabase (Auth/Pos
 - **Twilio SMS outbound** is built + edge functions deployed (`processOutbox` v5, `twilioInbound` v6 ACTIVE) but **not production-registered** — Trust Hub Brand registration incomplete. Outbound SMS will not deliver until done.
 - Production Supabase project `ogjtmtndgiqqdtwatsue` is SHARED with an unrelated eBay/deal-hunter app (tables brand_rules/size_rules/found_items + edge functions ebay-deletion-webhook/deal-hunter are NOT rocket's). The 3 RLS-disabled advisor ERRORs belong to that app, not rocket.
 
-## Open loops (post-Wave-H + LEAD-ANALYST packet)
+## Open loops (post-Wave-I + LEAD-ANALYST packet)
 
 **🎯 DECISIONS PACKET (5-agent + Codex synthesis, 2026-06-01):** `C:\Users\rob.brasco\OneDrive\claude-sync\notes\2026-06-01-rob-decisions-packet.md`
 
-Q1 V1/V2 + Q1 touch targets shipped autonomously (Waves G/G.1/H). Q2's architectural piece is what's left:
+**ALL Q1 + Q2 paths shipped autonomously today (Waves G, G.1, H, I).** The decisions packet is fully closed except for the Rob-walkthrough confirmation. Remaining items are infrastructure/observation, no code work:
 
-- [ ] **Q2 — Calendar `+ New Deal` modal lift** (V1/V2 portion CLOSED by Wave G; touch-target portion CLOSED by Wave H). The remaining piece is purely architectural: should Calendar's `+ New Deal` button (currently `navigate('/deals/new')` at `CalendarShell.jsx:441`) be lifted into a modal to match Deals-page consistency? Lead recommends Path D (split-by-intent: modal-for-create + page-for-edit). ~10-20 LOC across 1 file, LOW risk. **DEFERRED to Rob's eyeball because it changes a primary CTA's user-visible behavior.**
+- [ ] **Twilio Trust Hub Brand registration** — ~10 min Rob manual action in Twilio console (unblocks SMS delivery).
+- [ ] **RoundUpModal weekly+monthly export coordinator-side eyeball verification** — ET-aware math shipped 2026-05-30. Worth Rob confirming live output looks right next time he runs weekly/monthly export.
+- [ ] **Codex Wave I caveat (UX polish, not blocking):** browser-back while NewDealModal is open keeps the modal mounted over new route state because modal state is local React, not URL-backed. Future polish: bind modal open state to a URL search param OR close modal on `popstate`. Track if Rob feels it.
 
 Codex run log for this packet: `~/OneDrive/claude-sync/notes/codex-runs/codex-20260601-175502.md`
 
@@ -53,7 +55,8 @@ Codex run log for this packet: `~/OneDrive/claude-sync/notes/codex-runs/codex-20
 - [ ] **Twilio Trust Hub Brand registration** — ~10 min Rob manual action in Twilio console (unblocks SMS delivery).
 - [ ] **RoundUpModal weekly+monthly export coordinator-side eyeball verification** — ET-aware math shipped 2026-05-30. Worth Rob confirming live output looks right next time he runs weekly/monthly export.
 
-## Carried out (post-Wave-H)
+## Carried out (post-Wave-I)
+- ✅ ~~Q2 Path D Calendar `+ New Deal` modal lift~~ — Wave I (`827e713`): `CalendarShell.jsx` now opens `NewDealModal` in place instead of `navigate('/deals/new')`. Adds `showNewDealModal` state + `createRefreshKey` state that bumps on successful create, force-remounting the active calendar/board/agenda child via `key={createRefreshKey}` so the new unscheduled deal appears without a manual reload. Toast confirms creation with a "Go to Board" action. Defensive try/catch around toast call so it can't poison NewDealModal's createDeal success path. `/deals/new` route preserved for deep-links + QuickNavigation command palette. 1 file / 48+/2-. Build 431.64 / 118.93 KB gz (IDENTICAL to Wave H baseline). Codex 2-round pre-ship gate (round 1 NEEDS-FIX caught toast-throw + missing-refresh BLOCKERs, round 2 PROCEED-TO-COMMIT after fixes), browser-tester live SHIP-AS-IS (modal opens in-place, URL never changes to /deals/new, 0 console errors), Codex post-ship SHIP-WITH-CAVEAT (caveat = browser-back during modal-open keeps modal mounted; UX edge, not data-loss). Codex run logs: codex-20260602-155509.md (round 1), codex-20260602-155912.md (round 2), codex-20260602-160659.md (post-ship).
 - ✅ ~~Q1 Path B touch-target bump~~ — Wave H (`18c850b`): `CalendarShell.jsx:412,429` prev/next arrows `p-1`→`p-2` (now ~32px touch target up from ~24px); `UnscheduledQueue.jsx:188,191` Complete/Reopen chip `h-8 w-8`→`h-10 w-10` (40px Material M3 target, was 32px Apple HIG fail). Filters/Help/Legend/RoundUp left at compact size per 4-agent consensus. 2 files / 4 LOC class-string changes. Build 431.64 / 118.93 KB gz (identical to G.1). Live `index-C95tB8ZB.js` — browser-tester PASS 7/7 (prev/next measured 32×32px at x:327+x:426 y:102, toolbar no-wrap, 375px no horizontal scroll, low-freq controls untouched, Wave G+G.1 regression PASS) + Codex SHIP-WITH-CAVEAT (caveat: STATE.md re-sync — done in this commit). Codex flagged but did not block: `UnscheduledQueue.jsx:167` inline-text Edit-overdue affordance (`px-1.5 py-0.5 text-[11px]` + `h-3 w-3` icon) was NOT in Path B scope and remains compact; can be addressed in a follow-up if Rob notices on walkthrough.
 - ✅ ~~Q2 hidden V1/V2 BLOCKER — EditDeal.jsx V1→V2 swap~~ — Wave G (`d79247e`): mirror EditDealModal pattern. `DealFormV2` `job=` prop + parent-owned handleSave + direct `mapDbDealToForm` import. Build 431.64 / 118.93 KB gz (essentially identical to Wave F). 40 dealForm V1 tests still passing. Live-verified bundle `index-1z2L0cYn.js`.
 - ✅ ~~Wave G.1 Codex caveats~~ — `eab0dda` (2026-06-02): removed dead `lastSavedAt` state + UI in `EditDeal.jsx` (V2 navigates away before it renders — mirrors modal which has no such state); refreshed stale "Flag Toggle Documentation" tests in `dealService.featureFlagToggle.test.js` (lines 173, 183 falsely claimed EditDeal used entity adapters / dealService.mapDbDealToForm fallback). 47/47 relevant tests pass. Live `index-CzqkU6zq.js` (Vercel rebuilt on the STATE-only `b4483cb` commit). Browser-tester re-run on stable bundle: 9/9 PASS, V2 wizard hydrates on both modal-from-Deals AND page-route surfaces.
