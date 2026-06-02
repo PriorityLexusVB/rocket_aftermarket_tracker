@@ -2,8 +2,11 @@
 import React, { useEffect, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import AppLayout from '../../components/layouts/AppLayout'
-import DealForm from './DealForm'
+import DealFormV2 from '../../components/deals/DealFormV2'
 import * as dealService from '../../services/dealService'
+// Wave G: import mapDbDealToForm directly from dealMappers (not the
+// dealService re-export) to mirror EditDealModal's circular-dep break.
+import { mapDbDealToForm } from '../../services/deal/dealMappers'
 
 export default function EditDeal() {
   const { id } = useParams()
@@ -20,8 +23,7 @@ export default function EditDeal() {
       try {
         const deal = await dealService?.getDeal(id)
         if (!alive) return
-        const mapped = dealService.mapDbDealToForm ? dealService.mapDbDealToForm(deal) : deal
-        setDealData(mapped)
+        setDealData(mapDbDealToForm(deal))
       } catch (e) {
         if (!alive) return
         setError(e?.message || 'Failed to load deal')
@@ -35,12 +37,11 @@ export default function EditDeal() {
     }
   }, [id])
 
-  const handleSave = async (formState) => {
+  const handleSave = async (payload) => {
     try {
-      await dealService?.updateDeal(id, formState)
+      await dealService?.updateDeal(id, payload)
       const fresh = await dealService?.getDeal(id)
-      const mapped = dealService.mapDbDealToForm ? dealService.mapDbDealToForm(fresh) : fresh
-      setDealData(mapped)
+      setDealData(mapDbDealToForm(fresh))
       setLastSavedAt(new Date())
     } catch (e) {
       setError(e?.message || 'Failed to save deal')
@@ -99,14 +100,14 @@ export default function EditDeal() {
               <div className="rounded-lg border border-red-300 bg-red-50 p-4 text-sm text-red-700">
                 {error}
               </div>
-            ) : (
-              <DealForm
-                initial={dealData || {}}
+            ) : dealData ? (
+              <DealFormV2
                 mode="edit"
+                job={dealData}
                 onSave={handleSave}
                 onCancel={() => navigate(returnTo)}
               />
-            )}
+            ) : null}
           </div>
         </div>
       </div>
