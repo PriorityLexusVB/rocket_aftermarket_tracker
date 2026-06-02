@@ -182,17 +182,37 @@ export function humanizeEmailHandle(handle) {
     .join(' ')
 }
 
+/**
+ * Wave J.1 — if a name string itself contains a dot (e.g. an admin typed
+ * "chris.lagarenne" directly into the `name` field rather than the email),
+ * humanize it. Catches the edge case where the email-fallback isn't the
+ * source of the problem. Whitespace-containing values pass through
+ * unchanged (e.g. "Chris O'Neill" or "Mary Ann Smith" already canonical).
+ */
+function maybeHumanize(value) {
+  if (!value) return value
+  // If the value contains a dot AND has no space, it looks like an email
+  // handle that was pasted into a name field. Humanize it.
+  if (value.includes('.') && !value.includes(' ')) {
+    const humanized = humanizeEmailHandle(value)
+    return humanized || value
+  }
+  return value
+}
+
 // Resolve a friendly display name from a user_profiles row.
 // Wave J: when falling back to the email handle, humanize it
 // (title-case + split on `.`) instead of leaving the raw handle.
+// Wave J.1: ALSO sanitize name/full_name/display_name fields when they
+// contain a dot — catches admin-typed handle-style names.
 export function resolveUserProfileName(profile) {
   if (!profile || typeof profile !== 'object') return null
   const name = (profile.name || '').trim()
   const full = (profile.full_name || '').trim()
   const display = (profile.display_name || '').trim()
-  if (name) return name
-  if (full) return full
-  if (display) return display
+  if (name) return maybeHumanize(name)
+  if (full) return maybeHumanize(full)
+  if (display) return maybeHumanize(display)
   const email = (profile.email || '').trim()
   if (email && email.includes('@')) {
     const handle = email.split('@')[0]

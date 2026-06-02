@@ -565,12 +565,12 @@ const DashboardPage = () => {
             })() : topPriority?.kind === 'cross-day' ? (() => {
               const { count } = topPriority
               return (
-                <div className="mb-6 rounded-xl border border-amber-300 bg-amber-50 p-4 shadow-sm">
+                <div className="mb-6 rounded-xl border border-slate-200 bg-white p-4 shadow-sm ring-1 ring-lex-urgent/15">
                   <div className="flex items-start gap-3">
-                    <div className="rounded-full bg-amber-100 p-2 shrink-0">
+                    <div className="rounded-full bg-lex-urgent/10 p-2 shrink-0 ring-1 ring-lex-urgent/20">
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
-                        className="h-5 w-5 text-amber-600"
+                        className="h-5 w-5 text-lex-urgent"
                         viewBox="0 0 24 24"
                         fill="none"
                         stroke="currentColor"
@@ -584,13 +584,13 @@ const DashboardPage = () => {
                       </svg>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="text-[10px] font-mono uppercase tracking-wide text-amber-700">
+                      <div className="text-[10px] font-semibold uppercase tracking-[0.28em] text-lex-urgent">
                         Catch up
                       </div>
-                      <h2 className="mt-0.5 text-lg font-semibold text-amber-900 truncate">
+                      <h2 className="mt-1 font-display text-lg font-semibold text-slate-900 truncate tracking-tight">
                         {count} {count === 1 ? 'job' : 'jobs'} overdue from prior days
                       </h2>
-                      <div className="mt-0.5 text-sm text-amber-800 truncate">
+                      <div className="mt-0.5 text-sm text-slate-600 truncate">
                         Today&apos;s board is clear — work the Overdue Inbox.
                       </div>
                     </div>
@@ -598,7 +598,7 @@ const DashboardPage = () => {
                       <button
                         type="button"
                         onClick={() => navigate('/overdue')}
-                        className="px-3 py-2 rounded bg-amber-600 text-white hover:bg-amber-700 text-sm font-medium transition-colors"
+                        className="px-3 py-2 rounded-md bg-lex-brand text-lex-ink-inv hover:bg-lex-brand/90 text-sm font-semibold transition-colors"
                       >
                         Open Overdue Inbox
                       </button>
@@ -607,12 +607,14 @@ const DashboardPage = () => {
                 </div>
               )
             })() : null}
-            <div className="rounded-xl border bg-white shadow-sm">
-              <div className="flex items-center justify-between gap-4 p-4 border-b">
+            <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+              <div className="flex items-center justify-between gap-4 p-4 border-b border-slate-200">
                 <div>
-                  <div className="text-sm font-semibold text-gray-900">Today’s Schedule</div>
-                  <div className="text-xs text-gray-600">
-                    Jobs on the board for today
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-500">
+                    On the board
+                  </div>
+                  <div className="mt-0.5 font-display text-base font-semibold text-slate-900 tracking-tight">
+                    Today’s Schedule
                   </div>
                 </div>
                 <button
@@ -625,7 +627,7 @@ const DashboardPage = () => {
                       context: { from: `${location?.pathname || ''}${location?.search || ''}` },
                     })
                   }}
-                  className="px-3 py-2 rounded bg-gray-100 text-gray-800 hover:bg-gray-200 transition-colors"
+                  className="px-3 py-2 rounded-md bg-slate-100 text-slate-800 hover:bg-slate-200 text-sm font-medium transition-colors"
                 >
                   Open Agenda
                 </button>
@@ -826,44 +828,48 @@ const DashboardPage = () => {
           </div>
 
           <div className="space-y-4">
-            <div className="rounded-xl border bg-white p-4 shadow-sm">
-              <div className="text-sm font-semibold text-gray-900">Quick Links</div>
-              <div className="mt-3 grid gap-2">
-                <button
-                  type="button"
-                  onClick={() => navigate('/deals')}
-                  className="w-full px-3 py-2 rounded bg-gray-100 text-gray-800 hover:bg-gray-200 transition-colors text-left"
-                >
-                  Deals
-                </button>
-                <button
-                  type="button"
-                  onClick={() => navigate('/advanced-business-intelligence-analytics')}
-                  className="w-full px-3 py-2 rounded bg-gray-100 text-gray-800 hover:bg-gray-200 transition-colors text-left"
-                >
-                  Analytics
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    openCalendar({
-                      navigate,
-                      target: 'flow',
-                      source: 'Dashboard.QuickLinks.SchedulingBoard',
-                      context: { from: `${location?.pathname || ''}${location?.search || ''}` },
-                    })
-                  }}
-                  className="w-full px-3 py-2 rounded bg-gray-100 text-gray-800 hover:bg-gray-200 transition-colors text-left"
-                >
-                  Scheduling Board
-                </button>
-                <button
-                  type="button"
-                  onClick={() => navigate('/claims-management-center')}
-                  className="w-full px-3 py-2 rounded bg-gray-100 text-gray-800 hover:bg-gray-200 transition-colors text-left"
-                >
-                  Claims
-                </button>
+            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+              <div className="text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-500">
+                Jump to
+              </div>
+              <div className="mt-0.5 font-display text-base font-semibold text-slate-900 tracking-tight">
+                Quick Links
+              </div>
+              <div className="mt-3 grid gap-1.5">
+                {[
+                  { label: 'Deals', onClick: () => navigate('/deals') },
+                  {
+                    label: 'Analytics',
+                    onClick: () => navigate('/advanced-business-intelligence-analytics'),
+                  },
+                  {
+                    label: 'Scheduling Board',
+                    onClick: () => {
+                      openCalendar({
+                        navigate,
+                        target: 'flow',
+                        source: 'Dashboard.QuickLinks.SchedulingBoard',
+                        context: { from: `${location?.pathname || ''}${location?.search || ''}` },
+                      })
+                    },
+                  },
+                  { label: 'Claims', onClick: () => navigate('/claims-management-center') },
+                ].map((it) => (
+                  <button
+                    key={it.label}
+                    type="button"
+                    onClick={it.onClick}
+                    className="group w-full flex items-center justify-between px-3 py-2 rounded-md bg-slate-50 hover:bg-slate-100 ring-1 ring-slate-200 hover:ring-slate-300 text-slate-800 text-sm font-medium transition-all text-left"
+                  >
+                    <span>{it.label}</span>
+                    <span
+                      className="text-slate-400 group-hover:text-slate-600 transition-colors"
+                      aria-hidden="true"
+                    >
+                      →
+                    </span>
+                  </button>
+                ))}
               </div>
             </div>
 

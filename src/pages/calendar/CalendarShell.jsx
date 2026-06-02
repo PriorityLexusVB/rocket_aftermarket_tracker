@@ -383,13 +383,53 @@ export default function CalendarShell() {
     locationFilter,
   ])
 
+  // Wave J.1 — Calendar Hero eyebrow ("TODAY · TUE · JUN 2" or selected date label).
+  const heroEyebrow = useMemo(() => {
+    const d = date instanceof Date ? date : new Date()
+    const today = new Date()
+    const sameDay =
+      d.getFullYear() === today.getFullYear() &&
+      d.getMonth() === today.getMonth() &&
+      d.getDate() === today.getDate()
+    const wk = d.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase()
+    const mo = d.toLocaleDateString('en-US', { month: 'short' }).toUpperCase()
+    const day = d.getDate()
+    return sameDay ? `TODAY · ${wk} · ${mo} ${day}` : `${wk} · ${mo} ${day}`
+  }, [date])
+
   return (
     <AppLayout>
       <div className="mx-auto flex w-full max-w-7xl min-h-[calc(100vh-120px)] flex-col gap-4 p-4 md:px-6">
+        {/* Wave J.1 — Calendar Hero strip: page-identity moment that matches the
+            Dashboard Hero pattern. The functional controls (tabs, search, filters,
+            view chips) remain in the white card below — density preserved on the
+            ops surface, identity claimed on top. */}
+        <section
+          className="rounded-2xl bg-lex-brand text-lex-ink-inv shadow-lex-hero relative overflow-hidden"
+          aria-label="Calendar header"
+        >
+          <div className="absolute inset-0 pointer-events-none bg-gradient-to-br from-white/[0.04] via-transparent to-transparent" />
+          <div className="relative px-6 py-5">
+            <div className="text-[10px] font-semibold tracking-[0.32em] text-lex-platinum/80">
+              {heroEyebrow}
+            </div>
+            <h1 className="mt-1 font-display text-[28px] sm:text-[32px] font-bold tracking-tight text-lex-ink-inv leading-none">
+              Calendar
+            </h1>
+            <div className="mt-2 text-sm text-lex-ink-inv-muted">
+              {resolvedView === 'board'
+                ? 'Vendor lanes and scheduling board.'
+                : resolvedView === 'list'
+                  ? 'Time-ordered list view.'
+                  : 'Day, week, and month grid views.'}
+            </div>
+          </div>
+        </section>
         <section className="rounded-xl border border-border bg-card p-4 shadow-sm">
           <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
             <div className="flex flex-wrap items-center gap-3">
-              <h1 className="text-xl font-semibold text-foreground">Calendar</h1>
+              {/* Wave J.1 — H1 lifted to dark Lexus Hero strip above; the view-mode chips
+                  are now the lead element of the functional controls row. */}
               <div className="inline-flex items-center gap-1 rounded-lg border border-border bg-muted/40 p-1">
                 {[
                   { key: 'board', label: 'Board', tip: 'Vendor lanes — drag to reassign work' },
