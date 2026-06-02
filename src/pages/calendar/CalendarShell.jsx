@@ -26,6 +26,11 @@ import {
   etEndOfMonth,
 } from '@/utils/etDateBoundaries'
 import CalendarLegend from '@/components/calendar/CalendarLegend'
+// Wave I — Q2 Path D modal lift: Calendar's `+ New Deal` button now opens
+// NewDealModal in place instead of navigating away to `/deals/new`. Mirrors
+// the Deals page pattern (src/pages/deals/index.jsx:996,1659-1671) so Ashley
+// keeps her board context. The `/deals/new` route remains intact for deep-links.
+import NewDealModal from '@/pages/deals/NewDealModal'
 import {
   buildCalendarSearchParams,
   parseCalendarQuery,
@@ -100,6 +105,12 @@ export default function CalendarShell() {
   const [roundUpType, setRoundUpType] = useState('daily')
   const [roundUpJobs, setRoundUpJobs] = useState([])
   const [roundUpLoading, setRoundUpLoading] = useState(false)
+  // Wave I — Q2 Path D modal lift. `createRefreshKey` is bumped after every
+  // successful in-place create so the child calendar/board/agenda surface
+  // remounts and re-fetches its data; otherwise the unscheduled deal stays
+  // invisible until the user manually re-navigates (Codex pre-ship BLOCKER E).
+  const [showNewDealModal, setShowNewDealModal] = useState(false)
+  const [createRefreshKey, setCreateRefreshKey] = useState(0)
   const toast = useToast()
   // Stable ref so the roundUp effect can call toast without listing it as a
   // dep (toast identity could change on provider remount, causing a re-fetch).
@@ -328,6 +339,7 @@ export default function CalendarShell() {
     if (resolvedView === 'calendar') {
       return (
         <CalendarSchedulingCenter
+          key={createRefreshKey}
           embedded
           shellState={shellState}
           locationFilter={locationFilter}
@@ -339,6 +351,7 @@ export default function CalendarShell() {
     if (resolvedView === 'list') {
       return agendaEnabled ? (
         <CalendarAgenda
+          key={createRefreshKey}
           embedded
           shellState={shellState}
           hideEmbeddedControls
@@ -353,6 +366,7 @@ export default function CalendarShell() {
 
     return (
       <CalendarFlowManagementCenter
+        key={createRefreshKey}
         embedded
         shellState={shellState}
         locationFilter={locationFilter}
@@ -360,6 +374,7 @@ export default function CalendarShell() {
       />
     )
   }, [
+    createRefreshKey,
     resolvedView,
     agendaEnabled,
     shellState,
@@ -435,10 +450,10 @@ export default function CalendarShell() {
                 <span className="text-sm font-medium text-foreground">{dateLabel}</span>
               </div>
 
-              {/* New Deal — always visible */}
+              {/* New Deal — Wave I: opens modal in place instead of nav-to-page */}
               <button
                 type="button"
-                onClick={() => navigate('/deals/new')}
+                onClick={() => setShowNewDealModal(true)}
                 className="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
               >
                 <Plus className="h-4 w-4" /> New Deal
@@ -674,6 +689,37 @@ export default function CalendarShell() {
           onTypeChange={setRoundUpType}
           isLoading={roundUpLoading}
           baseDate={date}
+        />
+
+        {/* Wave I — Q2 Path D modal lift. New deal lands unscheduled; the toast
+            confirms creation and the Board view's UnscheduledQueue is where the
+            user goes to schedule it. Bumping `createRefreshKey` before the toast
+            forces the active calendar child to remount + refetch so the new
+            unscheduled deal becomes visible without a manual reload. The toast
+            call is wrapped because NewDealModal's createDeal already succeeded
+            by the time onSuccess fires — a toast failure must not propagate
+            back to NewDealModal's try/catch and surface a misleading "Failed to
+            create deal" error. (Codex pre-ship BLOCKER B + E both addressed.) */}
+        <NewDealModal
+          isOpen={showNewDealModal}
+          onClose={() => setShowNewDealModal(false)}
+          onSuccess={(savedDeal) => {
+            // (E) Force-refresh the active calendar view so the new deal shows up.
+            setCreateRefreshKey((k) => k + 1)
+            // (B) Toast is best-effort — never let it bubble back to NewDealModal.
+            try {
+              const jobNumber = savedDeal?.job_number ? ` ${savedDeal.job_number}` : ''
+              toast?.success?.({
+                message: `Deal${jobNumber} created — open Board to schedule it`,
+                action: {
+                  label: 'Go to Board',
+                  onClick: () => navigate(`/calendar?view=board&range=day&_t=${Date.now()}`),
+                },
+              })
+            } catch (err) {
+              console.error('Toast notification failed (deal created successfully):', err)
+            }
+          }}
         />
       </div>
     </AppLayout>
