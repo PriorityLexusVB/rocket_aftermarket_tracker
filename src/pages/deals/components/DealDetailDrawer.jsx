@@ -5,8 +5,10 @@ import ScheduleChip from '@/components/deals/ScheduleChip'
 import { getPromiseIso } from '@/services/scheduleItemsService'
 import { formatEtMonthDayYear } from '@/utils/scheduleDisplay'
 
-// Read-only Deal Detail Drawer with 8 tabs and quick actions
-export default function DealDetailDrawer({ isOpen, onClose, deal, onComplete, onReopen }) {
+// Read-only Deal Detail Drawer with 8 tabs and quick actions.
+// Wave XXX-Y phase 3: onReverse handler added so coordinators can reverse a deal
+// directly from the Deals page (not just from the Calendar's chip drawer).
+export default function DealDetailDrawer({ isOpen, onClose, deal, onComplete, onReopen, onReverse }) {
   const [activeTab, setActiveTab] = useState('Customer')
   const [copied, setCopied] = useState('')
   const [statusBusy, setStatusBusy] = useState(false)
@@ -35,6 +37,10 @@ export default function DealDetailDrawer({ isOpen, onClose, deal, onComplete, on
   if (!isOpen || !deal) return null
 
   const isCompleted = deal?.job_status === 'completed'
+  // Wave XXX-Y phase 3: reversed deals are terminal — read-only audit view,
+  // no Complete/Reopen/Reverse actions surfaced for them.
+  const isReversed = deal?.job_status === 'reversed'
+  const canReverse = !isReversed && !isCompleted && deal?.id
 
   const runStatusAction = async (fn) => {
     if (statusBusy) return
@@ -272,7 +278,7 @@ export default function DealDetailDrawer({ isOpen, onClose, deal, onComplete, on
               >
                 <Icon name="RotateCcw" size={16} className="mr-1" /> Reopen
               </Button>
-            ) : (
+            ) : !isReversed ? (
               <Button
                 size="sm"
                 variant="outline"
@@ -283,6 +289,23 @@ export default function DealDetailDrawer({ isOpen, onClose, deal, onComplete, on
                 onClick={() => runStatusAction(() => onComplete?.(deal))}
               >
                 <Icon name="CheckCircle" size={16} className="mr-1" /> Complete
+              </Button>
+            ) : null}
+            {/* Wave XXX-Y phase 3: Reverse Deal affordance from Deals page.
+                Prior gap: this button only existed in the Calendar's DealDrawer,
+                meaning Wave XXX-W F-2 audit-trail display was reachable only via
+                Calendar chip. Adding it here gives parity. */}
+            {canReverse && onReverse && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-9 border-red-300 text-red-700 hover:bg-red-50"
+                disabled={statusBusy}
+                aria-label="Reverse deal"
+                title="Reverse this deal (requires reason)"
+                onClick={() => runStatusAction(() => onReverse?.(deal))}
+              >
+                <Icon name="Undo2" size={16} className="mr-1" /> Reverse
               </Button>
             )}
           </div>

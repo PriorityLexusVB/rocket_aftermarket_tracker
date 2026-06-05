@@ -5,6 +5,7 @@ import { deleteDeal, getAllDeals, markLoanerReturned } from '../../services/deal
 import { listByJobId } from '@/services/opportunitiesService'
 import { handleAuthError, isTechNoiseMessage } from '@/lib/authErrorHandler'
 import { jobService } from '@/services/jobService'
+import { supabase } from '@/lib/supabase'
 import ExportButton from '../../components/common/ExportButton'
 import NewDealModal from './NewDealModal'
 import EditDealModal from './components/EditDealModal'
@@ -318,6 +319,36 @@ export default function DealsPage() {
       toast?.error?.(e?.message || 'Failed to complete')
     } finally {
       statusUpdateInFlightRef.current.delete(dealId)
+    }
+  }
+
+  // Wave XXX-Y phase 3: Reverse Deal handler for DealDetailDrawer. Mirrors the
+  // pattern in DealDrawer.jsx (Calendar chip): prompt for reason, call
+  // reverse_deal RPC, surface toast on success/failure, refresh deal list.
+  const handleReverseDeal = async (deal) => {
+    const dealId = deal?.id
+    if (!dealId) return
+    // eslint-disable-next-line no-alert
+    const reason = window.prompt(
+      'Reverse this deal — reason (required, e.g. "Customer changed mind", "Financing fell through"):'
+    )
+    if (!reason || !reason.trim()) {
+      toast?.error?.('Reversal cancelled — reason is required.')
+      return
+    }
+    try {
+      const { error: rpcErr } = await supabase.rpc('reverse_deal', {
+        p_deal_id: dealId,
+        p_reason: reason.trim(),
+      })
+      if (rpcErr) throw rpcErr
+      toast?.success?.('Deal reversed')
+      setShowDetailDrawer(false)
+      setSelectedDealForDetail(null)
+      await loadDeals(0, 'reverse')
+    } catch (e) {
+      console.error('[Deals] reverse failed', e)
+      toast?.error?.(e?.message || 'Failed to reverse deal')
     }
   }
 
@@ -1708,6 +1739,7 @@ export default function DealsPage() {
           deal={selectedDealForDetail}
           onComplete={handleMarkDealComplete}
           onReopen={handleReopenDeal}
+          onReverse={handleReverseDeal}
         />
       </div>
     </div>
