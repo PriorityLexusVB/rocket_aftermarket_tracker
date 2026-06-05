@@ -105,6 +105,9 @@ const DashboardPage = () => {
   const [overdueData, setOverdueData] = useState({ count: 0, oldestDays: 0 })
   // Wave XXX-V: frozen-month KPI — gross units, reversals this month, net
   const [mtdFrozenKpi, setMtdFrozenKpi] = useState({ gross: 0, reversalsThisMonth: 0, net: 0 })
+  // Wave XXX-X: stale-pending watchdog — deals pending >14d with no calendar activity.
+  // Now that pending counts immediately (Wave XXX-V), forgotten pending = real GSM miss.
+  const [stalePending, setStalePending] = useState({ count: 0, thresholdDays: 14 })
 
   // Wave XXX-S: ref guard prevents rapid-click refresh-flooding (hostile-break-
   // tester found 5 clicks fire 5 concurrent refresh cycles with race conditions
@@ -221,6 +224,32 @@ const DashboardPage = () => {
         } catch (kpiErr) {
           console.warn('[dashboard] frozen-month KPI fetch failed', kpiErr)
           // non-fatal — KPI shows stale/zero rather than crashing the dashboard
+        }
+
+        // Wave XXX-X: stale-pending watchdog. Counts pending deals older than
+        // the threshold with no calendar activity. Codex post-XXX-V analysis
+        // identified this as the highest-leverage Wave B item because Wave
+        // XXX-V made `pending` count immediately, so a forgotten pending deal
+        // is no longer just admin debt — it's a real reported number that
+        // is now stale.
+        try {
+          const STALE_THRESHOLD_DAYS = 14
+          const cutoff = new Date()
+          cutoff.setDate(cutoff.getDate() - STALE_THRESHOLD_DAYS)
+          const cutoffIso = cutoff.toISOString()
+          const { data: staleRows } = await supabase
+            .from('jobs')
+            .select('id')
+            .eq('dealer_id', orgId)
+            .eq('job_status', 'pending')
+            .is('scheduled_start_time', null)
+            .lt('created_at', cutoffIso)
+          setStalePending({
+            count: Array.isArray(staleRows) ? staleRows.length : 0,
+            thresholdDays: STALE_THRESHOLD_DAYS,
+          })
+        } catch (stalePendErr) {
+          console.warn('[dashboard] stale-pending watchdog fetch failed', stalePendErr)
         }
       }
 
@@ -550,9 +579,13 @@ const DashboardPage = () => {
               <span className="ml-3 tabular-nums">
                 Gross: <strong>{mtdFrozenKpi.gross}</strong>
               </span>
-              <span className="ml-3 text-red-600 tabular-nums">
+              <a
+                href="/deals?status=reversed"
+                className="ml-3 text-red-600 underline-offset-2 hover:underline tabular-nums"
+                title="View reversed deals"
+              >
                 Reversals: <strong>−{mtdFrozenKpi.reversalsThisMonth}</strong>
-              </span>
+              </a>
               <span className="ml-3 tabular-nums">
                 Net: <strong>{mtdFrozenKpi.net}</strong>
               </span>
@@ -563,6 +596,26 @@ const DashboardPage = () => {
             </span>
           )}
         </div>
+
+        {/* Wave XXX-X: stale-pending watchdog. Renders only when count > 0 —
+            hiding it entirely on a clean board is the right default for a GSM
+            who doesn't need another zero-state tile to scan. The link routes
+            to /deals where they can review the queue. */}
+        {stalePending.count > 0 && (
+          <a
+            href="/deals?presetView=Unscheduled"
+            className="mt-3 flex items-center justify-between rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 hover:bg-amber-100"
+            title="Pending deals that have been sitting more than 14 days with no schedule activity"
+          >
+            <span>
+              <span className="font-semibold tabular-nums">{stalePending.count}</span>
+              {' '}deal{stalePending.count === 1 ? '' : 's'} pending
+              {' '}<span className="tabular-nums">&gt;{stalePending.thresholdDays}d</span>
+              {' '}— review
+            </span>
+            <span className="text-xs text-amber-700">View &rarr;</span>
+          </a>
+        )}
 
         {/* Wave XXX-P: Cost-Missing warning promoted from sublabel-tiny-text
             to a visible pill above the body. Tells Rob explicitly which deals
