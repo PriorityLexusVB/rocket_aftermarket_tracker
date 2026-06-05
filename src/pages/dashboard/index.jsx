@@ -9,6 +9,7 @@ import { jobService } from '@/services/jobService'
 import { getAllDeals } from '@/services/dealService'
 import { getOpenOpportunitySummary, listOpenCountsByJobIds } from '@/services/opportunitiesService'
 import { getDealFinancials } from '@/utils/dealKpis'
+import { calculateMtdFrozenKpi } from '@/utils/frozenMonthKpi'
 import { useAuth } from '@/contexts/AuthContext'
 import { handleAuthError, isTechNoiseMessage } from '@/lib/authErrorHandler'
 import { getPromiseIso, isOverdueJob } from '@/services/scheduleItemsService'
@@ -103,7 +104,8 @@ const DashboardPage = () => {
   const [needsSchedule, setNeedsSchedule] = useState({ total: 0, vendor: 0, inhouse: 0 })
   // Wave XXX-P: persistent Overdue tile on the strip (was only conditional rose card)
   const [overdueData, setOverdueData] = useState({ count: 0, oldestDays: 0 })
-  // Wave XXX-V: frozen-month KPI — gross units, reversals this month, net
+  // Wave XXX-V: frozen-month KPI — gross units, reversals this month, net.
+  // Math extracted to ../utils/frozenMonthKpi.js for unit testability + cross-month bug fix.
   const [mtdFrozenKpi, setMtdFrozenKpi] = useState({ gross: 0, reversalsThisMonth: 0, net: 0 })
   // Wave XXX-X: stale-pending watchdog — deals pending >14d with no calendar activity.
   // Now that pending counts immediately (Wave XXX-V), forgotten pending = real GSM miss.
@@ -206,20 +208,13 @@ const DashboardPage = () => {
             .eq('dealer_id', orgId)
 
           if (Array.isArray(mtdRows)) {
-            const gross = mtdRows.filter((r) => {
-              if (!r.canonical_date) return false
-              const cd = new Date(r.canonical_date)
-              return cd >= monthStart && cd < monthEnd && r.job_status !== 'reversed'
-            }).length
-
-            const reversalsThisMonth = mtdRows.filter((r) => {
-              if (r.job_status !== 'reversed' || !r.reversed_at) return false
-              const rev = new Date(r.reversed_at)
-              return rev >= monthStart && rev < monthEnd
-            }).length
-
-            const net = gross - reversalsThisMonth
-            setMtdFrozenKpi({ gross, reversalsThisMonth, net })
+            // Wave XXX-W hotfix-4: extracted to testable helper; the prior
+            // inline math had a cross-month bug — Oct 28 sale reversed Nov 3
+            // was excluded from Oct's gross because status='reversed' was
+            // filtered out regardless of WHEN the reversal landed. Frozen-month
+            // accounting requires preserving cross-month-reversed rows in the
+            // earlier month's gross. Test coverage in src/tests/frozenMonthKpi.test.js.
+            setMtdFrozenKpi(calculateMtdFrozenKpi(mtdRows, monthStart, monthEnd))
           }
         } catch (kpiErr) {
           console.warn('[dashboard] frozen-month KPI fetch failed', kpiErr)
@@ -579,10 +574,13 @@ const DashboardPage = () => {
               <span className="ml-3 tabular-nums">
                 Gross: <strong>{mtdFrozenKpi.gross}</strong>
               </span>
+              {/* Wave XXX-W hotfix-4: deep-link to current-month reversals only.
+                  Codex caught: KPI label says "this month" but link previously
+                  showed all-time reversed. createdMonth filter ties them. */}
               <a
-                href="/deals?status=reversed"
+                href={`/deals?status=reversed&createdMonth=${new Date().toISOString().slice(0, 7)}`}
                 className="ml-3 text-red-600 underline-offset-2 hover:underline tabular-nums"
-                title="View reversed deals"
+                title="View reversed deals this month"
               >
                 Reversals: <strong>−{mtdFrozenKpi.reversalsThisMonth}</strong>
               </a>
