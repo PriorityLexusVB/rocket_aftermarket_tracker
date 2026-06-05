@@ -573,9 +573,11 @@ export default function DealsPage() {
       let targetStatus = filters?.status?.toLowerCase()?.replace(' ', '_')
       // Map UI label "Active" to backend status "in_progress"
       if (targetStatus === 'active') targetStatus = 'in_progress'
-      // "Open" is the default view: everything except completed
+      // "Open" is the default actionable view: excludes BOTH terminal states
+      // (Wave XXX-Y added reversed alongside completed — both are terminal
+      // under the 5-state model).
       if (targetStatus === 'open') {
-        if (deal?.job_status === 'completed') return false
+        if (deal?.job_status === 'completed' || deal?.job_status === 'reversed') return false
       } else if (deal?.job_status !== targetStatus) {
         return false
       }

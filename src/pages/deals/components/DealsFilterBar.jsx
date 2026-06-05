@@ -20,16 +20,17 @@ const DealsFilterBar = ({
   allWorkTags,
 }) => (
   <div className="mb-6 bg-card rounded-lg border border-border p-4">
-    {/* Status Tabs */}
+    {/* Status Tabs — Wave XXX-V 5-state model; Wave XXX-Y added Reversed tab
+        and removed dead 'Draft' tab (status retired in XXX-V). */}
     <div className="flex flex-wrap gap-2 mb-4">
       {[
         { value: 'All', label: 'All' },
         { value: 'Open', label: 'Open' },
-        { value: 'Draft', label: 'Draft' },
         { value: 'Pending', label: 'Pending Work' },
         { value: 'Scheduled', label: 'Scheduled' },
         { value: 'Active', label: 'In Progress' },
         { value: 'Completed', label: 'Completed' },
+        { value: 'Reversed', label: 'Reversed' },
       ]?.map(({ value, label }) => (
         <button
           key={value}
