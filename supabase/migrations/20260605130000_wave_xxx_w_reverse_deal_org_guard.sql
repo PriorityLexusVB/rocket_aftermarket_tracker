@@ -67,12 +67,15 @@ BEGIN
     RAISE EXCEPTION 'Deal not found: %', p_deal_id;
   END IF;
 
+  -- TOCTOU defense: re-assert dealer_id in the UPDATE WHERE so even if the
+  -- SELECT-then-UPDATE has a race window, the UPDATE itself enforces the org guard.
   UPDATE public.jobs
   SET job_status      = 'reversed',
       reversed_at     = NOW(),
       reversed_by     = v_caller,
       reversed_reason = p_reason
   WHERE id = p_deal_id
+    AND dealer_id = v_caller_dealer
   RETURNING * INTO v_result;
 
   IF NOT FOUND THEN

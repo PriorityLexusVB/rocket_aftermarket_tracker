@@ -253,10 +253,14 @@ export default function DealDrawer({ open, deal, onClose, onStatusChange }) {
     try {
       // Wave XXX-V: markQC writes quality_checked_at timestamp, keeps in_progress status
       if (primaryAction.markQC) {
-        await supabase
+        // Wave XXX-W Codex catch: supabase .update() does NOT throw — it returns
+        // {data, error}. Without checking error, a DB-rejected write (RLS,
+        // constraint) would falsely toast "QC check recorded". Destructure + throw.
+        const { error: updErr } = await supabase
           .from('jobs')
           .update({ quality_checked_at: new Date().toISOString() })
           .eq('id', dealId)
+        if (updErr) throw updErr
         // Wave XXX-W F-3: confirm to user that QC was logged (silent action was confusing)
         toast?.success?.('QC check recorded')
         onStatusChange?.()
@@ -298,12 +302,18 @@ export default function DealDrawer({ open, deal, onClose, onStatusChange }) {
     setActionError(null)
     try {
       // Wave XXX-V: no_show → reverse_deal RPC with reason 'No-Show'
-      await supabase.rpc('reverse_deal', { p_deal_id: dealId, p_reason: 'No-Show' })
+      // Wave XXX-W Codex catch: supabase.rpc() does NOT throw on error — destructure.
+      const { error: rpcErr } = await supabase.rpc('reverse_deal', {
+        p_deal_id: dealId,
+        p_reason: 'No-Show',
+      })
+      if (rpcErr) throw rpcErr
       toast?.success?.('Deal reversed: No-Show')
       onStatusChange?.()
       onClose?.()
     } catch (err) {
       setActionError(err?.message || 'Could not set No-Show.')
+      toast?.error?.(err?.message || 'Could not set No-Show.')
     } finally {
       setActionLoading(false)
       actionInFlightRef.current = false
@@ -328,7 +338,12 @@ export default function DealDrawer({ open, deal, onClose, onStatusChange }) {
     setActionLoading(true)
     setActionError(null)
     try {
-      await supabase.rpc('reverse_deal', { p_deal_id: dealId, p_reason: reason.trim() })
+      // Wave XXX-W Codex catch: supabase.rpc() does NOT throw on error — destructure.
+      const { error: rpcErr } = await supabase.rpc('reverse_deal', {
+        p_deal_id: dealId,
+        p_reason: reason.trim(),
+      })
+      if (rpcErr) throw rpcErr
       toast?.success?.('Deal reversed')
       onStatusChange?.()
       onClose?.()
