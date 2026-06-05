@@ -3,6 +3,13 @@
 // writing the test surfaced a real bug — the original code excluded cross-month
 // reversed deals from the gross count, breaking frozen-month accounting.
 //
+// Wave XXX-Y browser-tester catch: the original dashboard query referenced
+// `canonical_date` and `deal_date` as if they were real columns on `jobs`.
+// THEY ARE NOT. The design doc spec described canonical_date as a CONCEPT:
+// COALESCE(promised_date, scheduled_start_time, created_at).
+// Helper now accepts either pre-computed canonical_date OR raw component
+// columns and computes it inline via the same COALESCE rule.
+//
 // THE FROZEN-MONTH MODEL:
 //   A deal sold on Oct 28, reversed on Nov 3, must:
 //     - Stay in October's gross at 1 (the sale is FROZEN against future reversal)
@@ -28,7 +35,29 @@
 //   land in the same row set.
 
 /**
- * @param {Array<{canonical_date?: string|null, reversed_at?: string|null, job_status?: string}>} rows
+ * @typedef {Object} JobLikeRow
+ * @property {string|null} [canonical_date]
+ * @property {string|null} [promised_date]
+ * @property {string|null} [scheduled_start_time]
+ * @property {string|null} [created_at]
+ * @property {string|null} [reversed_at]
+ * @property {string} [job_status]
+ */
+
+/**
+ * Compute the canonical-sale-date for a job row.
+ * Matches the design doc spec: COALESCE(promised_date, scheduled_start_time, created_at).
+ * If the row already has a canonical_date (e.g., synthesized server-side), use it.
+ * @param {JobLikeRow} r
+ * @returns {string|null}
+ */
+export function canonicalDateOf(r) {
+  if (!r) return null
+  return r.canonical_date || r.promised_date || r.scheduled_start_time || r.created_at || null
+}
+
+/**
+ * @param {Array<JobLikeRow>} rows
  * @param {Date} monthStart  inclusive ET-month start
  * @param {Date} monthEnd    exclusive ET-month end
  * @returns {{gross: number, reversalsThisMonth: number, net: number}}
@@ -47,7 +76,8 @@ export function calculateMtdFrozenKpi(rows, monthStart, monthEnd) {
   }
 
   const gross = rows.reduce((acc, r) => {
-    if (!inMonth(r?.canonical_date)) return acc
+    const cd = canonicalDateOf(r)
+    if (!inMonth(cd)) return acc
     // Sold this month, NOT reversed → count.
     if (r.job_status !== 'reversed') return acc + 1
     // Sold this month, reversed — only count if the reversal landed in a

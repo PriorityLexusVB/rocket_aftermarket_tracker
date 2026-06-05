@@ -198,11 +198,21 @@ const DashboardPage = () => {
           monthEnd.setMonth(monthEnd.getMonth() + 1)
           const monthEndIso = monthEnd.toISOString()
 
+          // Wave XXX-Y bug fix: canonical_date and deal_date don't exist as
+          // real columns on jobs. The design doc spec described them as
+          // CONCEPTS (COALESCE(promised_date, scheduled_start_time, created_at)).
+          // Wave XXX-V shipped with the query referencing non-existent columns,
+          // returning 400 on every dashboard load. Browser-tester caught it.
+          // Fix: query the real component columns + use server-OR across all
+          // three plus reversed_at. JS-side canonical_date computation in
+          // calculateMtdFrozenKpi via canonicalDateOf() helper.
           const { data: mtdRows } = await supabase
             .from('jobs')
-            .select('id, job_status, reversed_at, canonical_date, deal_date')
+            .select('id, job_status, reversed_at, promised_date, scheduled_start_time, created_at')
             .or(
-              `and(canonical_date.gte.${monthStartIso},canonical_date.lt.${monthEndIso}),` +
+              `and(promised_date.gte.${monthStartIso},promised_date.lt.${monthEndIso}),` +
+                `and(scheduled_start_time.gte.${monthStartIso},scheduled_start_time.lt.${monthEndIso}),` +
+                `and(created_at.gte.${monthStartIso},created_at.lt.${monthEndIso}),` +
                 `and(reversed_at.gte.${monthStartIso},reversed_at.lt.${monthEndIso})`
             )
             .eq('dealer_id', orgId)

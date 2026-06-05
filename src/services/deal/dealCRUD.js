@@ -341,8 +341,13 @@ export async function getAllDeals() {
 
     let jobs = null
     let jobsError = null
-    // Wave XXX-V: draft enum value removed. Filter is now fixed to the 5-state enum.
-    let jobStatusFilter = ['pending', 'scheduled', 'in_progress', 'completed']
+    // Wave XXX-V: draft enum value removed. Filter fixed to the 5-state enum.
+    // Wave XXX-Y bug fix: 'reversed' was missing from the filter, so reversed
+    // deals were invisible everywhere in the Deals page (browser-tester catch).
+    // The F-2 reversal-audit display in DealDrawer was unreachable without
+    // this fix. Client-side filter at deals/index.jsx:572 handles tab routing
+    // (Open tab still excludes completed; All tab + ?status=reversed shows them).
+    let jobStatusFilter = ['pending', 'scheduled', 'in_progress', 'completed', 'reversed']
 
     // We may need up to 4 attempts: original -> remove per-line times -> remove user_profiles name columns / vendor rel
     for (let attempt = 1; attempt <= 4; attempt++) {

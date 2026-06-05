@@ -132,4 +132,42 @@ describe('calculateMtdFrozenKpi — Wave XXX-V frozen-month accounting', () => {
       net: 0,
     })
   })
+
+  it('Wave XXX-Y: computes canonical_date from raw column fallback when canonical_date missing', () => {
+    // Browser-tester catch: canonical_date is NOT a real column. Helper
+    // must fall back to COALESCE(promised_date, scheduled_start_time, created_at).
+    const rows = [
+      // Row with only promised_date → use that
+      { promised_date: '2026-10-10T12:00:00Z', job_status: 'pending' },
+      // Row with only scheduled_start_time → use that
+      { scheduled_start_time: '2026-10-15T12:00:00Z', job_status: 'scheduled' },
+      // Row with only created_at → use that
+      { created_at: '2026-10-20T12:00:00Z', job_status: 'pending' },
+      // Row with multiple — promised_date wins per COALESCE order
+      {
+        promised_date: '2026-10-25T12:00:00Z',
+        scheduled_start_time: '2026-11-01T12:00:00Z',  // would be wrong month
+        created_at: '2026-09-01T12:00:00Z',  // also wrong
+        job_status: 'pending',
+      },
+    ]
+    expect(calculateMtdFrozenKpi(rows, oct.start, oct.end)).toEqual({
+      gross: 4,
+      reversalsThisMonth: 0,
+      net: 4,
+    })
+  })
+
+  it('Wave XXX-Y: pre-computed canonical_date takes precedence over raw columns', () => {
+    // Server-side computed canonical_date should override raw fallback.
+    const rows = [
+      {
+        canonical_date: '2026-10-15T12:00:00Z',  // Oct — should win
+        promised_date: '2026-11-20T12:00:00Z',   // Nov — would lose
+        job_status: 'pending',
+      },
+    ]
+    expect(calculateMtdFrozenKpi(rows, oct.start, oct.end).gross).toBe(1)
+    expect(calculateMtdFrozenKpi(rows, nov.start, nov.end).gross).toBe(0)
+  })
 })
