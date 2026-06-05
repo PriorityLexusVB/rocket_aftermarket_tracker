@@ -326,3 +326,30 @@ Live DB query was not available without interrupting build flow. Conservative pa
 - `~/OneDrive/claude-sync/memory/feedback_drop_create_strips_grants.md` — pitfall #4 (grant preservation on function recreate)
 - `~/OneDrive/claude-sync/memory/feedback_migration_smoke_probe.md` — self-verifying DO block pattern
 - `~/.claude/rules/multi-agent-protocol.md` Rule 6, 14, 15, 16 — all fire on this wave
+
+---
+
+## 14. Post-lock hotfix log (added 2026-06-05)
+
+Per `feature-design-doc.md`: design docs are never rewritten in place, but reality drift after the LOCK header must be appended so future-Claude reads the doc as the doc reads the world. Wave XXX-V locked at HEAD `0b535a2`; this section records what shipped AFTER that lock.
+
+### Wave XXX-V post-lock hotfix chain (same-day, all autonomous):
+- `2eda850` (initial XXX-V feature + migration applied LIVE)
+- `3690b6f` — Codex post-diff caught 4 issues. Fixed: `roundUpExport.js:262` retired-statuses exclusion list updated to `(completed,reversed)`; `StatusUpdateModal.jsx` removed `reversed` from generic dropdown (audit trigger correctly rejects raw status write without reason); `dashboard/index.jsx` frozen-month KPI math rewrote OR-query + JS split for cross-month reversals; `dashboard/index.jsx` added orgId null guard.
+- `0b535a2` — Kanban drag-to-Reversed prompts for reason via `reverse_deal` RPC (Codex post-hotfix re-verify caught raw status write was bypassing audit trigger).
+- `d3d6450` + `910ad52` — STATE close-out commits, no code.
+
+### Wave XXX-W (next session, calendar-flow-specialist + Codex mega-sweep):
+- `2eda850` Wave XXX-W phase 1: F-1 BLOCKER (No-Show dialog falsely said "you can recover by rescheduling" for now-terminal state — replaced with "permanently reverses, action cannot be undone"); D-1 LIVE BUG (CalendarGrid.jsx color map still referenced retired statuses + missing `reversed` — replaced with canonical 5-state map); F-7 dashboard polish (zero-reversal case collapsed to single "Deals this month: N" label); 2 residual cleanups for `DealDrawer.jsx:189` (no_show in showReschedule list) + `calendar-agenda/index.jsx:485` (draft/cancelled in excluded set) — these had been silently failing edits in prior session.
+- `a970610` Wave XXX-W security migration: `reverse_deal` SECURITY DEFINER had no org-scope check (Codex hostile probe). Added cross-org guard via `auth_dealer_id()` resolver. New migration `20260605130000_wave_xxx_w_reverse_deal_org_guard.sql` applied LIVE via Management API.
+- `9f4e16b` Wave XXX-W phase 2: F-2 reversed audit trail display in DealDrawer (red-bordered section showing reason/when/pre_reverse_status); F-3 QC button feedback toast + `quality_checked_at` timestamp row in Schedule section; F-5 general "Reverse Deal" button next to No-Show (window.prompt for reason — proper modal Wave B).
+- `5a8cac5` Wave XXX-X (Codex strategic): stale-pending watchdog Dashboard tile (14d threshold from Fork 3, amber alert, renders only when count > 0) + Reversals KPI clickable deep-link.
+- `eb03ec0` Wave XXX-W hotfix-3 (Codex final-sweep): 3 supabase error-swallowing bugs in DealDrawer (`.update()` and `.rpc()` don't throw — destructure `{ error }` and rethrow); migration TOCTOU defense (`AND dealer_id = v_caller_dealer` added to UPDATE WHERE).
+- `e80c3de` Wave XXX-W hotfix-4 (frozen-month bug fix + regression test): extracted `calculateMtdFrozenKpi()` to `src/utils/frozenMonthKpi.js`. WRITING THE TEST EXPOSED A REAL BUG that all prior reviews missed — the Wave XXX-V dashboard math excluded reversed deals from earlier-month gross regardless of WHEN the reversal landed, breaking the frozen-month accounting model. Oct 28 sale reversed Nov 3 was showing Oct = 0 (wrong; should be frozen at 1). Fixed via cross-month preservation logic. 8/8 unit tests pass. Also tightened Reversals deep-link to `?createdMonth=YYYY-MM` so link semantics match the KPI label.
+- `672af6d` Vitest 3.2.4 → 3.2.6 patch bump — clears 3 critical Dependabot CVEs (UI-server arbitrary file read/exec). Patch within 3.x, no 4.x major bump (separate dep-bump wave).
+
+### Lessons:
+1. **The cross-month frozen-month bug was a LATE catch.** 5 specialist + Codex rounds didn't surface it. The only way it became visible was extracting the math to a testable helper and writing the explicit "Oct sale reversed Nov, Oct view" test case. Lesson: financial-math regressions need explicit unit tests, not just adversarial code review.
+2. **Silent edit failures from earlier session.** Two residual edits to `DealDrawer.jsx:189` (showReschedule list) and `calendar-agenda/index.jsx:485` (excluded set) reported successful from the Edit tool but didn't persist on disk. Both were re-applied as part of Wave XXX-W phase 1 with `sed` verification before commit. The lead-orchestrator should run `grep` verification AFTER `Edit` returns success but BEFORE commit, not trust the success message — this is in the standing multi-agent-protocol rule but bit me anyway.
+3. **SECURITY DEFINER + RLS bypass.** Even with Rule 16 inline justification, the Wave XXX-V `reverse_deal` function lacked an explicit org check. The Codex hostile probe caught it; the 4 prior reviewers (calendar-flow-specialist + site-researcher + adapter-engineer + 3 Codex rounds) missed it because no review framing specifically asked "can this RPC be called cross-tenant?" Lesson: every new SECURITY DEFINER RPC needs an explicit "name your tenant guard" line in the design doc, not just "trusts auth context."
+4. **Supabase JS client doesn't throw on error.** `.update()` and `.rpc()` return `{ data, error }` — must destructure or `if (error) throw`. I assumed throw on error 3 times in Wave XXX-W phase 2 + the Kanban path. Codex final-sweep caught all 3. Future builds touching supabase calls: always destructure error, always rethrow in try/catch. Standing rule worth promoting.
