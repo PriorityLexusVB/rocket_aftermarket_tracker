@@ -310,6 +310,25 @@ const DashboardPage = () => {
     refresh()
   }, [refresh])
 
+  // Wave XXX-Y phase 4: orgId resolution race fix.
+  // Browser-tester pinned this down: on cold load, AuthContext's orgId is
+  // initially null. refresh() runs once with orgId=null, hits the `if (!orgId)`
+  // bail at line 188, sets refreshInFlightRef=true while awaiting the
+  // non-orgId-scoped Promise.all, then completes. When orgId resolves async
+  // from the user-profile fetch, the useCallback recreates refresh with the
+  // new closure and the [refresh] useEffect above re-fires — BUT the in-flight
+  // guard at line 121 still sees `ref.current === true` from the prior run if
+  // the async hasn't finished, and even if it has finished, React may batch
+  // the dispatch in a way that hits the guard. Result: stale-pending watchdog
+  // tile + frozen-month KPI render as silent zeros on cold load until manual
+  // Refresh click. Fix: when orgId transitions to truthy, clear the in-flight
+  // ref so the [refresh] re-fire can proceed.
+  useEffect(() => {
+    if (orgId) {
+      refreshInFlightRef.current = false
+    }
+  }, [orgId])
+
   // Keep the ref current so the bulk-fetch effect can read the latest map
   // without listing it as a dependency (which would cause a fetch loop).
   useEffect(() => {
