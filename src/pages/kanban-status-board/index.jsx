@@ -32,7 +32,10 @@ const KanbanStatusBoard = () => {
   })
   const [showFilters, setShowFilters] = useState(false)
 
-  // Kanban columns definition
+  // Kanban columns definition — Wave XXX-V: 5-state model.
+  // quality_check column removed (merged into in_progress).
+  // delivered column removed (merged into completed).
+  // reversed column added at the end.
   const kanbanColumns = [
     {
       id: 'pending',
@@ -56,18 +59,18 @@ const KanbanStatusBoard = () => {
       statuses: ['in_progress'],
     },
     {
-      id: 'quality_check',
-      title: 'Quality Check',
-      color: 'bg-purple-100 border-purple-300',
-      headerColor: 'bg-purple-50 text-purple-700',
-      statuses: ['quality_check'],
-    },
-    {
-      id: 'delivered',
-      title: 'Delivered',
+      id: 'completed',
+      title: 'Completed',
       color: 'bg-green-100 border-green-300',
       headerColor: 'bg-green-50 text-green-700',
-      statuses: ['delivered', 'completed'],
+      statuses: ['completed'],
+    },
+    {
+      id: 'reversed',
+      title: 'Reversed',
+      color: 'bg-red-100 border-red-300',
+      headerColor: 'bg-red-50 text-red-700',
+      statuses: ['reversed'],
     },
   ]
 
@@ -116,14 +119,14 @@ const KanbanStatusBoard = () => {
       filtered = filtered?.filter((job) => filters?.priorities?.includes(job?.priority))
     }
 
-    // Overdue filter
+    // Overdue filter — Wave XXX-V: 5-state model terminal statuses
     if (filters?.overdue) {
       const now = new Date()
       filtered = filtered?.filter(
         (job) =>
           job?.due_date &&
           new Date(job.due_date) < now &&
-          !['completed', 'delivered', 'cancelled']?.includes(job?.job_status)
+          !['completed', 'reversed']?.includes(job?.job_status)
       )
     }
 
@@ -254,8 +257,9 @@ const KanbanStatusBoard = () => {
     e.dataTransfer.dropEffect = 'move'
   }
 
+  // Wave XXX-V: 5-state model terminal statuses
   const isOverdue = (job) => {
-    if (!job?.due_date || ['completed', 'delivered', 'cancelled']?.includes(job?.job_status)) {
+    if (!job?.due_date || ['completed', 'reversed']?.includes(job?.job_status)) {
       return false
     }
     return new Date(job.due_date) < new Date()

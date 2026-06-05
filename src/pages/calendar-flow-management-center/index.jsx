@@ -459,6 +459,7 @@ const CalendarFlowManagementCenter = ({
       if (filters?.statuses?.length > 0) {
         filteredJobs = filteredJobs?.filter((job) => {
           // Map filter IDs to actual job status values
+          // Wave XXX-V: 5-state model — no_show removed, reversed added.
           const statusMapping = {
             today: () => {
               const jobDate = new Date(job?.scheduled_start_time)
@@ -468,7 +469,7 @@ const CalendarFlowManagementCenter = ({
             in_progress: () => job?.job_status === 'in_progress',
             overdue: () =>
               isOverdueJob(job),
-            no_show: () => job?.job_status === 'no_show',
+            reversed: () => job?.job_status === 'reversed',
             completed: () => job?.job_status === 'completed',
           }
 
@@ -608,11 +609,9 @@ const CalendarFlowManagementCenter = ({
             const normalizedPrev = String(previousStatus || '')
               .trim()
               .toLowerCase()
-            const fallbackStatus = getReopenTargetStatus(job, { now: new Date() })
-            const undoStatus =
-              normalizedPrev === 'quality_check' || normalizedPrev === 'delivered'
-                ? normalizedPrev
-                : fallbackStatus
+            // Wave XXX-V: quality_check/delivered no longer valid undo targets; use fallback only
+          const fallbackStatus = getReopenTargetStatus(job, { now: new Date() })
+            const undoStatus = fallbackStatus
             await jobService.updateStatus(jobId, undoStatus, {
               completed_at: previousCompletedAt || null,
             })
@@ -1812,7 +1811,8 @@ const CalendarFlowManagementCenter = ({
             overdue: [...locationFilteredJobs, ...locationFilteredNeedsScheduling]?.filter((j) =>
               isOverdueJob(j)
             )?.length,
-            noShow: locationFilteredJobs?.filter((j) => j?.job_status === 'no_show')?.length,
+            // Wave XXX-V: no_show → reversed
+            reversed: locationFilteredJobs?.filter((j) => j?.job_status === 'reversed')?.length,
             completed: locationFilteredJobs?.filter((j) => j?.job_status === 'completed')?.length,
           }}
         />

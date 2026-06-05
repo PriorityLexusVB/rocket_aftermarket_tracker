@@ -9,17 +9,12 @@ import { isOverdue } from '@/lib/time'
 // Job statuses that cannot be "overdue" by definition.
 // Used by isOverdueJob() so consumers don't have to inline this list.
 //
-// Wave XXX-R: added 'quality_check'. Work is done; sitting in QC stage. The
-// coordinator's overdue list should be ACTIONABLE items — QC handles itself.
-// Customer is still waiting but there's nothing the coordinator must do.
+// Wave XXX-V: collapsed to 5-state enum. 'reversed' replaces cancelled/no_show.
+// 'canceled' (US spelling) kept as defensive alias for any legacy data.
 const TERMINAL_STATUSES = new Set([
   'completed',
-  'cancelled',
+  'reversed',
   'canceled',
-  'delivered',
-  'draft',
-  'no_show',
-  'quality_check',
 ])
 
 const MS_DAY = 24 * 60 * 60 * 1000
@@ -151,8 +146,8 @@ export function getPromiseIso(job) {
 /**
  * Canonical "is this job overdue?" check.
  *
- * Returns false for jobs in terminal statuses (completed/cancelled/delivered/
- * draft/no_show) regardless of promise date — those are no longer actionable.
+ * Returns false for jobs in terminal statuses (completed/reversed)
+ * regardless of promise date — those are no longer actionable.
  * For all other jobs, compares the canonical promise ISO (via getPromiseIso)
  * against the supplied "now" (default: current time).
  *
@@ -202,7 +197,7 @@ export function classifyScheduleState({
     if (promised) {
       const nowDate = safeDate(now) || new Date()
       const status = String(jobStatus || '').toLowerCase()
-      if (status === 'in_progress' || status === 'quality_check') return 'in_progress'
+      if (status === 'in_progress') return 'in_progress'
 
       // Date-only overdue logic is evaluated by promised day (UTC day key).
       const nowDayUtcMs = getEtDayUtcMs(nowDate)
@@ -224,7 +219,7 @@ export function classifyScheduleState({
   const endMs = end.getTime()
 
   const status = String(jobStatus || '').toLowerCase()
-  if (status === 'in_progress' || status === 'quality_check') return 'in_progress'
+  if (status === 'in_progress') return 'in_progress'
 
   if (endMs < nowMs) {
     const days = Math.floor((nowMs - endMs) / MS_DAY)
@@ -237,7 +232,7 @@ export function classifyScheduleState({
 export function normalizeScheduleItemFromJob(job, { now = new Date(), scheduleOverride } = {}) {
   if (!job) return null
 
-  const excluded = new Set(['cancelled', 'canceled', 'completed', 'draft'])
+  const excluded = new Set(['reversed', 'canceled', 'completed'])
   const status = String(job?.job_status || '').toLowerCase()
   if (excluded.has(status)) return null
 
@@ -302,7 +297,7 @@ export function normalizeScheduleItemFromJob(job, { now = new Date(), scheduleOv
  *
  * Definition (per requirements):
  * - location = On-Site / In-House (job.service_type)
- * - status ∈ in_progress | quality_check
+ * - status ∈ in_progress
  * - scheduled_start_time and scheduled_end_time are null
  * - AND there is no effective scheduled window from job_parts (canonical truth)
  */
@@ -311,7 +306,7 @@ export async function getUnscheduledInProgressInHouseItems({ orgId } = {}) {
     let q = supabase
       ?.from('jobs')
       ?.select('id')
-      ?.in('job_status', ['in_progress', 'quality_check'])
+      ?.in('job_status', ['in_progress'])
       ?.in('service_type', ['onsite', 'in_house'])
       ?.is('scheduled_start_time', null)
       ?.is('scheduled_end_time', null)
@@ -370,7 +365,7 @@ function isoDateKey(d) {
  * - Has at least one job_part with requires_scheduling = true AND promised_date set
  * - Has no scheduled_start_time / scheduled_end_time on those job_parts
  * - AND there is no effective scheduled window from job_parts/job/legacy (canonical truth)
- * - Excludes completed/cancelled/draft via normalizeScheduleItemFromJob
+ * - Excludes completed/reversed via normalizeScheduleItemFromJob
  */
 export async function getNeedsSchedulingPromiseItems({ orgId, rangeStart, rangeEnd } = {}) {
   const startKey = isoDateKey(rangeStart)
@@ -648,7 +643,7 @@ export async function getUnscheduledQueueItems({ orgId } = {}) {
  * Hydrate job rows for a date range using the canonical overlap window from the calendar RPC.
  *
  * Unlike getScheduleItems(), this does NOT normalize into schedule-item shapes and does NOT
- * filter out completed/cancelled jobs. It exists for views that need full job rows but still
+ * filter out completed/reversed jobs. It exists for views that need full job rows but still
  * must respect the canonical overlap-based scheduled window.
  */
 export async function getScheduledJobsByDateRange({ rangeStart, rangeEnd, orgId } = {}) {

@@ -6,7 +6,8 @@ import { jobService } from '@/services/jobService'
 import { useToast } from '@/components/ui/ToastProvider'
 import { handleAuthError, isTechNoiseMessage } from '@/lib/authErrorHandler'
 
-const EXCLUDED_STATUSES = new Set(['completed', 'cancelled', 'canceled', 'draft'])
+// Wave XXX-V: 5-state model — cancelled/canceled/draft/no_show/quality_check removed, reversed added.
+const EXCLUDED_STATUSES = new Set(['completed', 'reversed'])
 
 const LOCATION_LABELS = {
   off_site: 'Off-Site',
@@ -19,9 +20,7 @@ const STATUS_LABELS = {
   pending: 'Pending',
   scheduled: 'Scheduled',
   completed: 'Completed',
-  cancelled: 'Cancelled',
-  no_show: 'No-Show',
-  quality_check: 'Quality Check',
+  reversed: 'Reversed',
 }
 const OVERDUE_CANDIDATE_FIELDS = [
   'next_promised_iso',

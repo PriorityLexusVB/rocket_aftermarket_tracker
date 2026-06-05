@@ -36,6 +36,7 @@ const SERVICE_TYPE_COLORS = {
 
 /**
  * Status-based color overlays (applied on top of service type colors)
+ * Wave XXX-V: 5-state model — quality_check removed, reversed added.
  */
 const STATUS_OVERLAYS = {
   pending: {
@@ -55,9 +56,9 @@ const STATUS_OVERLAYS = {
     opacity: 'opacity-60',
     badge: 'bg-green-500 text-white',
   },
-  quality_check: {
-    opacity: 'opacity-80',
-    badge: 'bg-purple-500 text-white',
+  reversed: {
+    opacity: 'opacity-50',
+    badge: 'bg-red-600 text-white',
   },
 }
 
@@ -145,10 +146,16 @@ export function getColorLegend() {
 
 /**
  * Get status legend for job states
+ * Wave XXX-V: 5-state model — quality_check removed, reversed added.
  * @returns {Array} Status legend items
  */
 export function getStatusLegend() {
   return [
+    {
+      label: 'Pending',
+      className: STATUS_OVERLAYS.pending.badge,
+      opacity: STATUS_OVERLAYS.pending.opacity,
+    },
     {
       label: 'Scheduled',
       className: STATUS_OVERLAYS.scheduled.badge,
@@ -161,14 +168,14 @@ export function getStatusLegend() {
       pulse: true,
     },
     {
-      label: 'Quality Check',
-      className: STATUS_OVERLAYS.quality_check.badge,
-      opacity: STATUS_OVERLAYS.quality_check.opacity,
-    },
-    {
       label: 'Completed',
       className: STATUS_OVERLAYS.completed.badge,
       opacity: STATUS_OVERLAYS.completed.opacity,
+    },
+    {
+      label: 'Reversed',
+      className: STATUS_OVERLAYS.reversed.badge,
+      opacity: STATUS_OVERLAYS.reversed.opacity,
     },
   ]
 }

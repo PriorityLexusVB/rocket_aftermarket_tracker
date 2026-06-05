@@ -124,7 +124,7 @@ export function splitSnapshotItems(items, { now = new Date() } = {}) {
         svc === 'in_house' ||
         svc === 'inhouse'
 
-      if (isInHouse && (status === 'in_progress' || status === 'quality_check')) {
+      if (isInHouse && status === 'in_progress') {
         unscheduledInProgress.push(it)
       }
       continue
@@ -479,11 +479,11 @@ export default function SnapshotView() {
       // Source totals split: scheduled-RPC vs unscheduled-query
       const scheduledRpcUnique = byKey.size
 
-      // Add date-only items. Skip in_progress/quality_check here to avoid duplicates with the
-      // dedicated unscheduled in-progress bucket.
+      // Add date-only items. Skip in_progress here to avoid duplicates with the
+      // dedicated unscheduled in-progress bucket. (Wave XXX-V: quality_check collapsed.)
       for (const it of dateOnlyItems) {
         const status = String(it?.raw?.job_status || it?.raw?.status || '').toLowerCase()
-        if (status === 'in_progress' || status === 'quality_check') continue
+        if (status === 'in_progress') continue
 
         const k = itemKey(it)
         if (k && !byKey.has(k)) byKey.set(k, it)
@@ -585,14 +585,8 @@ export default function SnapshotView() {
 
   async function handleComplete(job) {
     const prevStatusRaw = job?.raw?.job_status
-    const normalizedPrev = String(prevStatusRaw || '')
-      .trim()
-      .toLowerCase()
-    const fallbackStatus = getReopenTargetStatus(job?.raw || job, { now: new Date() })
-    const prevStatus =
-      normalizedPrev === 'quality_check' || normalizedPrev === 'delivered'
-        ? normalizedPrev
-        : fallbackStatus
+    // Wave XXX-V: quality_check/delivered no longer exist; always use fallback
+    const prevStatus = getReopenTargetStatus(job?.raw || job, { now: new Date() })
     const jobTitle = job?.raw?.title || job?.raw?.job_number || 'Appointment'
 
     await withStatusLock(job?.id, async () => {

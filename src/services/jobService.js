@@ -351,7 +351,7 @@ export const jobService = {
       autoStamp.completed_at = new Date().toISOString()
     } else if (
       // Any non-completed transition clears the stale completed_at if it was set
-      ['pending', 'scheduled', 'in_progress', 'quality_check', 'cancelled', 'no_show', 'draft'].includes(normalized)
+      ['pending', 'scheduled', 'in_progress', 'reversed'].includes(normalized)
     ) {
       autoStamp.completed_at = null
     }

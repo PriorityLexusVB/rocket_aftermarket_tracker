@@ -7,6 +7,7 @@ import Check from 'lucide-react/dist/esm/icons/check.js'
 import Loader2 from 'lucide-react/dist/esm/icons/loader-2.js'
 import jobService from '@/services/jobService'
 import { getPromiseIso } from '@/services/scheduleItemsService'
+import { supabase } from '@/lib/supabaseClient'
 
 // Wave XXX-L: useLocation throws when rendered outside a Router. The drawer
 // is used in production inside the AppLayout (Router context guaranteed), but
@@ -50,12 +51,13 @@ function getFocusableElements(container) {
   ).filter((el) => !el.hasAttribute('disabled'))
 }
 
+// Wave XXX-V: 5-state model — quality_check/qc removed, reversed added.
 const STATUS_COLORS = {
+  pending: 'bg-slate-100 text-slate-700',
   scheduled: 'bg-blue-100 text-blue-700',
   in_progress: 'bg-amber-100 text-amber-700',
-  quality_check: 'bg-purple-100 text-purple-700',
-  qc: 'bg-purple-100 text-purple-700',
   completed: 'bg-green-100 text-green-700',
+  reversed: 'bg-red-100 text-red-700',
 }
 
 function StatusBadge({ status }) {
@@ -151,7 +153,9 @@ export default function DealDrawer({ open, deal, onClose, onStatusChange }) {
     return endStr ? `${startStr} – ${endStr}` : startStr
   }, [deal])
 
-  // primary action definition
+  // primary action definition — Wave XXX-V: 5-state model.
+  // quality_check is now a timestamp (quality_checked_at), not a status.
+  // Flow: pending → (needs scheduling) | scheduled → in_progress → [QC stamp] → completed
   const primaryAction = useMemo(() => {
     if (!dealStatus) {
       return { label: 'Select action', disabled: true }
@@ -159,10 +163,10 @@ export default function DealDrawer({ open, deal, onClose, onStatusChange }) {
     if (dealStatus === 'scheduled') {
       return { label: 'Mark In Progress', targetStatus: 'in_progress' }
     }
-    if (dealStatus === 'in_progress') {
-      return { label: 'Move to Quality Check', targetStatus: 'quality_check' }
+    if (dealStatus === 'in_progress' && !deal?.quality_checked_at) {
+      return { label: 'Mark QC Checked', targetStatus: null, markQC: true }
     }
-    if (dealStatus === 'quality_check' || dealStatus === 'qc') {
+    if (dealStatus === 'in_progress' && deal?.quality_checked_at) {
       return { label: 'Mark Complete', targetStatus: 'completed' }
     }
     if (
@@ -174,7 +178,7 @@ export default function DealDrawer({ open, deal, onClose, onStatusChange }) {
       return { label: 'Not scheduled yet', disabled: true, needsScheduling: true }
     }
     return { label: 'Select action', disabled: true }
-  }, [dealStatus])
+  }, [dealStatus, deal?.quality_checked_at])
 
   // Wave XXX-L: secondary actions reachable from chip click on the calendar
   // board. Previously No-Show was only in the heavy JobDrawer surface which
@@ -231,16 +235,26 @@ export default function DealDrawer({ open, deal, onClose, onStatusChange }) {
   }, [dealId])
 
   const handlePrimaryAction = async () => {
-    if (!primaryAction.targetStatus || !dealId) return
+    if (!dealId) return
     // Wave XXX-S: synchronous ref guard prevents double-fire on rapid clicks
     if (actionInFlightRef.current) return
     actionInFlightRef.current = true
     setActionLoading(true)
     setActionError(null)
     try {
-      await jobService.updateStatus(dealId, primaryAction.targetStatus)
-      onStatusChange?.()
-      onClose?.()
+      // Wave XXX-V: markQC writes quality_checked_at timestamp, keeps in_progress status
+      if (primaryAction.markQC) {
+        await supabase
+          .from('jobs')
+          .update({ quality_checked_at: new Date().toISOString() })
+          .eq('id', dealId)
+        onStatusChange?.()
+        // Stay open — primary action now becomes "Mark Complete"
+      } else if (primaryAction.targetStatus) {
+        await jobService.updateStatus(dealId, primaryAction.targetStatus)
+        onStatusChange?.()
+        onClose?.()
+      }
     } catch (err) {
       setActionError(err?.message || 'Status update failed.')
     } finally {
@@ -272,7 +286,8 @@ export default function DealDrawer({ open, deal, onClose, onStatusChange }) {
     setActionLoading(true)
     setActionError(null)
     try {
-      await jobService.updateStatus(dealId, 'no_show')
+      // Wave XXX-V: no_show → reverse_deal RPC with reason 'No-Show'
+      await supabase.rpc('reverse_deal', { p_deal_id: dealId, p_reason: 'No-Show' })
       onStatusChange?.()
       onClose?.()
     } catch (err) {

@@ -67,13 +67,6 @@ export function setLoanerAssignmentsReturnedAtCapability(value) {
   writeSessionCap('cap_loanerAssignmentsReturnedAt', value)
 }
 
-// Some environments have job_status as an enum that does NOT include "draft".
-export let jobsJobStatusSupportsDraft = readSessionCap('cap_jobsJobStatusDraft')
-export function setJobsJobStatusDraftCapability(value) {
-  jobsJobStatusSupportsDraft = value
-  writeSessionCap('cap_jobsJobStatusDraft', value)
-}
-
 export function applyReturnedAtIsNullFilter(q) {
   if (!q) return q
   if (loanerAssignmentsHasReturnedAt === false) return q

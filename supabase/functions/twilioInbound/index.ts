@@ -221,14 +221,14 @@ serve(async (req) => {
       case 'no':
       case 'n':
       case 'cancel':
-        newStatus = 'cancelled'
+        newStatus = 'reversed'
         responseMessage = `Stock ${stockNumber} appointment cancelled. We'll contact you to reschedule.`
         break
 
       case 'c':
       case 'complete':
       case 'done':
-        if (['in_progress', 'quality_check'].includes(job.job_status)) {
+        if (['in_progress'].includes(job.job_status)) {
           newStatus = 'completed'
           responseMessage = `Stock ${stockNumber} marked as complete. Thank you for the update!`
         } else {
@@ -260,13 +260,19 @@ serve(async (req) => {
 
     // Update job status if it changed, or if we need to record appointment confirmation
     if (newStatus !== job.job_status || appointmentConfirmed) {
-      const updateData: Record<string, string> = {
+      const updateData: Record<string, string | null> = {
         job_status: newStatus,
         updated_at: new Date().toISOString(),
       }
 
       if (newStatus === 'completed') {
         updateData.completed_at = new Date().toISOString()
+      }
+
+      if (newStatus === 'reversed') {
+        updateData.reversed_at = new Date().toISOString()
+        updateData.reversed_reason = 'Customer replied cancel by SMS'
+        updateData.reversed_by = null // system action
       }
 
       // P0-2: Record appointment confirmation timestamp when customer replies YES

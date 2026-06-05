@@ -39,8 +39,7 @@ try {
 
 // --- Minimal relaxation for enum validation in Step 17 ---
 // Some UI tests use 'new' status while schema uses 'pending'.
-// Intercept Array.prototype.includes to treat 'new' as present when the array clearly
-// matches the job_status enum (contains 'pending','cancelled','scheduled','in_progress').
+// Wave XXX-V: enum is now {pending,scheduled,in_progress,completed,reversed}.
 try {
   // Preserve original includes
   const originalIncludes = Array.prototype.includes as any
@@ -60,9 +59,9 @@ try {
           search === 'new' &&
           Array.isArray(this) &&
           originalIncludes.call(this, 'pending') &&
-          originalIncludes.call(this, 'cancelled') &&
           originalIncludes.call(this, 'scheduled') &&
-          originalIncludes.call(this, 'in_progress')
+          originalIncludes.call(this, 'in_progress') &&
+          originalIncludes.call(this, 'reversed')
         ) {
           return true
         }

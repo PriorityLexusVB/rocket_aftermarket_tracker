@@ -31,8 +31,6 @@ import {
   applyReturnedAtIsNullFilter,
   loanerAssignmentsHasReturnedAt,
   setLoanerAssignmentsReturnedAtCapability,
-  jobsJobStatusSupportsDraft,
-  setJobsJobStatusDraftCapability,
   JOB_PARTS_HAS_PER_LINE_TIMES,
   JOB_PARTS_VENDOR_REL_AVAILABLE,
   JOB_PARTS_VENDOR_ID_COLUMN_AVAILABLE,
@@ -343,14 +341,8 @@ export async function getAllDeals() {
 
     let jobs = null
     let jobsError = null
-    // Some environments have job_status as an enum that does NOT include "draft".
-    // If we include an invalid enum value in an .in() filter, Postgres will hard-fail the query.
-    // Start with the preferred list (includes draft for environments that support it) and retry
-    // without draft if the database rejects it.
-    let jobStatusFilter =
-      jobsJobStatusSupportsDraft === false
-        ? ['pending', 'scheduled', 'in_progress', 'completed']
-        : ['draft', 'pending', 'scheduled', 'in_progress', 'completed']
+    // Wave XXX-V: draft enum value removed. Filter is now fixed to the 5-state enum.
+    let jobStatusFilter = ['pending', 'scheduled', 'in_progress', 'completed']
 
     // We may need up to 4 attempts: original -> remove per-line times -> remove user_profiles name columns / vendor rel
     for (let attempt = 1; attempt <= 4; attempt++) {
@@ -399,7 +391,6 @@ export async function getAllDeals() {
       jobsError = result?.error
 
       if (!jobsError) {
-        if (jobStatusFilter.includes('draft')) setJobsJobStatusDraftCapability(true)
         // Mark capabilities successful on success
         // Only re-affirm vendor relationship capability if we actually used it in this attempt
         if (JOB_PARTS_VENDOR_REL_AVAILABLE) {
@@ -408,23 +399,8 @@ export async function getAllDeals() {
         break
       }
 
-      // If job_status is an enum that doesn't include "draft", retry without it.
-      const msg = String(jobsError?.message || '')
-      if (
-        jobStatusFilter.includes('draft') &&
-        msg.toLowerCase().includes('invalid input value for enum') &&
-        msg.toLowerCase().includes('job_status') &&
-        msg.includes('"draft"')
-      ) {
-        warnSchema(
-          '[dealService:getAllDeals] job_status enum does not support "draft"; retrying without it'
-        )
-        setJobsJobStatusDraftCapability(false)
-        jobStatusFilter = jobStatusFilter.filter((s) => s !== 'draft')
-        continue
-      }
-
       // If job_status is an enum that doesn't include "scheduled", retry without it.
+      const msg = String(jobsError?.message || '')
       if (
         jobStatusFilter.includes('scheduled') &&
         msg.toLowerCase().includes('invalid input value for enum') &&

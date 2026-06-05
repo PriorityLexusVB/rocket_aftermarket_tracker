@@ -22,17 +22,16 @@ const AdvancedFilters = ({
   // Filter configurations for different page types
   const defaultFilterConfigs = {
     jobs: {
+      // Wave XXX-V: 5-state model — cancelled/quality_check/delivered removed, reversed added.
       status: {
         type: 'multiselect',
         label: 'Status',
         options: [
           { value: 'pending', label: 'Pending' },
+          { value: 'scheduled', label: 'Scheduled' },
           { value: 'in_progress', label: 'In Progress' },
           { value: 'completed', label: 'Completed' },
-          { value: 'cancelled', label: 'Cancelled' },
-          { value: 'scheduled', label: 'Scheduled' },
-          { value: 'quality_check', label: 'Quality Check' },
-          { value: 'delivered', label: 'Delivered' },
+          { value: 'reversed', label: 'Reversed' },
         ],
       },
       priority: {

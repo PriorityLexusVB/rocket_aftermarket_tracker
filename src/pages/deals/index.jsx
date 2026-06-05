@@ -292,11 +292,9 @@ export default function DealsPage() {
           const normalizedPrev = String(previousStatus || '')
             .trim()
             .toLowerCase()
+          // Wave XXX-V: quality_check/delivered no longer valid undo targets; use fallback only
           const fallbackStatus = getReopenTargetStatus(deal, { now: new Date() })
-          const undoStatus =
-            normalizedPrev === 'quality_check' || normalizedPrev === 'delivered'
-              ? normalizedPrev
-              : fallbackStatus
+          const undoStatus = fallbackStatus
           await jobService.updateStatus(dealId, undoStatus, {
             completed_at: previousCompletedAt || null,
           })
@@ -617,7 +615,8 @@ export default function DealsPage() {
           // missing scheduled_start_time + in-house jobs missing promised_date.
           // Excludes terminal statuses.
           const status = deal?.job_status
-          if (['completed', 'cancelled', 'delivered', 'draft', 'no_show'].includes(status)) {
+          // Wave XXX-V: 5-state model terminal statuses
+          if (['completed', 'reversed'].includes(status)) {
             return false
           }
           const hasVendor = !!deal?.vendor_id

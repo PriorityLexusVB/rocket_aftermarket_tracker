@@ -167,7 +167,7 @@ describe('SnapshotView.splitSnapshotItems (unscheduled bucket)', () => {
         scheduledEnd: null,
         scheduleState: 'unscheduled',
         locationType: 'Off-Site',
-        raw: { job_status: 'quality_check', service_type: 'vendor' },
+        raw: { job_status: 'in_progress', service_type: 'vendor' },
       },
     ]
     const out = splitSnapshotItems(items, { now })

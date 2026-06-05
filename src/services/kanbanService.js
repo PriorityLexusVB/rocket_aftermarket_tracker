@@ -84,7 +84,7 @@ export const kanbanService = {
       if (filters?.overdue) {
         query = query
           ?.lt('due_date', new Date()?.toISOString())
-          ?.not('job_status', 'in', '(completed,delivered,cancelled)')
+          ?.not('job_status', 'in', '(completed,reversed)')
       }
 
       // Date range filters
@@ -161,7 +161,7 @@ export const kanbanService = {
       // Set started_at if moving to in_progress for the first time
       if (
         newStatus === 'in_progress' &&
-        !['in_progress', 'quality_check', 'delivered', 'completed']?.includes(
+        !['in_progress', 'completed']?.includes(
           currentJob?.job_status
         )
       ) {
@@ -262,7 +262,7 @@ export const kanbanService = {
       let statsQ = supabase
         ?.from('jobs')
         ?.select('job_status, priority, due_date')
-        ?.neq('job_status', 'cancelled')
+        ?.neq('job_status', 'reversed')
       if (orgId) statsQ = statsQ?.eq('dealer_id', orgId)
       const jobStats = await safeSelect(statsQ, 'kanban:stats:jobStatus')
 
@@ -271,8 +271,6 @@ export const kanbanService = {
           pending: 0,
           scheduled: 0,
           in_progress: 0,
-          quality_check: 0,
-          delivered: 0,
           completed: 0,
         },
         byPriority: {
@@ -303,7 +301,7 @@ export const kanbanService = {
         if (
           job?.due_date &&
           new Date(job.due_date) < now &&
-          !['completed', 'delivered', 'cancelled']?.includes(job?.job_status)
+          !['completed', 'reversed']?.includes(job?.job_status)
         ) {
           stats.overdue++
         }
@@ -350,13 +348,11 @@ export const kanbanService = {
    */
   getAvailableTransitions(currentStatus) {
     const transitions = {
-      pending: ['scheduled', 'in_progress', 'cancelled'],
-      scheduled: ['in_progress', 'completed', 'cancelled'],
-      in_progress: ['quality_check', 'completed', 'cancelled'],
-      quality_check: ['delivered', 'in_progress', 'cancelled'],
-      delivered: ['completed', 'cancelled'],
-      completed: [], // Terminal state
-      cancelled: [], // Terminal state
+      pending:     ['scheduled', 'in_progress', 'reversed'],
+      scheduled:   ['in_progress', 'completed', 'reversed'],
+      in_progress: ['completed', 'scheduled', 'reversed'],
+      completed:   ['in_progress', 'reversed'],
+      reversed:    [], // Terminal state
     }
 
     return transitions?.[currentStatus] || []

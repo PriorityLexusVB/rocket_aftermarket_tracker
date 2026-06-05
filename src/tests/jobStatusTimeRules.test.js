@@ -74,10 +74,10 @@ describe('jobStatusTimeRules', () => {
   })
 
   describe('getReopenTargetStatus', () => {
-    it('returns quality_check for completed jobs', () => {
+    it('returns in_progress for completed jobs (Wave XXX-V — quality_check collapsed)', () => {
       const job = { job_status: 'completed', scheduled_start_time: '2026-01-22T18:00:00Z' }
       const now = new Date('2026-01-22T12:00:00Z')
-      expect(getReopenTargetStatus(job, { now })).toBe('quality_check')
+      expect(getReopenTargetStatus(job, { now })).toBe('in_progress')
     })
 
     it('defers to uncomplete logic for non-completed jobs', () => {

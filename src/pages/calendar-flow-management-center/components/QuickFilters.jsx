@@ -32,13 +32,14 @@ const QuickFilters = ({ filters, onFiltersChange, jobCounts }) => {
       color: 'bg-red-50 text-red-700 border-red-200',
       activeColor: 'bg-red-600 text-white border-red-600',
     },
+    // Wave XXX-V: no_show → reversed chip
     {
-      id: 'no_show',
-      label: 'No-Show',
+      id: 'reversed',
+      label: 'Reversed',
       icon: UserX,
-      count: jobCounts?.noShow || 0,
-      color: 'bg-gray-50 text-gray-700 border-gray-200',
-      activeColor: 'bg-gray-600 text-white border-gray-600',
+      count: jobCounts?.reversed || 0,
+      color: 'bg-red-50 text-red-700 border-red-200',
+      activeColor: 'bg-red-600 text-white border-red-600',
     },
     {
       id: 'completed',

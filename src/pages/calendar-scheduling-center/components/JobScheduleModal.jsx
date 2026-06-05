@@ -279,14 +279,13 @@ const JobScheduleModal = ({ job, vendors = [], onClose, onUpdate }) => {
     }
   }
 
+  // Wave XXX-V: 5-state model — quality_check/delivered/cancelled removed, reversed added.
   const getStatusOptions = () => [
     { value: 'pending', label: 'Needs Work (time TBD)', color: 'text-gray-600' },
     { value: 'scheduled', label: 'Scheduled', color: 'text-blue-600' },
     { value: 'in_progress', label: 'In Progress', color: 'text-yellow-600' },
-    { value: 'quality_check', label: 'Quality Check', color: 'text-purple-600' },
-    { value: 'delivered', label: 'Delivered', color: 'text-green-600' },
     { value: 'completed', label: 'Completed', color: 'text-green-700' },
-    { value: 'cancelled', label: 'Cancelled', color: 'text-red-600' },
+    { value: 'reversed', label: 'Reversed', color: 'text-red-600' },
   ]
 
   const getPriorityOptions = () => [

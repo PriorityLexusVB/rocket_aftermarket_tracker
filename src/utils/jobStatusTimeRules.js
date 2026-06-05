@@ -27,12 +27,7 @@ export function getEffectiveJobStatus(job, { now = new Date() } = {}) {
   // Terminal/explicit statuses are never auto-changed.
   if (
     base === 'completed' ||
-    base === 'cancelled' ||
-    base === 'canceled' ||
-    base === 'no_show' ||
-    base === 'draft' ||
-    base === 'quality_check' ||
-    base === 'delivered' ||
+    base === 'reversed' ||
     base === 'in_progress'
   ) {
     return base
@@ -88,11 +83,11 @@ export function getUncompleteTargetStatus(job, { now = new Date() } = {}) {
 
 /**
  * Reopen target:
- * - If completed, move to the safest allowed next state (quality_check)
+ * - If completed, move to the safest allowed next state (in_progress)
  * - Otherwise, defer to uncomplete schedule logic
  */
 export function getReopenTargetStatus(job, { now = new Date() } = {}) {
   const base = normalizeStatus(job?.job_status)
-  if (base === 'completed') return 'quality_check'
+  if (base === 'completed') return 'in_progress'
   return getUncompleteTargetStatus(job, { now })
 }

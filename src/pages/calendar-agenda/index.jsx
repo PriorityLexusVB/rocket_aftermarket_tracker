@@ -672,14 +672,8 @@ export default function CalendarAgenda({ embedded = false, shellState, onOpenDea
         if (toast?.success) {
           const undo = async () => {
             try {
-              const normalizedPrev = String(previousStatus || '')
-                .trim()
-                .toLowerCase()
-              const fallbackStatus = getReopenTargetStatus(job, { now: new Date() })
-              const undoStatus =
-                normalizedPrev === 'quality_check' || normalizedPrev === 'delivered'
-                  ? normalizedPrev
-                  : fallbackStatus
+              // Wave XXX-V: quality_check/delivered no longer exist; always use fallback
+              const undoStatus = getReopenTargetStatus(job, { now: new Date() })
               await jobService.updateStatus(job.id, undoStatus, {
                 completed_at: previousCompletedAt || null,
               })

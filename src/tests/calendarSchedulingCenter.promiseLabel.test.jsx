@@ -82,7 +82,7 @@ describe('CalendarSchedulingCenter promise-only label', () => {
     expect(within(card).getByText(/Promise:/i)).toBeTruthy()
   })
 
-  it('reopens completed jobs to quality_check', async () => {
+  it('reopens completed jobs to in_progress (Wave XXX-V — quality_check collapsed)', async () => {
     mockGetScheduledJobsByDateRange.mockResolvedValue({
       jobs: [
         {
@@ -120,7 +120,7 @@ describe('CalendarSchedulingCenter promise-only label', () => {
     fireEvent.click(reopenButton)
 
     await waitFor(() => {
-      expect(mockUpdateStatus).toHaveBeenCalledWith('job-2', 'quality_check', {
+      expect(mockUpdateStatus).toHaveBeenCalledWith('job-2', 'in_progress', {
         completed_at: null,
       })
     })

@@ -182,17 +182,9 @@ const SCHEMA_COLUMNS = {
   ],
 }
 
-// Valid enum values based on schema
+// Valid enum values based on schema (Wave XXX-V: 5-state collapse)
 const ENUM_VALUES = {
-  job_status: [
-    'pending',
-    'in_progress',
-    'completed',
-    'cancelled',
-    'scheduled',
-    'quality_check',
-    'delivered',
-  ],
+  job_status: ['pending', 'scheduled', 'in_progress', 'completed', 'reversed'],
   job_priority: ['low', 'medium', 'high', 'urgent'],
   user_role: ['admin', 'manager', 'staff', 'vendor'],
   vehicle_status: ['active', 'maintenance', 'retired', 'sold'],
@@ -330,22 +322,19 @@ describe('Step 17: Regression Guards - Database Schema Validation', () => {
   })
 
   describe('Enum Value Validation', () => {
-    it('should validate job_status enum values used in UI', () => {
-      // Status values referenced in StatusPill component
-      const usedStatuses = ['new', 'scheduled', 'in_progress', 'completed', 'canceled']
+    it('should validate job_status enum values used in UI (Wave XXX-V 5-state)', () => {
+      // Status values referenced in StatusPill component post-collapse
+      const usedStatuses = ['pending', 'scheduled', 'in_progress', 'completed', 'reversed']
 
       usedStatuses?.forEach((status) => {
-        // Note: 'canceled' in UI vs 'cancelled' in schema - this is a common discrepancy to catch
-        const isValid =
-          ENUM_VALUES?.job_status?.includes(status) ||
-          (status === 'canceled' && ENUM_VALUES?.job_status?.includes('cancelled'))
+        const isValid = ENUM_VALUES?.job_status?.includes(status)
         expect(isValid)?.toBe(
           true,
           `Status '${status}' used in UI but not valid in job_status enum`
         )
       })
 
-      console.log('✅ Job status enum validation completed with UI mapping')
+      console.log('✅ Job status enum validation completed (5-state model)')
     })
 
     it('should validate user_role enum values', () => {
@@ -404,11 +393,11 @@ describe('Step 17: Regression Guards - Database Schema Validation', () => {
     })
 
     it('should validate status display formatting', () => {
-      // Status formatting from StatusPill component
+      // Status formatting from StatusPill component (Wave XXX-V 5-state)
       const statusTests = [
         { status: 'in_progress', expected: 'in progress' },
-        { status: 'quality_check', expected: 'quality check' },
-        { status: 'new', expected: 'new' },
+        { status: 'reversed', expected: 'reversed' },
+        { status: 'completed', expected: 'completed' },
       ]
 
       statusTests?.forEach(({ status, expected }) => {

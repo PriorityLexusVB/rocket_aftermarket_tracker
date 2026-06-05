@@ -174,8 +174,11 @@ export const isOverdue = (promiseDate) => {
 }
 
 // Get status badge configuration
+// Wave XXX-V: 5-state model. normalizeJobStatus maps legacy values during transition.
+import { normalizeJobStatus } from '@/utils/jobStatusNormalize'
+
 export const getStatusBadge = (status) => {
-  const normalized = status === 'pending' || !status ? 'scheduled' : status
+  const normalized = normalizeJobStatus(status === 'pending' || !status ? 'pending' : status)
   const statusMap = {
     pending: {
       label: 'PENDING',
@@ -191,15 +194,9 @@ export const getStatusBadge = (status) => {
     },
     in_progress: {
       label: 'In Progress',
-      bg: 'bg-yellow-100',
-      textColor: 'text-yellow-800',
-      color: 'bg-yellow-500',
-    },
-    quality_check: {
-      label: 'Quality Check',
-      bg: 'bg-purple-100',
-      textColor: 'text-purple-800',
-      color: 'bg-purple-500',
+      bg: 'bg-amber-100',
+      textColor: 'text-amber-800',
+      color: 'bg-amber-500',
     },
     completed: {
       label: 'Done',
@@ -207,23 +204,11 @@ export const getStatusBadge = (status) => {
       textColor: 'text-green-800',
       color: 'bg-green-500',
     },
-    delivered: {
-      label: 'Done',
-      bg: 'bg-teal-100',
-      textColor: 'text-teal-800',
-      color: 'bg-teal-500',
-    },
-    cancelled: {
-      label: 'CANCELED',
+    reversed: {
+      label: 'REVERSED',
       bg: 'bg-red-100',
       textColor: 'text-red-800',
       color: 'bg-red-500',
-    },
-    no_show: {
-      label: 'No-Show',
-      bg: 'bg-gray-100',
-      textColor: 'text-gray-800',
-      color: 'bg-gray-400',
     },
   }
 

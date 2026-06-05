@@ -7,6 +7,7 @@ import Button from '../../../components/ui/Button'
 import { formatEtMonthDay } from '../../../utils/scheduleDisplay'
 import { getDealFinancials } from '../../../utils/dealKpis'
 import { getWorkTagLabel } from '../../../utils/workTags'
+import { normalizeJobStatus } from '../../../utils/jobStatusNormalize'
 import {
   formatMoney0OrDash,
   getDealVehicleDisplay,
@@ -20,17 +21,19 @@ import {
 } from './dealHelpers'
 
 // ── StatusPill ──────────────────────────────────────────────────────
+// Wave XXX-V: 5-state model — draft/cancelled removed, reversed added. normalizeJobStatus at entry.
 
 export const StatusPill = ({ status }) => {
+  const normalized = normalizeJobStatus(status)
   const statusColors = {
-    draft: 'bg-accent/50 text-foreground',
-    pending: 'bg-blue-500/10 text-blue-200',
+    pending: 'bg-slate-500/10 text-slate-200',
+    scheduled: 'bg-blue-500/10 text-blue-200',
     in_progress: 'bg-amber-500/10 text-amber-200',
     completed: 'bg-emerald-500/10 text-emerald-200',
-    cancelled: 'bg-red-500/10 text-red-200',
+    reversed: 'bg-red-500/10 text-red-200',
   }
-  const color = statusColors?.[status] || 'bg-accent/50 text-foreground'
-  const displayStatus = status?.replace('_', ' ')?.toUpperCase() || 'UNKNOWN'
+  const color = statusColors?.[normalized] || 'bg-accent/50 text-foreground'
+  const displayStatus = normalized?.replace(/_/g, ' ')?.toUpperCase() || 'UNKNOWN'
 
   return <span className={`px-2 py-1 rounded-full text-xs font-medium ${color}`}>{displayStatus}</span>
 }

@@ -14,13 +14,13 @@ const StatusUpdateModal = ({ job, onClose, onStatusUpdate }) => {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
+  // Wave XXX-V: 5-state model — quality_check and delivered removed, reversed added.
   const statusOptions = [
     { value: 'pending', label: 'Not Started', color: 'gray' },
     { value: 'scheduled', label: 'Scheduled', color: 'blue' },
     { value: 'in_progress', label: 'In Progress', color: 'yellow' },
-    { value: 'quality_check', label: 'Quality Check', color: 'purple' },
     { value: 'completed', label: 'Completed', color: 'green' },
-    { value: 'delivered', label: 'Delivered', color: 'green' },
+    { value: 'reversed', label: 'Reversed', color: 'red' },
   ]
 
   const getStatusColor = (status) => {
@@ -28,9 +28,8 @@ const StatusUpdateModal = ({ job, onClose, onStatusUpdate }) => {
       pending: 'bg-gray-100 text-gray-800 border-gray-300',
       scheduled: 'bg-blue-100 text-blue-800 border-blue-300',
       in_progress: 'bg-yellow-100 text-yellow-800 border-yellow-300',
-      quality_check: 'bg-purple-100 text-purple-800 border-purple-300',
       completed: 'bg-green-100 text-green-800 border-green-300',
-      delivered: 'bg-green-100 text-green-800 border-green-300',
+      reversed: 'bg-red-100 text-red-800 border-red-300',
     }
     return colors?.[status] || colors?.pending
   }
@@ -56,8 +55,9 @@ const StatusUpdateModal = ({ job, onClose, onStatusUpdate }) => {
     })
   }
 
+  // Wave XXX-V: 5-state model terminal statuses
   const isOverdue = (job) => {
-    if (!job?.due_date || ['completed', 'delivered']?.includes(job?.job_status)) {
+    if (!job?.due_date || ['completed', 'reversed']?.includes(job?.job_status)) {
       return false
     }
     return new Date(job.due_date) < new Date()

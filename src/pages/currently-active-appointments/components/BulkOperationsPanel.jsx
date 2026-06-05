@@ -33,13 +33,16 @@ const BulkOperationsPanel = ({ selectedCount, onStatusUpdate, onCancel }) => {
                   <span>Start</span>
                 </button>
 
+                {/* Wave XXX-V: QC is now a timestamp, not a status.
+                    Bulk "QC" writes quality_checked_at; job stays in_progress.
+                    onStatusUpdate('mark_qc') must be handled in parent to write timestamp. */}
                 <button
                   type="button"
-                  onClick={() => onStatusUpdate('quality_check')}
+                  onClick={() => onStatusUpdate('mark_qc')}
                   className="flex items-center space-x-1 px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg transition-all duration-200 text-sm font-medium"
                 >
                   <CheckCircle className="w-4 h-4" />
-                  <span>QC</span>
+                  <span>Mark QC Checked</span>
                 </button>
 
                 <button
@@ -52,14 +55,14 @@ const BulkOperationsPanel = ({ selectedCount, onStatusUpdate, onCancel }) => {
                 </button>
               </div>
 
-              {/* Danger Actions */}
+              {/* Danger Actions — Wave XXX-V: cancelled → reverse_deal RPC via 'bulk_reverse' signal */}
               <button
                 type="button"
-                onClick={() => onStatusUpdate('cancelled')}
+                onClick={() => onStatusUpdate('bulk_reverse')}
                 className="flex items-center space-x-1 px-3 py-1.5 bg-red-500/20 hover:bg-red-500/40 rounded-lg transition-all duration-200 text-sm font-medium border border-red-400/30"
               >
                 <AlertTriangle className="w-4 h-4" />
-                <span>Cancel</span>
+                <span>Reverse</span>
               </button>
             </div>
           </div>

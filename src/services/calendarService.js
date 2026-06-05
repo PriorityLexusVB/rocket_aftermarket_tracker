@@ -304,7 +304,7 @@ export const calendarService = {
           ?.select('job_status')
           ?.eq('id', jobId)
           ?.single()
-        if (existing?.job_status === 'draft' || existing?.job_status === 'pending') {
+        if (existing?.job_status === 'pending') {
           nextStatus = 'scheduled'
         }
       }
@@ -463,7 +463,7 @@ export const calendarService = {
     try {
       const baseFilter = (q) =>
         q
-          ?.not('job_status', 'in', '(completed,cancelled,delivered,draft,no_show)')
+          ?.not('job_status', 'in', '(completed,reversed)')
       // Vendor jobs needing a scheduled appointment
       let vendorQ = supabase
         ?.from('jobs')
@@ -539,7 +539,7 @@ export const calendarService = {
       let totalQ = supabase
         ?.from('jobs')
         ?.select('id', { count: 'exact', head: true })
-        ?.neq('job_status', 'cancelled')
+        ?.neq('job_status', 'reversed')
         ?.or(
           `and(scheduled_start_time.gte.${startDate?.toISOString()},scheduled_start_time.lt.${endDate?.toISOString()}),` +
             `and(scheduled_start_time.is.null,promised_date.gte.${startDate?.toISOString()},promised_date.lt.${endDate?.toISOString()}),` +

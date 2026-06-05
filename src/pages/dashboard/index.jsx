@@ -103,6 +103,8 @@ const DashboardPage = () => {
   const [needsSchedule, setNeedsSchedule] = useState({ total: 0, vendor: 0, inhouse: 0 })
   // Wave XXX-P: persistent Overdue tile on the strip (was only conditional rose card)
   const [overdueData, setOverdueData] = useState({ count: 0, oldestDays: 0 })
+  // Wave XXX-V: frozen-month KPI — gross units, reversals this month, net
+  const [mtdFrozenKpi, setMtdFrozenKpi] = useState({ gross: 0, reversalsThisMonth: 0, net: 0 })
 
   // Wave XXX-S: ref guard prevents rapid-click refresh-flooding (hostile-break-
   // tester found 5 clicks fire 5 concurrent refresh cycles with race conditions
@@ -157,12 +159,53 @@ const DashboardPage = () => {
             .gte('promised_date', todayStartIso)
             .lte('promised_date', todayEndIso)
             .is('scheduled_start_time', null)
-            .not('job_status', 'in', '(completed,cancelled,delivered,draft,no_show,quality_check)')
+            // Wave XXX-V: 5-state model — only completed + reversed are terminal
+            .not('job_status', 'in', '(completed,reversed)')
             .then((r) => r, () => null),
         ])
 
       setNeedsSchedule(needsScheduleRes?.data || { total: 0, vendor: 0, inhouse: 0 })
       setOverdueData(overdueWithOldestRes?.data || { count: 0, oldestDays: 0 })
+
+      // Wave XXX-V: frozen-month KPI math.
+      // Gross = all deals with canonical_date in the current month.
+      // Reversals this month = reversed deals where reversed_at is ALSO in this month.
+      // Net = gross - reversals this month.
+      // A deal reversed next month still counts toward this month's gross; the -1 shows
+      // in that future month's "reversals this month" line.
+      try {
+        const monthStart = new Date(todayStartIso)
+        monthStart.setDate(1)
+        monthStart.setHours(0, 0, 0, 0)
+        const monthStartIso = monthStart.toISOString()
+
+        const monthEnd = new Date(monthStart)
+        monthEnd.setMonth(monthEnd.getMonth() + 1)
+        const monthEndIso = monthEnd.toISOString()
+
+        let mtdQuery = supabase
+          .from('jobs')
+          .select('id, job_status, reversed_at, canonical_date, deal_date')
+          .gte('canonical_date', monthStartIso)
+          .lt('canonical_date', monthEndIso)
+        // Multi-tenant org scoping — prevents cross-org aggregation
+        if (orgId) mtdQuery = mtdQuery.eq('dealer_id', orgId)
+        const { data: mtdRows } = await mtdQuery
+
+        if (Array.isArray(mtdRows)) {
+          const gross = mtdRows.length
+          const reversalsThisMonth = mtdRows.filter((r) => {
+            if (r.job_status !== 'reversed' || !r.reversed_at) return false
+            const rev = new Date(r.reversed_at)
+            return rev >= monthStart && rev < monthEnd
+          }).length
+          const net = gross - reversalsThisMonth
+          setMtdFrozenKpi({ gross, reversalsThisMonth, net })
+        }
+      } catch (kpiErr) {
+        console.warn('[dashboard] frozen-month KPI fetch failed', kpiErr)
+        // non-fatal — KPI shows stale/zero rather than crashing the dashboard
+      }
 
       const jobsToday = Array.isArray(jobsTodayRes?.data) ? jobsTodayRes.data : []
       const jobsTT = Array.isArray(jobsThroughTomorrowRes?.data) ? jobsThroughTomorrowRes.data : []
@@ -471,6 +514,26 @@ const DashboardPage = () => {
                 : `Today: ${kpiValue.profitToday}`
             }
           />
+        </div>
+
+        {/* Wave XXX-V: frozen-month units KPI — gross / reversals / net.
+            A deal sold Oct 28 reversed Nov 3 still counts in October's gross;
+            the -1 appears in November's "reversals this month" line. */}
+        <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+          <span className="font-semibold text-slate-900">
+            {new Date().toLocaleString('en-US', { month: 'long' })} Units
+          </span>
+          <span className="ml-3 tabular-nums">
+            Gross: <strong>{mtdFrozenKpi.gross}</strong>
+          </span>
+          {mtdFrozenKpi.reversalsThisMonth > 0 && (
+            <span className="ml-3 text-red-600 tabular-nums">
+              Reversals this month: <strong>−{mtdFrozenKpi.reversalsThisMonth}</strong>
+            </span>
+          )}
+          <span className="ml-3 tabular-nums">
+            Net: <strong>{mtdFrozenKpi.net}</strong>
+          </span>
         </div>
 
         {/* Wave XXX-P: Cost-Missing warning promoted from sublabel-tiny-text

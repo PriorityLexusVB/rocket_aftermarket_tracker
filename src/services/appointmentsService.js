@@ -139,7 +139,7 @@ export const appointmentsService = {
           )
         `
         )
-        ?.in('job_status', ['pending', 'in_progress', 'scheduled', 'quality_check'])
+        ?.in('job_status', ['pending', 'in_progress', 'scheduled'])
         ?.order('scheduled_start_time', { ascending: true })
 
       // Back-compat: orgId param is treated as dealer_id.
@@ -182,7 +182,7 @@ export const appointmentsService = {
    *
    * Definition (per requirements):
    * - service_type indicates On-Site / In-House
-   * - status ∈ in_progress | quality_check
+   * - status ∈ in_progress
    * - scheduled_start_time and scheduled_end_time are null
    */
   async listUnscheduledInProgressInHouse({ orgId } = {}) {
@@ -207,7 +207,7 @@ export const appointmentsService = {
           )
         `
         )
-        ?.in('job_status', ['in_progress', 'quality_check'])
+        ?.in('job_status', ['in_progress'])
         ?.in('service_type', ['onsite', 'in_house'])
         ?.is('scheduled_start_time', null)
         ?.is('scheduled_end_time', null)
@@ -441,6 +441,29 @@ export const appointmentsService = {
       return { data: data || [], error: null }
     } catch (error) {
       console.error('[appointments] bulkUpdateJobStatus failed:', error)
+      return { data: [], error: null }
+    }
+  },
+
+  // Wave XXX-V: QC is now a timestamp event inside in_progress, not a status.
+  // Writes quality_checked_at = NOW() on selected jobs without changing job_status.
+  async bulkMarkQualityChecked({ jobIds, orgId } = {}) {
+    try {
+      const ids = Array.isArray(jobIds) ? jobIds.filter(Boolean) : []
+      if (!ids.length) return { data: [], error: new Error('jobIds is required') }
+
+      let q = supabase
+        .from('jobs')
+        .update({ quality_checked_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+        .in('id', ids)
+
+      if (orgId) q = q.eq('dealer_id', orgId)
+
+      const { data, error } = await q.select()
+      if (error) throw error
+      return { data: data || [], error: null }
+    } catch (error) {
+      console.error('[appointments] bulkMarkQualityChecked failed:', error)
       return { data: [], error: null }
     }
   },

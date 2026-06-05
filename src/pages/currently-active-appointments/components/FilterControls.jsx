@@ -31,7 +31,8 @@ const FilterControls = ({
             <option value="active">Active Only</option>
             <option value="scheduled">Scheduled</option>
             <option value="in_progress">In Progress</option>
-            <option value="quality_check">Quality Check</option>
+            {/* Wave XXX-V: quality_check removed, reversed added */}
+            <option value="reversed">Reversed</option>
             <option value="pending">Needs Work (time TBD)</option>
             <option value="overdue">Overdue Items</option>
           </select>

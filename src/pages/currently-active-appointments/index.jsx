@@ -238,13 +238,14 @@ const CurrentlyActiveAppointmentsLegacy = () => {
         icon: RefreshCw,
         label: 'In Progress',
       },
-      quality_check: {
-        color: 'from-green-500 to-green-600',
-        bg: 'bg-green-50',
-        text: 'text-green-700',
-        border: 'border-green-200',
+      // Wave XXX-V: quality_check removed, reversed added
+      reversed: {
+        color: 'from-red-500 to-red-600',
+        bg: 'bg-red-50',
+        text: 'text-red-700',
+        border: 'border-red-200',
         icon: CheckCircle,
-        label: 'Quality Check',
+        label: 'Reversed',
       },
       pending: {
         color: 'from-gray-500 to-gray-600',
@@ -313,12 +314,33 @@ const CurrentlyActiveAppointmentsLegacy = () => {
 
     try {
       const appointmentIds = Array?.from(selectedAppointments)
-      const { error } = await appointmentsService.bulkUpdateJobStatus({
-        jobIds: appointmentIds,
-        status,
-        orgId,
-      })
-      if (error) throw error
+
+      // Wave XXX-V signals (BulkOperationsPanel emits these instead of raw status values)
+      if (status === 'mark_qc') {
+        const { error } = await appointmentsService.bulkMarkQualityChecked({
+          jobIds: appointmentIds,
+          orgId,
+        })
+        if (error) throw error
+      } else if (status === 'bulk_reverse') {
+        // Use reverse_deal RPC per job (audit fields enforced server-side)
+        const { supabase } = await import('@/lib/supabase')
+        const reason = 'Bulk reverse'
+        for (const id of appointmentIds) {
+          const { error } = await supabase.rpc('reverse_deal', {
+            p_deal_id: id,
+            p_reason: reason,
+          })
+          if (error) throw error
+        }
+      } else {
+        const { error } = await appointmentsService.bulkUpdateJobStatus({
+          jobIds: appointmentIds,
+          status,
+          orgId,
+        })
+        if (error) throw error
+      }
 
       setSelectedAppointments(new Set())
       loadAppointments()
