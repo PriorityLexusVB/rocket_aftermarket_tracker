@@ -535,22 +535,33 @@ const DashboardPage = () => {
 
         {/* Wave XXX-V: frozen-month units KPI — gross / reversals / net.
             A deal sold Oct 28 reversed Nov 3 still counts in October's gross;
-            the -1 appears in November's "reversals this month" line. */}
-        <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+            the -1 appears in November's "reversals this month" line.
+            calendar-flow-specialist F-7: when reversals=0, collapse to single
+            "Deals this month: N" to avoid the redundant "Gross=Net" look. */}
+        <div
+          className="mt-4 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700"
+          title="Net = Gross minus reversals. Gross counts every deal sold this month. Reversals subtract deals that fell through. Reversals in a later month don't roll back earlier months."
+        >
           <span className="font-semibold text-slate-900">
             {new Date().toLocaleString('en-US', { month: 'long' })} Units
           </span>
-          <span className="ml-3 tabular-nums">
-            Gross: <strong>{mtdFrozenKpi.gross}</strong>
-          </span>
-          {mtdFrozenKpi.reversalsThisMonth > 0 && (
-            <span className="ml-3 text-red-600 tabular-nums">
-              Reversals this month: <strong>−{mtdFrozenKpi.reversalsThisMonth}</strong>
+          {mtdFrozenKpi.reversalsThisMonth > 0 ? (
+            <>
+              <span className="ml-3 tabular-nums">
+                Gross: <strong>{mtdFrozenKpi.gross}</strong>
+              </span>
+              <span className="ml-3 text-red-600 tabular-nums">
+                Reversals: <strong>−{mtdFrozenKpi.reversalsThisMonth}</strong>
+              </span>
+              <span className="ml-3 tabular-nums">
+                Net: <strong>{mtdFrozenKpi.net}</strong>
+              </span>
+            </>
+          ) : (
+            <span className="ml-3 tabular-nums">
+              Deals this month: <strong>{mtdFrozenKpi.net}</strong>
             </span>
           )}
-          <span className="ml-3 tabular-nums">
-            Net: <strong>{mtdFrozenKpi.net}</strong>
-          </span>
         </div>
 
         {/* Wave XXX-P: Cost-Missing warning promoted from sublabel-tiny-text

@@ -186,7 +186,8 @@ export default function DealDrawer({ open, deal, onClose, onStatusChange }) {
   // secondary row keeps the simplified drawer (less button overload than
   // opening the full JobDrawer) while making No-Show + Reschedule reachable.
   const showNoShow = ['pending', 'scheduled', 'in_progress'].includes(dealStatus)
-  const showReschedule = ['scheduled', 'in_progress', 'no_show'].includes(dealStatus)
+  // Wave XXX-V: no_show retired; reversed deals are terminal and not reschedulable
+  const showReschedule = ['scheduled', 'in_progress'].includes(dealStatus)
 
   // focus trap + ESC
   useEffect(() => {
@@ -277,7 +278,7 @@ export default function DealDrawer({ open, deal, onClose, onStatusChange }) {
     const confirmed =
       typeof window === 'undefined' ||
       window.confirm(
-        'Mark this job as No-Show? This updates the job status to No-Show — the customer did not show up. You can recover by rescheduling.'
+        'Mark this deal as No-Show? This permanently reverses the deal — the customer did not show up. This action cannot be undone.'
       )
     if (!confirmed) {
       actionInFlightRef.current = false

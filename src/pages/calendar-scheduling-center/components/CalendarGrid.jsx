@@ -88,16 +88,16 @@ const CalendarGrid = ({ jobs = [], currentDate, viewType, onJobClick, onJobDragD
     }
   }
 
-  // Status color mapping
+  // Status color mapping — Wave XXX-V 5-state model.
+  // Mirrors canonical map in src/utils/calendarColors.js. quality_check/delivered/cancelled
+  // retired; reversed is the terminal-unhappy state.
   const getStatusColor = (status) => {
     const colors = {
       pending: 'bg-gray-100 border-gray-300 text-gray-700',
       scheduled: 'bg-blue-100 border-blue-300 text-blue-700',
       in_progress: 'bg-yellow-100 border-yellow-300 text-yellow-700',
-      quality_check: 'bg-purple-100 border-purple-300 text-purple-700',
-      delivered: 'bg-green-100 border-green-300 text-green-700',
       completed: 'bg-green-200 border-green-400 text-green-800',
-      cancelled: 'bg-red-100 border-red-300 text-red-700',
+      reversed: 'bg-red-100 border-red-300 text-red-700',
     }
     return colors?.[status] || colors?.pending
   }

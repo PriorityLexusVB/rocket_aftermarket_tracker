@@ -482,7 +482,8 @@ export default function CalendarAgenda({ embedded = false, shellState, onOpenDea
       // need them in the working list). The Deals "overdue" tile uses a NARROWER
       // exclusion set in `get_overdue_jobs` RPC (which also strips quality_check + no_show
       // because those aren't actionable-overdue). Scope difference is intentional, not a bug.
-      const excluded = new Set(['draft', 'canceled', 'cancelled', 'completed'])
+      // Wave XXX-V: 5-state model — draft/cancelled no longer exist; canceled kept as US-spelling defensive alias
+      const excluded = new Set(['completed', 'reversed', 'canceled'])
       const combined = [...(scheduledRes?.items || []), ...(promisedRes?.items || [])].filter(
         (it) => !excluded.has(String(it?.raw?.job_status || it?.job_status || '').toLowerCase())
       )
