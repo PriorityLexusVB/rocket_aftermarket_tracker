@@ -8,6 +8,7 @@ import Loader2 from 'lucide-react/dist/esm/icons/loader-2.js'
 import jobService from '@/services/jobService'
 import { getPromiseIso } from '@/services/scheduleItemsService'
 import { supabase } from '@/lib/supabaseClient'
+import { useToast } from '@/components/ui/ToastProvider'
 
 // Wave XXX-L: useLocation throws when rendered outside a Router. The drawer
 // is used in production inside the AppLayout (Router context guaranteed), but
@@ -116,6 +117,9 @@ export default function DealDrawer({ open, deal, onClose, onStatusChange }) {
 
   const location = useOptionalLocation()
   const fromOverdue = location?.pathname === '/overdue'
+  // Wave XXX-W F-3: toast feedback for QC + reverse. Optional-chained so test
+  // renders without a ToastProvider don't crash.
+  const toast = useToast?.()
 
   useEffect(() => {
     if (!open) { setMounted(false); return }
@@ -188,6 +192,10 @@ export default function DealDrawer({ open, deal, onClose, onStatusChange }) {
   const showNoShow = ['pending', 'scheduled', 'in_progress'].includes(dealStatus)
   // Wave XXX-V: no_show retired; reversed deals are terminal and not reschedulable
   const showReschedule = ['scheduled', 'in_progress'].includes(dealStatus)
+  // Wave XXX-W F-5: general Reverse affordance for any non-terminal state.
+  // No-Show stays as a fast-path; Reverse covers everything else.
+  const showReverse = ['pending', 'scheduled', 'in_progress', 'completed'].includes(dealStatus)
+  const isReversed = dealStatus === 'reversed'
 
   // focus trap + ESC
   useEffect(() => {
@@ -249,6 +257,8 @@ export default function DealDrawer({ open, deal, onClose, onStatusChange }) {
           .from('jobs')
           .update({ quality_checked_at: new Date().toISOString() })
           .eq('id', dealId)
+        // Wave XXX-W F-3: confirm to user that QC was logged (silent action was confusing)
+        toast?.success?.('QC check recorded')
         onStatusChange?.()
         // Stay open — primary action now becomes "Mark Complete"
       } else if (primaryAction.targetStatus) {
@@ -289,10 +299,42 @@ export default function DealDrawer({ open, deal, onClose, onStatusChange }) {
     try {
       // Wave XXX-V: no_show → reverse_deal RPC with reason 'No-Show'
       await supabase.rpc('reverse_deal', { p_deal_id: dealId, p_reason: 'No-Show' })
+      toast?.success?.('Deal reversed: No-Show')
       onStatusChange?.()
       onClose?.()
     } catch (err) {
       setActionError(err?.message || 'Could not set No-Show.')
+    } finally {
+      setActionLoading(false)
+      actionInFlightRef.current = false
+    }
+  }
+
+  // Wave XXX-W F-5: general-purpose Reverse with custom reason. Lets coordinators
+  // unwind a deal for any reason (customer changed mind, financing fell through,
+  // dealership backed out) without forcing them through the No-Show shortcut.
+  const handleReverse = async () => {
+    if (!dealId || actionInFlightRef.current) return
+    actionInFlightRef.current = true
+    // eslint-disable-next-line no-alert
+    const reason = typeof window !== 'undefined' ? window.prompt(
+      'Reverse this deal — reason (required, e.g. "Customer changed mind", "Financing fell through"):'
+    ) : null
+    if (!reason || !reason.trim()) {
+      actionInFlightRef.current = false
+      toast?.error?.('Reversal cancelled — reason is required.')
+      return
+    }
+    setActionLoading(true)
+    setActionError(null)
+    try {
+      await supabase.rpc('reverse_deal', { p_deal_id: dealId, p_reason: reason.trim() })
+      toast?.success?.('Deal reversed')
+      onStatusChange?.()
+      onClose?.()
+    } catch (err) {
+      setActionError(err?.message || 'Could not reverse this deal.')
+      toast?.error?.(err?.message || 'Could not reverse this deal.')
     } finally {
       setActionLoading(false)
       actionInFlightRef.current = false
@@ -464,8 +506,65 @@ export default function DealDrawer({ open, deal, onClose, onStatusChange }) {
                   {scheduledDisplay ?? 'Not yet scheduled.'}
                 </span>
               </div>
+              {/* Wave XXX-W F-3: surface quality_checked_at when present so the
+                  coordinator can see QC was logged without opening the DB. */}
+              {deal?.quality_checked_at && (
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs text-slate-500">QC Checked</span>
+                  <span className="text-xs font-medium text-green-700">
+                    {new Date(deal.quality_checked_at).toLocaleString('en-US', {
+                      timeZone: 'America/New_York',
+                      month: 'short',
+                      day: 'numeric',
+                      hour: 'numeric',
+                      minute: '2-digit',
+                    })}
+                  </span>
+                </div>
+              )}
             </div>
           </section>
+
+          {/* Wave XXX-W F-2: reversal audit trail — surfaced only on reversed
+              deals so coordinators / managers can answer "why did this fall
+              through, when, by whom" without querying the DB. Fields render
+              only if present on the deal prop (graceful if parent's select
+              doesn't yet include the columns). */}
+          {isReversed && deal?.reversed_at && (
+            <section className="space-y-2">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-red-700">
+                Reversal Details
+              </h3>
+              <div className="rounded-lg border border-red-200 bg-red-50 p-3 space-y-1.5">
+                <div className="flex items-start justify-between gap-2">
+                  <span className="text-xs text-red-700 shrink-0">Reason</span>
+                  <span className="text-xs font-medium text-red-900 text-right">
+                    {deal.reversed_reason || '—'}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs text-red-700 shrink-0">Reversed</span>
+                  <span className="text-xs font-medium text-red-900">
+                    {new Date(deal.reversed_at).toLocaleString('en-US', {
+                      timeZone: 'America/New_York',
+                      month: 'short',
+                      day: 'numeric',
+                      hour: 'numeric',
+                      minute: '2-digit',
+                    })}
+                  </span>
+                </div>
+                {deal.pre_reverse_status && (
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs text-red-700 shrink-0">Was</span>
+                    <span className="text-xs font-medium text-red-900 capitalize">
+                      {String(deal.pre_reverse_status).replace(/_/g, ' ')}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </section>
+          )}
 
           {/* Notes — only if present */}
           {deal?.notes ? (
@@ -487,9 +586,10 @@ export default function DealDrawer({ open, deal, onClose, onStatusChange }) {
           )}
 
           {/* Wave XXX-L: secondary actions reachable from chip click — No-Show
-              and Reschedule. Hidden when not applicable to the current status. */}
-          {(showNoShow || showReschedule) && (
-            <div className="mb-2 flex items-center gap-2">
+              and Reschedule. Wave XXX-W F-5 adds general Reverse for any
+              non-terminal state. Hidden when not applicable. */}
+          {(showNoShow || showReschedule || showReverse) && (
+            <div className="mb-2 flex flex-wrap items-center gap-2">
               {showReschedule && (
                 <button
                   type="button"
@@ -510,6 +610,18 @@ export default function DealDrawer({ open, deal, onClose, onStatusChange }) {
                   className="rounded-md border border-slate-300 bg-slate-50 px-3 py-1.5 text-[11px] font-medium text-slate-700 hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   No-Show
+                </button>
+              )}
+              {showReverse && (
+                <button
+                  type="button"
+                  onClick={handleReverse}
+                  disabled={actionLoading}
+                  aria-label="Reverse this deal with reason"
+                  title="Reverse this deal (requires reason)"
+                  className="rounded-md border border-red-300 bg-red-50 px-3 py-1.5 text-[11px] font-medium text-red-800 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Reverse Deal
                 </button>
               )}
             </div>
