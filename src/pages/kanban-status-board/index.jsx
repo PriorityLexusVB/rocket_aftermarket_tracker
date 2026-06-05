@@ -208,6 +208,31 @@ const KanbanStatusBoard = () => {
 
   const handleStatusChange = async (jobId, newStatus) => {
     try {
+      // Wave XXX-V hotfix: reversed transitions require audit fields; route
+      // through reverse_deal RPC instead of raw status update. Without this
+      // intercept the enforce_reversal_audit trigger rejects the write.
+      // Codex post-hotfix catch: drag-to-Reversed-column was bypassing this.
+      if (newStatus === 'reversed') {
+        // eslint-disable-next-line no-alert
+        const reason = window.prompt('Reverse this deal — reason (required):')
+        if (!reason || !reason.trim()) {
+          toast?.error?.('Reversal cancelled — reason is required.')
+          return false
+        }
+        const { supabase } = await import('@/lib/supabase')
+        const { error: rpcErr } = await supabase.rpc('reverse_deal', {
+          p_deal_id: jobId,
+          p_reason: reason.trim(),
+        })
+        if (rpcErr) {
+          console.error('Error reversing deal:', rpcErr)
+          toast?.error?.(rpcErr?.message || "Couldn't reverse this deal. Try again.")
+          return false
+        }
+        loadJobs()
+        return true
+      }
+
       const { error } = await kanbanService.updateJobStatus(jobId, newStatus)
 
       if (error) {
