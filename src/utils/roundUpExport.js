@@ -259,7 +259,7 @@ async function fetchExportableJobs(start, end) {
       `and(scheduled_start_time.gte.${startIso},scheduled_start_time.lte.${endIso}),` +
         `and(scheduled_start_time.is.null,promised_date.gte.${startIso},promised_date.lte.${endIso})`
     )
-    .not('job_status', 'in', '(completed,cancelled,delivered,no_show)')
+    .not('job_status', 'in', '(completed,reversed)')
   if (error) throw error
   const rows = Array.isArray(data) ? data : []
   // Client-side sort by canonical commitment time so promised-only jobs interleave

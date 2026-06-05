@@ -14,13 +14,16 @@ const StatusUpdateModal = ({ job, onClose, onStatusUpdate }) => {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
-  // Wave XXX-V: 5-state model — quality_check and delivered removed, reversed added.
+  // Wave XXX-V: 5-state model — quality_check and delivered removed.
+  // 'reversed' intentionally NOT exposed here — the audit trigger requires
+  // reversed_at + reversed_reason, which this modal doesn't capture. Reversal
+  // must go through reverse_deal() RPC via DealDrawer's No-Show button OR a
+  // future dedicated Reverse-with-reason flow (Wave B).
   const statusOptions = [
     { value: 'pending', label: 'Not Started', color: 'gray' },
     { value: 'scheduled', label: 'Scheduled', color: 'blue' },
     { value: 'in_progress', label: 'In Progress', color: 'yellow' },
     { value: 'completed', label: 'Completed', color: 'green' },
-    { value: 'reversed', label: 'Reversed', color: 'red' },
   ]
 
   const getStatusColor = (status) => {

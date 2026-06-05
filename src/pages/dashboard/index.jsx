@@ -167,44 +167,61 @@ const DashboardPage = () => {
       setNeedsSchedule(needsScheduleRes?.data || { total: 0, vendor: 0, inhouse: 0 })
       setOverdueData(overdueWithOldestRes?.data || { count: 0, oldestDays: 0 })
 
-      // Wave XXX-V: frozen-month KPI math.
-      // Gross = all deals with canonical_date in the current month.
-      // Reversals this month = reversed deals where reversed_at is ALSO in this month.
+      // Wave XXX-V hotfix: frozen-month KPI math.
+      // Gross = deals with canonical_date in THIS month AND status != reversed.
+      // Reversals this month = deals where reversed_at is in THIS month
+      //   (regardless of WHICH month they were originally sold — that's the
+      //    whole point of frozen-month accounting; the reversal hits the month
+      //    it happened, not retroactively the month the deal was booked).
       // Net = gross - reversals this month.
-      // A deal reversed next month still counts toward this month's gross; the -1 shows
-      // in that future month's "reversals this month" line.
-      try {
-        const monthStart = new Date(todayStartIso)
-        monthStart.setDate(1)
-        monthStart.setHours(0, 0, 0, 0)
-        const monthStartIso = monthStart.toISOString()
+      //
+      // Codex post-diff catch: prior implementation pre-filtered by canonical_date,
+      // which meant a May 28 sale reversed June 3 was invisible to June's reversal count.
+      // Fixed via OR-query covering both canonical_date AND reversed_at in this month.
+      //
+      // orgId null guard: bail to zeros if auth/tenant context not yet resolved.
+      if (!orgId) {
+        setMtdFrozenKpi({ gross: 0, reversalsThisMonth: 0, net: 0 })
+      } else {
+        try {
+          const monthStart = new Date(todayStartIso)
+          monthStart.setDate(1)
+          monthStart.setHours(0, 0, 0, 0)
+          const monthStartIso = monthStart.toISOString()
 
-        const monthEnd = new Date(monthStart)
-        monthEnd.setMonth(monthEnd.getMonth() + 1)
-        const monthEndIso = monthEnd.toISOString()
+          const monthEnd = new Date(monthStart)
+          monthEnd.setMonth(monthEnd.getMonth() + 1)
+          const monthEndIso = monthEnd.toISOString()
 
-        let mtdQuery = supabase
-          .from('jobs')
-          .select('id, job_status, reversed_at, canonical_date, deal_date')
-          .gte('canonical_date', monthStartIso)
-          .lt('canonical_date', monthEndIso)
-        // Multi-tenant org scoping — prevents cross-org aggregation
-        if (orgId) mtdQuery = mtdQuery.eq('dealer_id', orgId)
-        const { data: mtdRows } = await mtdQuery
+          const { data: mtdRows } = await supabase
+            .from('jobs')
+            .select('id, job_status, reversed_at, canonical_date, deal_date')
+            .or(
+              `and(canonical_date.gte.${monthStartIso},canonical_date.lt.${monthEndIso}),` +
+                `and(reversed_at.gte.${monthStartIso},reversed_at.lt.${monthEndIso})`
+            )
+            .eq('dealer_id', orgId)
 
-        if (Array.isArray(mtdRows)) {
-          const gross = mtdRows.length
-          const reversalsThisMonth = mtdRows.filter((r) => {
-            if (r.job_status !== 'reversed' || !r.reversed_at) return false
-            const rev = new Date(r.reversed_at)
-            return rev >= monthStart && rev < monthEnd
-          }).length
-          const net = gross - reversalsThisMonth
-          setMtdFrozenKpi({ gross, reversalsThisMonth, net })
+          if (Array.isArray(mtdRows)) {
+            const gross = mtdRows.filter((r) => {
+              if (!r.canonical_date) return false
+              const cd = new Date(r.canonical_date)
+              return cd >= monthStart && cd < monthEnd && r.job_status !== 'reversed'
+            }).length
+
+            const reversalsThisMonth = mtdRows.filter((r) => {
+              if (r.job_status !== 'reversed' || !r.reversed_at) return false
+              const rev = new Date(r.reversed_at)
+              return rev >= monthStart && rev < monthEnd
+            }).length
+
+            const net = gross - reversalsThisMonth
+            setMtdFrozenKpi({ gross, reversalsThisMonth, net })
+          }
+        } catch (kpiErr) {
+          console.warn('[dashboard] frozen-month KPI fetch failed', kpiErr)
+          // non-fatal — KPI shows stale/zero rather than crashing the dashboard
         }
-      } catch (kpiErr) {
-        console.warn('[dashboard] frozen-month KPI fetch failed', kpiErr)
-        // non-fatal — KPI shows stale/zero rather than crashing the dashboard
       }
 
       const jobsToday = Array.isArray(jobsTodayRes?.data) ? jobsTodayRes.data : []
