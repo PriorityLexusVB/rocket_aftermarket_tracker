@@ -19,6 +19,10 @@ export default function ReverseReasonModal({
   const [mounted, setMounted] = useState(false)
   const textareaRef = useRef(null)
   const dialogRef = useRef(null)
+  // Wave XXX-Z hotfix-1 (Codex finding #4): synchronous submit guard prevents
+  // double-submit race when rapid Enter fires before React loading state
+  // commits. useState alone has a stale-closure window — useRef is synchronous.
+  const submitInFlightRef = useRef(false)
 
   // Fade-in transition (matches DealDrawer mounted pattern)
   useEffect(() => {
@@ -27,6 +31,7 @@ export default function ReverseReasonModal({
       setReason('')
       setError('')
       setLoading(false)
+      submitInFlightRef.current = false
       return
     }
     const id = requestAnimationFrame(() => {
@@ -37,17 +42,41 @@ export default function ReverseReasonModal({
     return () => cancelAnimationFrame(id)
   }, [isOpen])
 
-  // ESC key closes the modal (unless submitting)
+  // ESC key + Tab focus trap. Wave XXX-Z hotfix-1 (Codex findings #1 + #3):
+  // - ESC now stopPropagation so the parent drawer's ESC handler doesn't ALSO
+  //   fire and close the drawer behind the modal
+  // - Tab cycles within the dialog (real focus trap) so focus can't escape
+  //   into the drawer's elements behind the modal
   useEffect(() => {
     if (!isOpen) return
     const onKeyDown = (e) => {
       if (e.key === 'Escape' && !loading) {
         e.preventDefault()
+        e.stopPropagation() // hotfix-1: prevent parent drawer ESC handler from also firing
         onClose?.()
+        return
+      }
+      if (e.key === 'Tab' && dialogRef.current) {
+        const focusables = Array.from(
+          dialogRef.current.querySelectorAll(
+            'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+          )
+        ).filter((el) => !el.hasAttribute('disabled'))
+        if (focusables.length === 0) return
+        const first = focusables[0]
+        const last = focusables[focusables.length - 1]
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault()
+          last.focus()
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault()
+          first.focus()
+        }
       }
     }
-    document.addEventListener('keydown', onKeyDown)
-    return () => document.removeEventListener('keydown', onKeyDown)
+    // Capture phase so the modal handler runs BEFORE the drawer's bubble-phase listener
+    document.addEventListener('keydown', onKeyDown, true)
+    return () => document.removeEventListener('keydown', onKeyDown, true)
   }, [isOpen, loading, onClose])
 
   if (!isOpen) return null
@@ -57,10 +86,15 @@ export default function ReverseReasonModal({
 
   const handleSubmit = async (e) => {
     e?.preventDefault()
+    // Wave XXX-Z hotfix-1 (Codex finding #4): synchronous ref guard prevents
+    // double-submit race. Rapid Enter could fire onConfirm twice before React's
+    // `loading` state commits. Ref is synchronous.
+    if (submitInFlightRef.current) return
     if (!isValid) {
       setError('Reason is required (at least 3 characters).')
       return
     }
+    submitInFlightRef.current = true
     setError('')
     setLoading(true)
     try {
@@ -69,6 +103,7 @@ export default function ReverseReasonModal({
     } catch (err) {
       setError(err?.message || 'Could not reverse this deal. Try again.')
       setLoading(false)
+      submitInFlightRef.current = false
     }
   }
 

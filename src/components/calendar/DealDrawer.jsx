@@ -126,7 +126,14 @@ export default function DealDrawer({ open, deal, onClose, onStatusChange }) {
   const toast = useToast?.()
 
   useEffect(() => {
-    if (!open) { setMounted(false); return }
+    if (!open) {
+      setMounted(false)
+      // Wave XXX-Z hotfix-1 (Codex finding #2): clear stale modal state when drawer closes.
+      // Without this, if the drawer's ESC listener closes the drawer while
+      // reverseModalOpen is true, the next open would resurrect a zombie modal.
+      setReverseModalOpen(false)
+      return
+    }
     const id = requestAnimationFrame(() => setMounted(true))
     return () => cancelAnimationFrame(id)
   }, [open])
