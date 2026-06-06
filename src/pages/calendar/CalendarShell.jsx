@@ -425,7 +425,7 @@ export default function CalendarShell() {
             </div>
           </div>
         </section>
-        <section className="rounded-xl border border-border bg-card p-4 shadow-sm">
+        <section className="rounded-lg border border-border bg-card p-4 shadow-sm">
           <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
             <div className="flex flex-wrap items-center gap-3">
               {/* Wave J.1 — H1 lifted to dark Lexus Hero strip above; the view-mode chips

@@ -374,12 +374,12 @@ const CurrentlyActiveAppointmentsLegacy = () => {
   if (loading) {
     return (
       <AppLayout>
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-indigo-50 flex items-center justify-center">
+        <div className="min-h-screen bg-background flex items-center justify-center">
           <div className="text-center">
-            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-r from-indigo-600 to-purple-600 flex items-center justify-center shadow-sm">
-              <div className="animate-spin rounded-full h-8 w-8 border-2 border-white border-t-transparent"></div>
+            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-blue-100 flex items-center justify-center shadow-sm">
+              <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-600 border-t-transparent"></div>
             </div>
-            <p className="text-gray-600 font-medium">Loading workflow center...</p>
+            <p className="text-muted-foreground font-medium">Loading workflow center...</p>
           </div>
         </div>
       </AppLayout>
@@ -388,46 +388,44 @@ const CurrentlyActiveAppointmentsLegacy = () => {
 
   return (
     <AppLayout>
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-indigo-50">
+      <div className="min-h-screen bg-background">
         <h1 className="sr-only">Currently Active Appointments</h1>
 
-        {/* Enhanced Header */}
-        <div className="bg-white/80 backdrop-blur-xl border-b border-gray-200/50 sticky top-0 z-40">
-          <div className="px-8 py-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-6">
-                <div className="flex items-center space-x-4">
-                  <div className="w-14 h-14 rounded-lg bg-blue-600 flex items-center justify-center shadow-sm">
-                    <Clock className="w-7 h-7 text-white" />
-                  </div>
-                  <div>
-                    <h1 className="text-2xl md:text-3xl font-bold text-foreground">
-                      Vehicles
-                    </h1>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Vehicles in your inventory with active aftermarket work
-                    </p>
-                  </div>
+        {/* Header */}
+        <div className="bg-card border-b border-border sticky top-0 z-40">
+          <div className="px-6 sm:px-8 py-5">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div className="flex items-center space-x-4">
+                <div className="w-12 h-12 rounded-lg bg-blue-600 flex items-center justify-center shadow-sm flex-shrink-0">
+                  <Clock className="w-6 h-6 text-white" />
                 </div>
-
-                {/* Enhanced Search */}
-                <div className="relative">
-                  <Search className="absolute left-4 top-4 h-5 w-5 text-gray-400" />
-                  <input
-                    type="text"
-                    placeholder="Search jobs, vehicles, customers, or vendors..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e?.target?.value)}
-                    className="pl-12 pr-6 py-3.5 border border-gray-200 rounded-lg w-96 focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-md transition-all duration-200 text-gray-900 placeholder-gray-500"
-                  />
+                <div>
+                  <h1 className="text-2xl md:text-3xl font-bold text-foreground">
+                    Vehicles
+                  </h1>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Vehicles in your inventory with active aftermarket work
+                  </p>
                 </div>
               </div>
 
-              <div className="flex items-center space-x-4">
+              <div className="flex flex-wrap items-center gap-2">
+                {/* Search */}
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <input
+                    type="text"
+                    placeholder="Search jobs, vehicles, customers..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e?.target?.value)}
+                    className="pl-9 pr-4 py-2 border border-border rounded-md w-full sm:w-72 focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground placeholder:text-muted-foreground text-sm"
+                  />
+                </div>
+
                 {/* Workflow Management Tools */}
                 <button
                   onClick={() => setShowPerformanceWidget(!showPerformanceWidget)}
-                  className={`px-4 py-3 rounded-xl border text-gray-600 hover:bg-muted hover:border-gray-300 transition-all duration-200 flex items-center space-x-2 ${showPerformanceWidget ? 'bg-indigo-50 border-indigo-200 text-indigo-600' : 'border-gray-200'}`}
+                  className={`px-3 py-2 rounded-md border text-sm font-medium flex items-center gap-2 transition-colors ${showPerformanceWidget ? 'bg-blue-50 border-blue-200 text-blue-700' : 'border-border text-foreground hover:bg-muted'}`}
                 >
                   <BarChart3 className="w-4 h-4" />
                   <span>Analytics</span>
@@ -435,7 +433,7 @@ const CurrentlyActiveAppointmentsLegacy = () => {
 
                 <button
                   onClick={() => setBulkOperationsMode(!bulkOperationsMode)}
-                  className={`px-4 py-3 rounded-xl border text-gray-600 hover:bg-muted hover:border-gray-300 transition-all duration-200 flex items-center space-x-2 ${bulkOperationsMode ? 'bg-orange-50 border-orange-200 text-orange-600' : 'border-gray-200'}`}
+                  className={`px-3 py-2 rounded-md border text-sm font-medium flex items-center gap-2 transition-colors ${bulkOperationsMode ? 'bg-orange-50 border-orange-200 text-orange-700' : 'border-border text-foreground hover:bg-muted'}`}
                 >
                   <CheckCheck className="w-4 h-4" />
                   <span>Bulk Actions</span>
@@ -449,7 +447,7 @@ const CurrentlyActiveAppointmentsLegacy = () => {
                 <button
                   onClick={handleRefresh}
                   disabled={refreshing}
-                  className={`px-4 py-3 rounded-xl border border-gray-200 text-gray-600 hover:bg-muted hover:border-gray-300 transition-all duration-200 flex items-center space-x-2 ${refreshing ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  className={`px-3 py-2 rounded-md border border-border text-sm font-medium text-foreground hover:bg-muted flex items-center gap-2 transition-colors ${refreshing ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
                   <span>Refresh</span>
@@ -457,44 +455,42 @@ const CurrentlyActiveAppointmentsLegacy = () => {
 
                 <button
                   onClick={() => navigate('/calendar')}
-                  className="bg-gradient-to-r from-emerald-600 to-teal-600 text-white px-6 py-3 rounded-xl hover:from-emerald-700 hover:to-teal-700 flex items-center space-x-3 shadow-lg hover:shadow-xl transition-all duration-200 font-medium"
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-md px-4 py-2 flex items-center gap-2 transition-colors"
                 >
-                  <Calendar className="w-5 h-5" />
+                  <Calendar className="w-4 h-4" />
                   <span>Schedule New</span>
                 </button>
               </div>
             </div>
 
-            {/* Enhanced Stats Overview */}
-            <div className="flex items-center justify-between mt-6">
-              <div className="flex items-center space-x-6">
-                <div className="flex items-center space-x-2 px-4 py-2 bg-blue-50 rounded-xl border border-blue-200">
-                  <Calendar className="w-4 h-4 text-blue-600" />
-                  <span className="text-sm font-medium text-blue-800">
-                    {counts?.total} Total Active
-                  </span>
-                </div>
-                <div className="flex items-center space-x-2 px-4 py-2 bg-orange-50 rounded-xl border border-orange-200">
-                  <RefreshCw className="w-4 h-4 text-orange-600" />
-                  <span className="text-sm font-medium text-orange-800">
-                    {counts?.inProgress} In Progress
-                  </span>
-                </div>
-                <div className="flex items-center space-x-2 px-4 py-2 bg-green-50 rounded-xl border border-green-200">
-                  <CheckCircle className="w-4 h-4 text-green-600" />
-                  <span className="text-sm font-medium text-green-800">
-                    {counts?.scheduled} Scheduled
-                  </span>
-                </div>
-                {counts?.overdue > 0 && (
-                  <div className="flex items-center space-x-2 px-4 py-2 bg-red-50 rounded-xl border border-red-200">
-                    <AlertTriangle className="w-4 h-4 text-red-600" />
-                    <span className="text-sm font-medium text-red-800">
-                      {counts?.overdue} Overdue
-                    </span>
-                  </div>
-                )}
+            {/* Stats chips */}
+            <div className="flex flex-wrap items-center gap-2 mt-4">
+              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 rounded-md border border-blue-200">
+                <Calendar className="w-3.5 h-3.5 text-blue-600" />
+                <span className="text-xs font-medium text-blue-800">
+                  {counts?.total} Total Active
+                </span>
               </div>
+              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-50 rounded-md border border-orange-200">
+                <RefreshCw className="w-3.5 h-3.5 text-orange-600" />
+                <span className="text-xs font-medium text-orange-800">
+                  {counts?.inProgress} In Progress
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 rounded-md border border-emerald-200">
+                <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
+                <span className="text-xs font-medium text-emerald-800">
+                  {counts?.scheduled} Scheduled
+                </span>
+              </div>
+              {counts?.overdue > 0 && (
+                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 rounded-md border border-red-200">
+                  <AlertTriangle className="w-3.5 h-3.5 text-red-600" />
+                  <span className="text-xs font-medium text-red-800">
+                    {counts?.overdue} Overdue
+                  </span>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -551,11 +547,11 @@ const CurrentlyActiveAppointmentsLegacy = () => {
               </div>
             ) : (
               <div className="text-center py-20">
-                <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center">
-                  <Clock className="w-12 h-12 text-indigo-600" />
+                <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-blue-100 flex items-center justify-center">
+                  <Clock className="w-12 h-12 text-blue-600" />
                 </div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">No Active Appointments</h3>
-                <p className="text-gray-600 mb-8 max-w-md mx-auto">
+                <h3 className="text-xl font-semibold text-foreground mb-2">No Active Appointments</h3>
+                <p className="text-muted-foreground mb-8 max-w-md mx-auto">
                   {searchQuery ||
                   statusFilter !== 'all' ||
                   vendorFilter !== 'all' ||
@@ -569,7 +565,7 @@ const CurrentlyActiveAppointmentsLegacy = () => {
 
           {/* Appointment Detail Panel (40%) */}
           {showDetailPanel && selectedAppointment && (
-            <div className="w-2/5 border-l border-gray-200/50">
+            <div className="w-2/5 border-l border-border">
               <AppointmentDetailPanel
                 appointment={selectedAppointment}
                 onClose={() => setShowDetailPanel(false)}

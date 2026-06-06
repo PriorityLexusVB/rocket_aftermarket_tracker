@@ -116,7 +116,7 @@ const AdvancedBusinessIntelligenceAnalytics = () => {
       <AppLayout>
         <div className="min-h-screen bg-background flex items-center justify-center">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-white mx-auto"></div>
+            <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto"></div>
             <p className="mt-4 text-lg text-muted-foreground">Loading analytics dashboard...</p>
           </div>
         </div>
@@ -132,7 +132,7 @@ const AdvancedBusinessIntelligenceAnalytics = () => {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-3xl font-bold text-foreground">
+                <h1 className="text-2xl md:text-3xl font-bold text-foreground">
                   Advanced Business Intelligence Analytics
                 </h1>
                 <p className="mt-2 text-muted-foreground">
@@ -143,7 +143,7 @@ const AdvancedBusinessIntelligenceAnalytics = () => {
               <div className="flex items-center space-x-4">
                 <button
                   onClick={() => setShowFilters(!showFilters)}
-                  className="px-4 py-2 bg-card border border-border rounded-lg 0 flex items-center space-x-2 text-foreground"
+                  className="px-4 py-2 bg-card border border-border rounded-lg flex items-center space-x-2 text-foreground text-sm font-medium hover:bg-muted transition-colors"
                 >
                   <Filter className="w-4 h-4" />
                   <span>Filters</span>
@@ -154,7 +154,7 @@ const AdvancedBusinessIntelligenceAnalytics = () => {
 
                 <button
                   onClick={handleExportData}
-                  className="px-4 py-2 bg-white/10 text-gray-100 border border-white/10 rounded-lg hover:bg-white/20 flex items-center space-x-2"
+                  className="px-4 py-2 bg-card border border-border rounded-lg text-foreground hover:bg-muted flex items-center space-x-2 text-sm font-medium transition-colors"
                 >
                   <Download className="w-4 h-4" />
                   <span>Export</span>
@@ -163,7 +163,7 @@ const AdvancedBusinessIntelligenceAnalytics = () => {
                 <button
                   onClick={handleRefresh}
                   disabled={refreshing}
-                  className="px-4 py-2 0 text-foreground rounded-lg 0 flex items-center space-x-2 disabled:opacity-50"
+                  className="px-4 py-2 bg-card border border-border text-foreground rounded-lg flex items-center space-x-2 text-sm font-medium hover:bg-muted transition-colors disabled:opacity-50"
                 >
                   <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
                   <span>Refresh</span>
@@ -217,18 +217,18 @@ const AdvancedBusinessIntelligenceAnalytics = () => {
         {/* Error State */}
         {error && (
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-            <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
               <div className="flex items-center">
                 <div className="flex-shrink-0">
-                  <Activity className="w-5 h-5 text-red-300" />
+                  <Activity className="w-5 h-5 text-red-600" />
                 </div>
                 <div className="ml-3">
-                  <p className="text-sm text-red-200">{error}</p>
+                  <p className="text-sm text-red-700">{error}</p>
                 </div>
                 <div className="ml-auto">
                   <button
                     onClick={() => loadDashboardData()}
-                    className="text-red-200 hover:text-red-100 text-sm font-medium"
+                    className="text-red-600 hover:text-red-800 text-sm font-medium"
                   >
                     Try Again
                   </button>

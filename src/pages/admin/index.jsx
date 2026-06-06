@@ -1093,7 +1093,29 @@ const AdminPage = () => {
                     aria-selected={active}
                     aria-controls="admin-panel-container"
                     id={`admin-tab-${tab?.id}`}
+                    tabIndex={active ? 0 : -1}
                     onClick={() => setActiveTab(tab?.id)}
+                    onKeyDown={(e) => {
+                      // Wave XXX-AL: WAI-ARIA tab keyboard navigation
+                      const idx = tabs.findIndex((t) => t?.id === tab?.id)
+                      let nextIdx = null
+                      if (e.key === 'ArrowRight') nextIdx = (idx + 1) % tabs.length
+                      else if (e.key === 'ArrowLeft')
+                        nextIdx = (idx - 1 + tabs.length) % tabs.length
+                      else if (e.key === 'Home') nextIdx = 0
+                      else if (e.key === 'End') nextIdx = tabs.length - 1
+                      if (nextIdx !== null) {
+                        e.preventDefault()
+                        const nextId = tabs[nextIdx]?.id
+                        if (nextId) {
+                          setActiveTab(nextId)
+                          // Focus the newly-activated tab
+                          requestAnimationFrame(() => {
+                            document.getElementById(`admin-tab-${nextId}`)?.focus()
+                          })
+                        }
+                      }
+                    }}
                     className={`whitespace-nowrap inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
                       active
                         ? 'bg-slate-900 text-white shadow-sm'

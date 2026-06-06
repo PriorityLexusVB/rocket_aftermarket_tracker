@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import Navbar from '../../components/ui/Navbar'
+import AppLayout from '../../components/layouts/AppLayout'
 import Button from '../../components/ui/Button'
 import Icon from '../../components/ui/Icon'
 import { getEtDayUtcMs, toSafeDateForTimeZone } from '../../utils/scheduleDisplay'
@@ -163,24 +163,20 @@ export default function LoanerManagementDrawer() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background text-foreground">
-        <Navbar />
-        <div className="p-4 md:p-8" style={{ paddingTop: '5rem' }}>
-          <div className="flex items-center justify-center py-12">
-            <div className="text-center">
-              <Icon name="Loader" size={32} className="animate-spin mx-auto mb-4 text-muted-foreground" />
-              <div className="text-muted-foreground">Loading loaner management...</div>
-            </div>
+      <AppLayout>
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <Icon name="Loader" size={32} className="animate-spin mx-auto mb-4 text-muted-foreground" />
+            <div className="text-muted-foreground">Loading loaner management...</div>
           </div>
         </div>
-      </div>
+      </AppLayout>
     )
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <Navbar />
-      <div className="p-4 md:p-8 max-w-7xl mx-auto" style={{ paddingTop: '5rem' }}>
+    <AppLayout>
+      <div className="p-4 md:p-8 max-w-7xl mx-auto">
         {/* Error Display */}
         {error && (
           <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
@@ -215,7 +211,7 @@ export default function LoanerManagementDrawer() {
         <div className="mb-8">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             {/* Available Loaners */}
-            <div className="bg-card p-6 rounded-xl border border-border shadow-sm">
+            <div className="bg-card p-6 rounded-lg border border-border shadow-sm">
               <div className="flex items-center">
                 <div className="p-3 rounded-lg bg-green-100 mr-4">
                   <Icon name="Car" size={24} className="text-green-700" />
@@ -231,7 +227,7 @@ export default function LoanerManagementDrawer() {
             </div>
 
             {/* Assigned Loaners */}
-            <div className="bg-card p-6 rounded-xl border border-border shadow-sm">
+            <div className="bg-card p-6 rounded-lg border border-border shadow-sm">
               <div className="flex items-center">
                 <div className="p-3 rounded-lg bg-blue-100 mr-4">
                   <Icon name="Users" size={24} className="text-blue-700" />
@@ -247,7 +243,7 @@ export default function LoanerManagementDrawer() {
             </div>
 
             {/* Overdue Returns */}
-            <div className="bg-card p-6 rounded-xl border border-border shadow-sm">
+            <div className="bg-card p-6 rounded-lg border border-border shadow-sm">
               <div className="flex items-center">
                 <div className="p-3 rounded-lg bg-red-100 mr-4">
                   <Icon name="AlertTriangle" size={24} className="text-red-700" />
@@ -263,7 +259,7 @@ export default function LoanerManagementDrawer() {
             </div>
 
             {/* Jobs Needing Loaners */}
-            <div className="bg-card p-6 rounded-xl border border-border shadow-sm">
+            <div className="bg-card p-6 rounded-lg border border-border shadow-sm">
               <div className="flex items-center">
                 <div className="p-3 rounded-lg bg-purple-100 mr-4">
                   <Icon name="Clock" size={24} className="text-purple-700" />
@@ -456,6 +452,6 @@ export default function LoanerManagementDrawer() {
           )}
         </div>
       </div>
-    </div>
+    </AppLayout>
   )
 }

@@ -72,6 +72,7 @@
     "test:watch": "node --max-old-space-size=4096 ./node_modules/vitest/vitest.mjs",
     "test:ui": "node --max-old-space-size=4096 ./node_modules/vitest/vitest.mjs --ui",
     "verify": "pnpm -s guard:client-env && pnpm -s guard:instructions && pnpm -s lint && pnpm -s typecheck && pnpm -s test",
+    "design-lint": "node scripts/design-lint.mjs",
     "start": "vite",
     "start:runner": "node scripts/runVite.js",
     "build": "vite build",
