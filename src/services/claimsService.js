@@ -607,4 +607,41 @@ export const claimsService = {
       return () => {}
     }
   },
+
+  /**
+   * Wave XXX-AI: hard-delete a claim. Used for test-data cleanup and
+   * admin-driven removal. RLS policy `admin_can_delete_claims` already
+   * gates this to admin/manager roles. Attachments cascade via FK
+   * `ON DELETE CASCADE` (verified in migration).
+   *
+   * @param {string} claimId
+   * @returns {Promise<{success:boolean, error:string|null}>}
+   */
+  async deleteClaim(claimId) {
+    if (!claimId) {
+      return { success: false, error: 'Missing claim id' }
+    }
+    try {
+      // Wave XXX-AI hotfix-1 (Codex BLOCKER A): verify a row was ACTUALLY
+      // deleted, not just that PostgREST didn't error. RLS can silently
+      // block a DELETE with zero rows affected and no error, which would
+      // make the UI report "success" for a delete that didn't happen.
+      const { data, error } = await supabase
+        ?.from('claims')
+        ?.delete()
+        ?.eq('id', claimId)
+        ?.select('id')
+      if (error) throw error
+      if (!Array.isArray(data) || data.length === 0) {
+        return {
+          success: false,
+          error: 'Delete blocked — only an admin or manager can delete a claim.',
+        }
+      }
+      return { success: true, error: null }
+    } catch (e) {
+      console.error('claimsService.deleteClaim failed', e)
+      return { success: false, error: e?.message || 'Failed to delete claim' }
+    }
+  },
 }
