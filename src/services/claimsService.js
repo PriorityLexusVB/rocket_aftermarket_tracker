@@ -529,4 +529,82 @@ export const claimsService = {
       throw new Error(`Failed to fetch staff: ${error.message}`)
     }
   },
+
+  /**
+   * Wave XXX-AH: count of "submitted" claims (waiting for staff to triage).
+   * Used by the navbar New Claims pill. Returns 0 on error (defensive — we
+   * don't want a transient query failure to hide a pulsing pill).
+   *
+   * @param {string|null} orgId
+   * @returns {Promise<{count:number, latestCreatedAt:string|null}>}
+   */
+  async getNewClaimsCount(orgId = null) {
+    try {
+      let countQ = supabase
+        ?.from('claims')
+        ?.select('id', { count: 'exact', head: true })
+        ?.eq('status', 'submitted')
+      if (orgId) countQ = countQ?.eq('dealer_id', orgId)
+      const { count, error: countErr } = await countQ
+      if (countErr) throw countErr
+
+      // Fetch most-recent created_at separately so the pill can pulse only when
+      // a NEW submission has arrived since lastSeen.
+      let latestQ = supabase
+        ?.from('claims')
+        ?.select('created_at')
+        ?.eq('status', 'submitted')
+        ?.order('created_at', { ascending: false })
+        ?.limit(1)
+      if (orgId) latestQ = latestQ?.eq('dealer_id', orgId)
+      const { data: latest, error: latestErr } = await latestQ
+      if (latestErr) throw latestErr
+
+      return {
+        count: count ?? 0,
+        latestCreatedAt: latest?.[0]?.created_at ?? null,
+      }
+    } catch (e) {
+      console.warn('claimsService.getNewClaimsCount failed', e)
+      return { count: 0, latestCreatedAt: null }
+    }
+  },
+
+  /**
+   * Wave XXX-AH: realtime subscription to claims table. Used by navbar pill so
+   * it lights up the second a customer submits via the guest form. Returns an
+   * unsubscribe function (safe to call even if setup failed — returns a no-op).
+   *
+   * @param {(payload:object) => void} onChange
+   * @returns {() => void}
+   */
+  subscribeToClaims(onChange) {
+    try {
+      const channel = supabase
+        ?.channel('claims_realtime')
+        ?.on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'claims' },
+          (payload) => {
+            try {
+              onChange?.(payload)
+            } catch (e) {
+              console.warn('claimsService.subscribeToClaims callback failed', e)
+            }
+          },
+        )
+        ?.subscribe()
+
+      return () => {
+        try {
+          if (channel) supabase?.removeChannel(channel)
+        } catch (e) {
+          console.warn('claimsService.subscribeToClaims cleanup failed', e)
+        }
+      }
+    } catch (e) {
+      console.warn('claimsService.subscribeToClaims setup failed', e)
+      return () => {}
+    }
+  },
 }

@@ -6,6 +6,8 @@ import X from 'lucide-react/dist/esm/icons/x.js'
 import Bell from 'lucide-react/dist/esm/icons/bell.js'
 // Wave XXX-AE: Help icon for the new How It Works guide
 import HelpCircle from 'lucide-react/dist/esm/icons/circle-help.js'
+// Wave XXX-AH: FileText for the New Claims pill icon
+import FileTextAlert from 'lucide-react/dist/esm/icons/file-text.js'
 import User from 'lucide-react/dist/esm/icons/user.js'
 import LogOut from 'lucide-react/dist/esm/icons/log-out.js'
 import Settings from 'lucide-react/dist/esm/icons/settings.js'
@@ -19,6 +21,8 @@ import MoreHorizontal from 'lucide-react/dist/esm/icons/more-horizontal.js'
 import HomeIcon from 'lucide-react/dist/esm/icons/home.js'
 import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle.js'
 import { useAuth } from '../../contexts/AuthContext'
+// Wave XXX-AH: real-time New Claims pill
+import { useNewClaimsBadge } from '@/hooks/useNewClaimsBadge'
 import { notificationService } from '../../services/notificationService'
 import QuickNavigation from '../common/QuickNavigation'
 import ThemeSelector from '../common/ThemeSelector'
@@ -41,6 +45,28 @@ const Navbar = () => {
   const { user, userProfile, signOut } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
+
+  // Wave XXX-AH: real-time count of "submitted" (unworked) claims for the
+  // navbar pill. Pulses when a new one has arrived since the user's last
+  // visit to the claims page. Per-user last-seen lives in localStorage.
+  const claimsBadge = useNewClaimsBadge({
+    userId: user?.id,
+    enabled: !!user?.id,
+  })
+
+  // Auto-mark-as-seen when the user navigates to the claims page.
+  // Wave XXX-AH hotfix-1 (Codex REQUIRED H): guard on user?.id so we don't
+  // call markAsSeen during the auth-hydration window (which would write to
+  // localStorage under an empty key + then never re-run on user resolution).
+  useEffect(() => {
+    if (
+      location?.pathname === '/claims-management-center' &&
+      user?.id &&
+      claimsBadge?.markAsSeen
+    ) {
+      claimsBadge.markAsSeen()
+    }
+  }, [location?.pathname, user?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Ensure content can scroll past the fixed mobile bottom nav.
   // Close mobile drawer when Escape is pressed — focus is not trapped, so Escape
@@ -334,6 +360,35 @@ const Navbar = () => {
 
               {/* Enhanced Notifications with Real Data — Wave J: dark-surface */}
               <div className="relative">
+                {/* Wave XXX-AH: New Claims pill — real-time count of unworked
+                    customer-submitted claims. Pulses when a new one arrives
+                    since the user's last claims-page visit. */}
+                {claimsBadge?.count > 0 && (
+                  <Link
+                    to="/claims-management-center?status=submitted"
+                    onClick={() => claimsBadge?.markAsSeen?.()}
+                    className={`relative inline-flex items-center gap-1.5 mr-1 px-2.5 py-1.5 rounded-full text-xs font-semibold ring-1 transition-all
+                      ${
+                        claimsBadge?.shouldPulse
+                          ? 'bg-red-500/15 text-red-100 ring-red-400/60 animate-pulse-slow'
+                          : 'bg-white/[0.08] text-lex-ink-inv ring-white/15 hover:bg-white/[0.12]'
+                      }`}
+                    aria-label={`${claimsBadge.count} new claim${claimsBadge.count === 1 ? '' : 's'} waiting`}
+                    title="New claim submissions"
+                  >
+                    {claimsBadge?.shouldPulse && (
+                      <span
+                        aria-hidden="true"
+                        className="absolute inset-0 rounded-full ring-2 ring-red-400/70 animate-ping-slow pointer-events-none"
+                      />
+                    )}
+                    <FileTextAlert className="w-3.5 h-3.5" />
+                    <span className="whitespace-nowrap">
+                      {claimsBadge.count} new claim{claimsBadge.count === 1 ? '' : 's'}
+                    </span>
+                  </Link>
+                )}
+
                 {/* Wave XXX-AE: Help button — opens the How It Works guide */}
                 <Link
                   to="/how-it-works"
@@ -526,6 +581,32 @@ const Navbar = () => {
 
           {/* Mobile Actions — Wave J: dark-surface treatment */}
           <div className="flex items-center space-x-2">
+            {/* Wave XXX-AH: New Claims pill on mobile — same real-time signal
+                coordinators get on desktop, compact for narrow screens. */}
+            {claimsBadge?.count > 0 && (
+              <Link
+                to="/claims-management-center?status=submitted"
+                onClick={() => claimsBadge?.markAsSeen?.()}
+                className={`relative inline-flex items-center gap-1 px-2 py-1.5 rounded-full text-[11px] font-semibold ring-1 transition-all
+                  ${
+                    claimsBadge?.shouldPulse
+                      ? 'bg-red-500/15 text-red-100 ring-red-400/60 animate-pulse-slow'
+                      : 'bg-white/[0.08] text-lex-ink-inv ring-white/15'
+                  }`}
+                aria-label={`${claimsBadge.count} new claim${claimsBadge.count === 1 ? '' : 's'} waiting`}
+                title="New claims"
+              >
+                {claimsBadge?.shouldPulse && (
+                  <span
+                    aria-hidden="true"
+                    className="absolute inset-0 rounded-full ring-2 ring-red-400/70 animate-ping-slow pointer-events-none"
+                  />
+                )}
+                <FileTextAlert className="w-3 h-3" />
+                <span>{claimsBadge.count}</span>
+              </Link>
+            )}
+
             {/* Wave XXX-AE: Help button on mobile — coordinator guide MUST be
                 reachable from phones (where new reps often look first). */}
             <Link

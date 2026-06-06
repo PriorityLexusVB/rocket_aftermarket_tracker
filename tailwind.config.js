@@ -45,6 +45,23 @@ export default {
         'lex-hero':
           '0 4px 32px rgba(0,0,0,0.32), 0 1px 0 rgba(255,255,255,0.04) inset, 0 0 0 1px rgba(255,255,255,0.08)',
       },
+      // Wave XXX-AH — tasteful pulse/glow for the navbar New Claims pill.
+      // Slower than Tailwind's default `animate-pulse` so it draws attention
+      // without being a casino blink.
+      keyframes: {
+        'pulse-slow': {
+          '0%, 100%': { opacity: '1' },
+          '50%': { opacity: '0.65' },
+        },
+        'ping-slow': {
+          '0%': { transform: 'scale(1)', opacity: '0.6' },
+          '70%, 100%': { transform: 'scale(1.6)', opacity: '0' },
+        },
+      },
+      animation: {
+        'pulse-slow': 'pulse-slow 2.2s ease-in-out infinite',
+        'ping-slow': 'ping-slow 2.2s cubic-bezier(0, 0, 0.2, 1) infinite',
+      },
     },
   },
   plugins: [],

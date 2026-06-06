@@ -27,8 +27,21 @@ const ClaimsManagementCenter = () => {
   const [showProcessingModal, setShowProcessingModal] = useState(false)
 
   // Filters and search
+  // Wave XXX-AH hotfix-1 (Codex BLOCKER E): parse ?status=X URL param on
+  // mount so the navbar New Claims pill's deep-link actually filters to
+  // submitted claims. Falls back to 'all' if param missing/invalid.
+  const initialStatusFromUrl = (() => {
+    if (typeof window === 'undefined') return 'all'
+    try {
+      const p = new URLSearchParams(window.location.search).get('status')
+      const valid = ['all', 'submitted', 'under_review', 'approved', 'denied', 'resolved']
+      return p && valid.includes(p) ? p : 'all'
+    } catch {
+      return 'all'
+    }
+  })()
   const [searchTerm, setSearchTerm] = useState('')
-  const [statusFilter, setStatusFilter] = useState('all')
+  const [statusFilter, setStatusFilter] = useState(initialStatusFromUrl)
   const [priorityFilter, setPriorityFilter] = useState('all')
   const [sortBy, setSortBy] = useState('created_at')
   const [sortOrder, setSortOrder] = useState('desc')
@@ -37,6 +50,18 @@ const ClaimsManagementCenter = () => {
   // Completed = archive view with totals strip.
   const [activeTab, setActiveTab] = useState('active') // 'active' | 'completed'
   const [showNewClaimModal, setShowNewClaimModal] = useState(false)
+
+  // Wave XXX-AH hotfix-1 (Codex REQUIRED J): when on /claims-management-center
+  // and a new claim arrives via realtime, refresh the page's claims list so
+  // the user doesn't have to manually refresh.
+  useEffect(() => {
+    const unsubscribe = claimsService?.subscribeToClaims?.(() => {
+      loadData()
+    })
+    return () => {
+      unsubscribe?.()
+    }
+  }, [])
 
   useEffect(() => {
     loadData()
