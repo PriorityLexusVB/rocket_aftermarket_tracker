@@ -1,4 +1,6 @@
 // src/pages/deals/index.jsx
+// Wave XXX-Z item 2: ReverseReasonModal replaces window.prompt in handleReverseDeal
+// FIX: window.prompt removed — DO NOT REVERT, see Wave XXX-Z item 2
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { deleteDeal, getAllDeals, markLoanerReturned } from '../../services/dealService'
@@ -40,6 +42,7 @@ import {
 import DealsKpiRow from './components/DealsKpiRow'
 import DealsFilterBar from './components/DealsFilterBar'
 import { getWorkTagLabel } from '@/utils/workTags'
+import ReverseReasonModal from '@/components/modals/ReverseReasonModal'
 
 // Extracted helpers
 import {
@@ -98,6 +101,9 @@ export default function DealsPage() {
   const [selectedDealForDetail, setSelectedDealForDetail] = useState(null)
   const [expandedDealIds, setExpandedDealIds] = useState(() => new Set())
   const [showSheetView, setShowSheetView] = useState(false)
+  // Wave XXX-Z item 2: ReverseReasonModal state — replaces window.prompt
+  const [reverseModalOpen, setReverseModalOpen] = useState(false)
+  const [reverseTarget, setReverseTarget] = useState(null) // deal object being reversed
 
   // ✅ FIXED: Properly use the dropdown hook instead of direct function calls
   const {
@@ -322,33 +328,36 @@ export default function DealsPage() {
     }
   }
 
-  // Wave XXX-Y phase 3: Reverse Deal handler for DealDetailDrawer. Mirrors the
-  // pattern in DealDrawer.jsx (Calendar chip): prompt for reason, call
-  // reverse_deal RPC, surface toast on success/failure, refresh deal list.
-  const handleReverseDeal = async (deal) => {
-    const dealId = deal?.id
+  // Wave XXX-Z item 2: handleReverseDeal now opens ReverseReasonModal instead of
+  // window.prompt. Modal lives in this page so the drawer's onReverse just calls this.
+  // FIX: window.prompt removed — DO NOT REVERT, see Wave XXX-Z item 2
+  const handleReverseDeal = (deal) => {
+    if (!deal?.id) return
+    setReverseTarget(deal)
+    setReverseModalOpen(true)
+  }
+
+  // confirmReverseDeal is the modal's onConfirm callback — called with validated reason.
+  const confirmReverseDeal = async (reason) => {
+    const dealId = reverseTarget?.id
     if (!dealId) return
-    // eslint-disable-next-line no-alert
-    const reason = window.prompt(
-      'Reverse this deal — reason (required, e.g. "Customer changed mind", "Financing fell through"):'
-    )
-    if (!reason || !reason.trim()) {
-      toast?.error?.('Reversal cancelled — reason is required.')
-      return
-    }
     try {
       const { error: rpcErr } = await supabase.rpc('reverse_deal', {
         p_deal_id: dealId,
-        p_reason: reason.trim(),
+        p_reason: reason,
       })
       if (rpcErr) throw rpcErr
       toast?.success?.('Deal reversed')
+      setReverseModalOpen(false)
+      setReverseTarget(null)
       setShowDetailDrawer(false)
       setSelectedDealForDetail(null)
       await loadDeals(0, 'reverse')
     } catch (e) {
       console.error('[Deals] reverse failed', e)
       toast?.error?.(e?.message || 'Failed to reverse deal')
+      // Rethrow so ReverseReasonModal can display inline error
+      throw e
     }
   }
 
@@ -1740,6 +1749,21 @@ export default function DealsPage() {
           onComplete={handleMarkDealComplete}
           onReopen={handleReopenDeal}
           onReverse={handleReverseDeal}
+        />
+
+        {/* Wave XXX-Z item 2: ReverseReasonModal — replaces window.prompt */}
+        <ReverseReasonModal
+          isOpen={reverseModalOpen}
+          onClose={() => {
+            setReverseModalOpen(false)
+            setReverseTarget(null)
+          }}
+          onConfirm={confirmReverseDeal}
+          dealLabel={
+            reverseTarget
+              ? `${reverseTarget.title || reverseTarget.customer_name || 'Deal'}${reverseTarget.job_number ? ` · Job #${reverseTarget.job_number}` : ''}`
+              : undefined
+          }
         />
       </div>
     </div>

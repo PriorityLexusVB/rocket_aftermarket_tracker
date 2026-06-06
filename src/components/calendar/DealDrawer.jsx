@@ -9,6 +9,8 @@ import jobService from '@/services/jobService'
 import { getPromiseIso } from '@/services/scheduleItemsService'
 import { supabase } from '@/lib/supabaseClient'
 import { useToast } from '@/components/ui/ToastProvider'
+// Wave XXX-Z item 2: ReverseReasonModal replaces window.prompt for reverse action
+import ReverseReasonModal from '@/components/modals/ReverseReasonModal'
 
 // Wave XXX-L: useLocation throws when rendered outside a Router. The drawer
 // is used in production inside the AppLayout (Router context guaranteed), but
@@ -114,6 +116,8 @@ export default function DealDrawer({ open, deal, onClose, onStatusChange }) {
   // stale-closure window — rapid double-click can see actionLoading=false
   // twice before the first render commits. useRef is synchronous.
   const actionInFlightRef = useRef(false)
+  // Wave XXX-Z item 2: ReverseReasonModal state — replaces window.prompt
+  const [reverseModalOpen, setReverseModalOpen] = useState(false)
 
   const location = useOptionalLocation()
   const fromOverdue = location?.pathname === '/overdue'
@@ -319,36 +323,37 @@ export default function DealDrawer({ open, deal, onClose, onStatusChange }) {
     }
   }
 
-  // Wave XXX-W F-5: general-purpose Reverse with custom reason. Lets coordinators
-  // unwind a deal for any reason (customer changed mind, financing fell through,
-  // dealership backed out) without forcing them through the No-Show shortcut.
-  const handleReverse = async () => {
+  // Wave XXX-Z item 2: handleReverse now opens ReverseReasonModal instead of
+  // window.prompt. Modal is mobile-friendly and blocks the tab correctly.
+  // FIX: window.prompt replaced — DO NOT REVERT, see Wave XXX-Z item 2
+  const handleReverse = () => {
     if (!dealId || actionInFlightRef.current) return
+    setReverseModalOpen(true)
+  }
+
+  // confirmReverse is the modal's onConfirm callback — called with the
+  // validated reason string. Throws on RPC error so the modal can surface it.
+  const confirmReverse = async (reason) => {
+    if (!dealId) return
     actionInFlightRef.current = true
-    // eslint-disable-next-line no-alert
-    const reason = typeof window !== 'undefined' ? window.prompt(
-      'Reverse this deal — reason (required, e.g. "Customer changed mind", "Financing fell through"):'
-    ) : null
-    if (!reason || !reason.trim()) {
-      actionInFlightRef.current = false
-      toast?.error?.('Reversal cancelled — reason is required.')
-      return
-    }
     setActionLoading(true)
     setActionError(null)
     try {
       // Wave XXX-W Codex catch: supabase.rpc() does NOT throw on error — destructure.
       const { error: rpcErr } = await supabase.rpc('reverse_deal', {
         p_deal_id: dealId,
-        p_reason: reason.trim(),
+        p_reason: reason,
       })
       if (rpcErr) throw rpcErr
       toast?.success?.('Deal reversed')
+      setReverseModalOpen(false)
       onStatusChange?.()
       onClose?.()
     } catch (err) {
       setActionError(err?.message || 'Could not reverse this deal.')
       toast?.error?.(err?.message || 'Could not reverse this deal.')
+      // Rethrow so ReverseReasonModal can display inline error
+      throw err
     } finally {
       setActionLoading(false)
       actionInFlightRef.current = false
@@ -685,6 +690,17 @@ export default function DealDrawer({ open, deal, onClose, onStatusChange }) {
           </div>
         </div>
       </aside>
+
+      {/* Wave XXX-Z item 2: ReverseReasonModal — portal inside the DealDrawer portal */}
+      <ReverseReasonModal
+        isOpen={reverseModalOpen}
+        onClose={() => {
+          setReverseModalOpen(false)
+          actionInFlightRef.current = false
+        }}
+        onConfirm={confirmReverse}
+        dealLabel={identifierLabel || title}
+      />
     </div>,
     document.body
   )

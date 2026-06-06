@@ -1,3 +1,5 @@
+// Wave XXX-Z item 2: ReverseReasonModal replaces window.prompt in handleStatusChange
+// FIX: window.prompt removed — DO NOT REVERT, see Wave XXX-Z item 2
 import React, { useState, useEffect, useCallback } from 'react'
 import Activity from 'lucide-react/dist/esm/icons/activity.js'
 import Filter from 'lucide-react/dist/esm/icons/filter.js'
@@ -6,6 +8,7 @@ import ChevronDown from 'lucide-react/dist/esm/icons/chevron-down.js'
 import { useToast } from '@/components/ui/ToastProvider'
 import { kanbanService } from '../../services/kanbanService'
 import vendorService from '../../services/vendorService'
+import ReverseReasonModal from '@/components/modals/ReverseReasonModal'
 
 // Kanban components
 import KanbanColumn from './components/KanbanColumn'
@@ -31,6 +34,9 @@ const KanbanStatusBoard = () => {
     dateRange: 'all', // 'today', 'week', 'month', 'all'
   })
   const [showFilters, setShowFilters] = useState(false)
+  // Wave XXX-Z item 2: ReverseReasonModal state — replaces window.prompt
+  const [reverseModalOpen, setReverseModalOpen] = useState(false)
+  const [reverseTargetJobId, setReverseTargetJobId] = useState(null)
 
   // Kanban columns definition — Wave XXX-V: 5-state model.
   // quality_check column removed (merged into in_progress).
@@ -213,24 +219,12 @@ const KanbanStatusBoard = () => {
       // intercept the enforce_reversal_audit trigger rejects the write.
       // Codex post-hotfix catch: drag-to-Reversed-column was bypassing this.
       if (newStatus === 'reversed') {
-        // eslint-disable-next-line no-alert
-        const reason = window.prompt('Reverse this deal — reason (required):')
-        if (!reason || !reason.trim()) {
-          toast?.error?.('Reversal cancelled — reason is required.')
-          return false
-        }
-        const { supabase } = await import('@/lib/supabase')
-        const { error: rpcErr } = await supabase.rpc('reverse_deal', {
-          p_deal_id: jobId,
-          p_reason: reason.trim(),
-        })
-        if (rpcErr) {
-          console.error('Error reversing deal:', rpcErr)
-          toast?.error?.(rpcErr?.message || "Couldn't reverse this deal. Try again.")
-          return false
-        }
-        loadJobs()
-        return true
+        // Wave XXX-Z item 2: open ReverseReasonModal instead of window.prompt.
+        // handleStatusChange returns false (no immediate status update); the
+        // modal's confirmReverseKanban callback does the RPC + reload.
+        setReverseTargetJobId(jobId)
+        setReverseModalOpen(true)
+        return false
       }
 
       const { error } = await kanbanService.updateJobStatus(jobId, newStatus)
@@ -251,6 +245,30 @@ const KanbanStatusBoard = () => {
     } catch (error) {
       console.error('Error in handleStatusChange:', error)
       return false
+    }
+  }
+
+  // Wave XXX-Z item 2: confirmReverseKanban — modal's onConfirm callback.
+  // Receives validated reason string, calls reverse_deal RPC, reloads board.
+  const confirmReverseKanban = async (reason) => {
+    const jobId = reverseTargetJobId
+    if (!jobId) return
+    try {
+      const { supabase } = await import('@/lib/supabase')
+      const { error: rpcErr } = await supabase.rpc('reverse_deal', {
+        p_deal_id: jobId,
+        p_reason: reason,
+      })
+      if (rpcErr) throw rpcErr
+      toast?.success?.('Deal reversed')
+      setReverseModalOpen(false)
+      setReverseTargetJobId(null)
+      loadJobs()
+    } catch (err) {
+      console.error('Error reversing deal (kanban):', err)
+      toast?.error?.(err?.message || "Couldn't reverse this deal. Try again.")
+      // Rethrow so ReverseReasonModal can display inline error
+      throw err
     }
   }
 
@@ -427,6 +445,17 @@ const KanbanStatusBoard = () => {
           onStatusUpdate={handleStatusChange}
         />
       )}
+
+      {/* Wave XXX-Z item 2: ReverseReasonModal — replaces window.prompt */}
+      <ReverseReasonModal
+        isOpen={reverseModalOpen}
+        onClose={() => {
+          setReverseModalOpen(false)
+          setReverseTargetJobId(null)
+        }}
+        onConfirm={confirmReverseKanban}
+        dealLabel={reverseTargetJobId ? `Job ID ${reverseTargetJobId}` : undefined}
+      />
     </div>
   )
 }
