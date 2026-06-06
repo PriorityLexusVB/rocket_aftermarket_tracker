@@ -311,6 +311,47 @@ export default function DealDetailDrawer({ isOpen, onClose, deal, onComplete, on
           </div>
         </div>
 
+        {/* Wave XXX-Y phase 5: Reversal Details audit display on reversed deals.
+            Browser-tester walk #5 caught: I added the Reverse BUTTON to this
+            drawer in phase 3 but forgot to port the DISPLAY block from
+            DealDrawer.jsx:548-580. Without this banner, a coordinator reverses
+            a deal from the Deals page → opens it again → sees only the red
+            REVERSED badge with no explanation. The audit data is in the DB
+            but the UI was unreachable here. */}
+        {isReversed && deal?.reversed_at && (
+          <div className="mx-5 mt-3 rounded-lg border border-red-200 bg-red-50 p-3 space-y-1.5">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-red-700">
+              Reversal Details
+            </h3>
+            <div className="flex items-start justify-between gap-2">
+              <span className="text-xs text-red-700 shrink-0">Reason</span>
+              <span className="text-xs font-medium text-red-900 text-right">
+                {deal.reversed_reason || '—'}
+              </span>
+            </div>
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs text-red-700 shrink-0">Reversed</span>
+              <span className="text-xs font-medium text-red-900">
+                {new Date(deal.reversed_at).toLocaleString('en-US', {
+                  timeZone: 'America/New_York',
+                  month: 'short',
+                  day: 'numeric',
+                  hour: 'numeric',
+                  minute: '2-digit',
+                })}
+              </span>
+            </div>
+            {deal.pre_reverse_status && (
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs text-red-700 shrink-0">Was</span>
+                <span className="text-xs font-medium text-red-900 capitalize">
+                  {String(deal.pre_reverse_status).replace(/_/g, ' ')}
+                </span>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Tabs */}
         <div className="px-5 pt-3">
           <div className="flex gap-2 overflow-x-auto pb-2">
