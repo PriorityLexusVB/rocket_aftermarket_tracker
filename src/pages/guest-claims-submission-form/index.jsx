@@ -27,13 +27,16 @@ const INPUT_BASE =
 const inputCls = (hasError) =>
   `${INPUT_BASE} ${hasError ? 'border-red-400 focus:ring-red-500' : 'border-slate-300'}`
 
-// Section header with colored icon pill
+// Section header with colored icon pill.
+// Wave XXX-AJ hotfix-1 (Codex E): keys renamed to match the actual color
+// rendered. Previously 'slate' returned purple, 'violet' returned emerald,
+// 'emerald' returned amber — misleading next-edit foot-gun.
 const SectionHeader = ({ icon: Icon, color = 'blue', title }) => {
   const colorMap = {
     blue: 'bg-blue-100 text-blue-700',
-    slate: 'bg-slate-100 text-slate-700',
-    violet: 'bg-violet-100 text-violet-700',
+    purple: 'bg-purple-100 text-purple-700',
     emerald: 'bg-emerald-100 text-emerald-700',
+    amber: 'bg-amber-100 text-amber-700',
   }
   return (
     <div className="flex items-center gap-2 mb-5">
@@ -334,7 +337,7 @@ const GuestClaimsSubmissionForm = () => {
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <button
               onClick={resetForm}
-              className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold rounded-md transition-colors"
+              className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-md transition-colors"
             >
               <Send className="w-4 h-4" />
               Submit Another Claim
@@ -375,7 +378,7 @@ const GuestClaimsSubmissionForm = () => {
       <div className="max-w-3xl mx-auto px-4 sm:px-6 py-12">
         {/* Hero */}
         <div className="text-center mb-10">
-          <div className="w-14 h-14 bg-blue-100 text-blue-700 rounded-2xl flex items-center justify-center mx-auto mb-5">
+          <div className="w-14 h-14 bg-blue-100 text-blue-700 rounded-xl flex items-center justify-center mx-auto mb-5">
             <FileText className="w-7 h-7" />
           </div>
           <h1 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-3">
@@ -398,7 +401,7 @@ const GuestClaimsSubmissionForm = () => {
 
         <form onSubmit={(e) => e?.preventDefault()} className="space-y-5">
           {/* ── CUSTOMER INFORMATION ── */}
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sm:p-8">
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 sm:p-8">
             <SectionHeader icon={User} color="blue" title="Customer Information" />
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -447,8 +450,8 @@ const GuestClaimsSubmissionForm = () => {
           </div>
 
           {/* ── VEHICLE INFORMATION ── */}
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sm:p-8">
-            <SectionHeader icon={Car} color="slate" title="Vehicle Information" />
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 sm:p-8">
+            <SectionHeader icon={Car} color="purple" title="Vehicle Information" />
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
               <div>
@@ -518,8 +521,8 @@ const GuestClaimsSubmissionForm = () => {
           </div>
 
           {/* ── PRODUCT INFORMATION ── */}
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sm:p-8">
-            <SectionHeader icon={Package} color="violet" title="Product Information" />
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 sm:p-8">
+            <SectionHeader icon={Package} color="emerald" title="Product Information" />
 
             <div className="space-y-5">
               <div>
@@ -586,7 +589,7 @@ const GuestClaimsSubmissionForm = () => {
           </div>
 
           {/* ── CLAIM DETAILS ── */}
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sm:p-8">
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 sm:p-8">
             <SectionHeader icon={MessageSquare} color="blue" title="Claim Details" />
 
             <div className="space-y-5">
@@ -636,8 +639,8 @@ const GuestClaimsSubmissionForm = () => {
           </div>
 
           {/* ── PHOTOS & IMAGES ── */}
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sm:p-8">
-            <SectionHeader icon={Camera} color="emerald" title="Photos & Images (Optional)" />
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 sm:p-8">
+            <SectionHeader icon={Camera} color="amber" title="Photos & Images (Optional)" />
 
             {/* Drop zone */}
             <label
@@ -710,7 +713,7 @@ const GuestClaimsSubmissionForm = () => {
                 onClick={submitClaim}
                 disabled={submitLoading || loading}
                 type="button"
-                className="w-full sm:w-auto px-6 py-3 bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold rounded-md transition-colors disabled:opacity-60 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
+                className="w-full sm:w-auto px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-md transition-colors disabled:opacity-60 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
               >
                 {submitLoading ? (
                   <>

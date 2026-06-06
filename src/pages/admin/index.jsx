@@ -1010,89 +1010,65 @@ const AdminPage = () => {
   // Main admin interface
   return (
     <AppLayout>
-      <div className="min-h-screen bg-background pt-20">
-        <div className="max-w-7xl mx-auto px-4 py-8">
-          {/* Admin Header */}
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-foreground mb-2">Admin Panel</h1>
-            <p className="text-muted-foreground">
+      <div className="min-h-screen bg-background">
+        <div className="max-w-7xl mx-auto px-4 py-6 sm:py-8">
+          {/* Admin Header — matches /how-it-works + /deals pattern */}
+          <div className="mb-6 sm:mb-8">
+            <h1 className="text-2xl md:text-3xl font-bold text-foreground">Admin Panel</h1>
+            <p className="text-sm text-muted-foreground mt-1">
               Complete administrative management for Priority Automotive Tracker
             </p>
+          </div>
 
-            {/* User Status Display */}
-            <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-              <h3 className="text-sm font-semibold text-blue-900 mb-2">System Status</h3>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
-                <div>
-                  <span className="font-medium">Auth Status:</span>
-                  <span className={`ml-1 ${user ? 'text-green-600' : 'text-orange-600'}`}>
-                    {user ? 'Authenticated' : 'Unauthenticated'}
-                  </span>
-                </div>
-                <div>
-                  <span className="font-medium">User Role:</span>
-                  <span className="ml-1 text-blue-600">{userProfile?.role || 'Admin'}</span>
-                </div>
-                <div>
-                  <span className="font-medium">Access Level:</span>
-                  <span className="ml-1 text-green-600">Full Access</span>
-                </div>
-                <div>
-                  <span className="font-medium">Database:</span>
-                  <span className="ml-1 text-green-600">Connected</span>
-                </div>
-              </div>
+          {/* System Status — condensed inline strip replacing the blue info box */}
+          <div className="mb-6 bg-card rounded-lg border border-border p-4 shadow-sm">
+            <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs">
+              <span>
+                <span className="font-medium text-foreground">Auth:</span>{' '}
+                <span className={user ? 'text-emerald-600' : 'text-orange-600'}>
+                  {user ? 'Authenticated' : 'Unauthenticated'}
+                </span>
+              </span>
+              <span>
+                <span className="font-medium text-foreground">Role:</span>{' '}
+                <span className="text-muted-foreground">{userProfile?.role || 'Admin'}</span>
+              </span>
+              <span>
+                <span className="font-medium text-foreground">Users:</span>{' '}
+                <span className={userAccounts?.length > 0 ? 'text-emerald-600' : 'text-red-600'}>
+                  {userAccounts?.length || 0}
+                </span>
+              </span>
+              <span>
+                <span className="font-medium text-foreground">Staff:</span>{' '}
+                <span className={staffRecords?.length > 0 ? 'text-emerald-600' : 'text-red-600'}>
+                  {staffRecords?.length || 0}
+                </span>
+              </span>
+              <span>
+                <span className="font-medium text-foreground">Vendors:</span>{' '}
+                <span className={vendors?.length > 0 ? 'text-emerald-600' : 'text-red-600'}>
+                  {vendors?.length || 0}
+                </span>
+              </span>
+              <span>
+                <span className="font-medium text-foreground">Products:</span>{' '}
+                <span className={products?.length > 0 ? 'text-emerald-600' : 'text-red-600'}>
+                  {products?.length || 0}
+                </span>
+              </span>
+              <span>
+                <span className="font-medium text-foreground">SMS Templates:</span>{' '}
+                <span className={smsTemplates?.length > 0 ? 'text-emerald-600' : 'text-red-600'}>
+                  {smsTemplates?.length || 0}
+                </span>
+              </span>
             </div>
           </div>
 
-          {/* Data Status Summary */}
-          <div className="mb-8 p-4 bg-card border border-border rounded-lg">
-            <h3 className="text-lg font-semibold text-foreground mb-3">Current Data Status</h3>
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
-              <div>
-                <span className="font-medium">User Accounts:</span>
-                <span
-                  className={`ml-1 ${userAccounts?.length > 0 ? 'text-green-600' : 'text-red-600'}`}
-                >
-                  {userAccounts?.length || 0} found
-                </span>
-              </div>
-              <div>
-                <span className="font-medium">Staff Records:</span>
-                <span
-                  className={`ml-1 ${staffRecords?.length > 0 ? 'text-green-600' : 'text-red-600'}`}
-                >
-                  {staffRecords?.length || 0} found
-                </span>
-              </div>
-              <div>
-                <span className="font-medium">Vendors:</span>
-                <span className={`ml-1 ${vendors?.length > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {vendors?.length || 0} found
-                </span>
-              </div>
-              <div>
-                <span className="font-medium">Products:</span>
-                <span
-                  className={`ml-1 ${products?.length > 0 ? 'text-green-600' : 'text-red-600'}`}
-                >
-                  {products?.length || 0} found
-                </span>
-              </div>
-              <div>
-                <span className="font-medium">SMS Templates:</span>
-                <span
-                  className={`ml-1 ${smsTemplates?.length > 0 ? 'text-green-600' : 'text-red-600'}`}
-                >
-                  {smsTemplates?.length || 0} found
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Tab Navigation */}
-          <div className="mb-8">
-            <nav className="flex overflow-x-auto border-b border-border gap-1 pb-px">
+          {/* Tab Navigation — pill group matching Claims + Deals pattern */}
+          <div className="mb-6">
+            <div className="inline-flex flex-wrap items-center gap-1 rounded-lg border border-border bg-card p-1">
               {tabs?.map((tab) => {
                 const Icon = tab?.icon
                 let count = 0
@@ -1102,23 +1078,28 @@ const AdminPage = () => {
                 if (tab?.id === 'products') count = products?.length || 0
                 if (tab?.id === 'smsTemplates') count = smsTemplates?.length || 0
                 if (tab?.id === 'qrCodes') count = null // No count for QR codes
+                const active = activeTab === tab?.id
 
                 return (
                   <button
                     key={tab?.id}
+                    type="button"
                     onClick={() => setActiveTab(tab?.id)}
-                    className={`flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap shrink-0 ${
-                      activeTab === tab?.id
-                        ? 'border-primary text-primary'
-                        : 'border-transparent text-muted-foreground hover:text-foreground'
+                    aria-pressed={active}
+                    className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${
+                      active
+                        ? 'bg-slate-900 text-white shadow-sm'
+                        : 'text-muted-foreground hover:bg-muted'
                     }`}
                   >
-                    <Icon className="w-5 h-5" />
+                    <Icon className="w-4 h-4" />
                     {tab?.label}
-                    {count !== null && (
+                    {count !== null && count > 0 && (
                       <span
-                        className={`ml-1 px-2 py-1 text-xs rounded-full ${
-                          count > 0 ? 'bg-green-100 text-green-800' : 'bg-muted text-muted-foreground'
+                        className={`ml-0.5 px-1.5 py-0.5 text-xs rounded-full ${
+                          active
+                            ? 'bg-white/20 text-white'
+                            : 'bg-slate-200 text-slate-700'
                         }`}
                       >
                         {count}
@@ -1127,11 +1108,11 @@ const AdminPage = () => {
                   </button>
                 )
               })}
-            </nav>
+            </div>
           </div>
 
-          {/* Tab Content - RESTORED WORKING FUNCTIONALITY */}
-          <div className="bg-card rounded-lg shadow border border-border p-6">
+          {/* Tab Content — card matches Claims + Deals pattern */}
+          <div className="bg-card rounded-lg shadow-sm border border-border p-5 sm:p-6">
             {activeTab === 'userAccounts' && (
               <UserAccountsTab
                 userAccounts={userAccounts}

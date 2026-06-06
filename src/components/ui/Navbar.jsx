@@ -369,7 +369,7 @@ const Navbar = () => {
                   <Link
                     to="/claims-management-center?status=submitted"
                     onClick={() => claimsBadge?.markAsSeen?.()}
-                    className="relative p-2 text-lex-ink-inv-muted hover:text-lex-ink-inv transition-colors duration-150 rounded-md hover:bg-white/[0.06]"
+                    className="relative inline-flex items-center justify-center p-2 text-lex-ink-inv-muted hover:text-lex-ink-inv transition-colors duration-150 rounded-md hover:bg-white/[0.06]"
                     aria-label={`${claimsBadge.count} new claim${claimsBadge.count === 1 ? '' : 's'}`}
                     title={`${claimsBadge.count} new claim${claimsBadge.count === 1 ? '' : 's'}`}
                   >
@@ -393,10 +393,14 @@ const Navbar = () => {
                   </Link>
                 )}
 
-                {/* Wave XXX-AE: Help button — opens the How It Works guide */}
+                {/* Wave XXX-AE: Help button — opens the How It Works guide.
+                    Wave XXX-AJ hotfix: needs inline-flex + items-center so the
+                    icon vertically aligns with the Bell button (which is an
+                    inline-block <button>) — otherwise <a> default `inline`
+                    baseline-aligns the icon and it lifts above Bell. */}
                 <Link
                   to="/how-it-works"
-                  className="p-2 text-lex-ink-inv-muted hover:text-lex-ink-inv transition-colors duration-150 rounded-md hover:bg-white/[0.06] mr-1"
+                  className="inline-flex items-center justify-center p-2 text-lex-ink-inv-muted hover:text-lex-ink-inv transition-colors duration-150 rounded-md hover:bg-white/[0.06]"
                   aria-label="How Rocket works — guide for coordinators"
                   title="How it works"
                 >
@@ -591,7 +595,7 @@ const Navbar = () => {
               <Link
                 to="/claims-management-center?status=submitted"
                 onClick={() => claimsBadge?.markAsSeen?.()}
-                className="relative p-2 text-lex-ink-inv-muted hover:text-lex-ink-inv rounded-md hover:bg-white/[0.06] transition-colors"
+                className="relative inline-flex items-center justify-center p-2 text-lex-ink-inv-muted hover:text-lex-ink-inv rounded-md hover:bg-white/[0.06] transition-colors"
                 aria-label={`${claimsBadge.count} new claim${claimsBadge.count === 1 ? '' : 's'}`}
                 title="New claims"
               >
@@ -612,11 +616,11 @@ const Navbar = () => {
               </Link>
             )}
 
-            {/* Wave XXX-AE: Help button on mobile — coordinator guide MUST be
-                reachable from phones (where new reps often look first). */}
+            {/* Wave XXX-AE: Help button on mobile. Wave XXX-AJ hotfix:
+                inline-flex + items-center for Bell-aligned vertical position. */}
             <Link
               to="/how-it-works"
-              className="p-2 text-lex-ink-inv-muted hover:text-lex-ink-inv rounded-md hover:bg-white/[0.06] transition-colors"
+              className="inline-flex items-center justify-center p-2 text-lex-ink-inv-muted hover:text-lex-ink-inv rounded-md hover:bg-white/[0.06] transition-colors"
               aria-label="How Rocket works — guide for coordinators"
               title="How it works"
             >
