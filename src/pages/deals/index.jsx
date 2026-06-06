@@ -43,6 +43,11 @@ import DealsKpiRow from './components/DealsKpiRow'
 import DealsFilterBar from './components/DealsFilterBar'
 import { getWorkTagLabel } from '@/utils/workTags'
 import ReverseReasonModal from '@/components/modals/ReverseReasonModal'
+import { kanbanService } from '@/services/kanbanService'
+
+// Wave XXX-AA: lazy-loaded Kanban board for Board view tab
+// FIX: lazy import prevents board code from bloating Main chunk — DO NOT REMOVE, see Wave XXX-AA
+const KanbanBoard = React.lazy(() => import('./components/KanbanBoard'))
 
 // Extracted helpers
 import {
@@ -81,6 +86,7 @@ export default function DealsPage() {
   const [error, setError] = useState('')
 
   // ✅ UPDATED: Status tabs & quick search with enhanced filtering
+  // Wave XXX-AA: added viewMode ('card' | 'sheet' | 'board') — replaces showSheetView boolean
   const [filters, setFilters] = useState({
     status: 'All',
     presetView: 'All',
@@ -95,12 +101,12 @@ export default function DealsPage() {
     promiseEndDate: '', // YYYY-MM-DD
     createdMonth: '', // YYYY-MM (ET) — blank means no date restriction by default
     search: '',
+    viewMode: 'card', // Wave XXX-AA: 'card' | 'sheet' | 'board'
   })
   const [searchDebounce, setSearchDebounce] = useState('')
   const [showDetailDrawer, setShowDetailDrawer] = useState(false)
   const [selectedDealForDetail, setSelectedDealForDetail] = useState(null)
   const [expandedDealIds, setExpandedDealIds] = useState(() => new Set())
-  const [showSheetView, setShowSheetView] = useState(false)
   // Wave XXX-Z item 2: ReverseReasonModal state — replaces window.prompt
   const [reverseModalOpen, setReverseModalOpen] = useState(false)
   const [reverseTarget, setReverseTarget] = useState(null) // deal object being reversed
@@ -569,18 +575,41 @@ export default function DealsPage() {
   // ✅ ADDED: Initialize status from URL parameter on mount
   // Wave XXX-E: also support ?presetView=... so the Dashboard's "Needs Schedule"
   // KPI tile can deep-link into a filtered view.
+  // Wave XXX-AA: also read ?viewMode= param ('card' | 'sheet' | 'board')
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search)
     const statusParam = urlParams?.get('status')
     const presetParam = urlParams?.get('presetView')
-    if (statusParam || presetParam) {
+    const viewModeParam = urlParams?.get('viewMode')
+    const validViewModes = ['card', 'sheet', 'board']
+    const resolvedViewMode =
+      viewModeParam && validViewModes.includes(viewModeParam) ? viewModeParam : null
+    if (statusParam || presetParam || resolvedViewMode) {
+      // Wave XXX-AA hotfix-2 (Codex finding E): URL deep-link consistency.
+      // Mirror the toggle's auto-reset behavior: if viewMode=board, force status='All'
+      // so /deals?status=Reversed&viewMode=board doesn't boot into a single-status board.
+      const resolvedStatus = statusParam
+        ? statusParam.charAt(0).toUpperCase() + statusParam.slice(1)
+        : null
+      const finalStatus =
+        resolvedViewMode === 'board' ? 'All' : (resolvedStatus ?? null)
       setFilters((prev) => ({
         ...prev,
-        status: statusParam
-          ? statusParam.charAt(0).toUpperCase() + statusParam.slice(1)
-          : prev.status,
+        status: finalStatus ?? prev.status,
         presetView: presetParam || prev.presetView,
+        viewMode: resolvedViewMode || prev.viewMode,
       }))
+      // Also strip ?status from URL if we just forced it to 'All' for board view
+      if (resolvedViewMode === 'board' && statusParam && statusParam !== 'All') {
+        const newParams = new URLSearchParams(window.location.search)
+        newParams.delete('status')
+        const newQs = newParams.toString()
+        window.history.replaceState(
+          {},
+          '',
+          newQs ? `${window.location.pathname}?${newQs}` : window.location.pathname
+        )
+      }
     }
   }, [])
 
@@ -911,12 +940,30 @@ export default function DealsPage() {
     return () => clearTimeout(timer)
   }, [filters?.search])
 
+  // Wave XXX-AA: real-time subscription — reload deals on any jobs table change.
+  // Moved up from kanban-status-board/index.jsx so the Deals page stays live
+  // regardless of which view mode is active. Cleanup via supabase.removeChannel.
+  useEffect(() => {
+    const unsubscribe = kanbanService.subscribeToJobChanges(() => {
+      loadDeals(0, 'realtime-change')
+    })
+    return () => {
+      unsubscribe?.()
+    }
+  }, [loadDeals])
+
   // ✅ UPDATED: Update filter function with URL parameter support
+  // Wave XXX-AA: added viewMode URL persistence + auto-reset status to 'All' on board toggle
   const updateFilter = (key, value) => {
-    setFilters((prev) => ({
-      ...prev,
-      [key]: value,
-    }))
+    setFilters((prev) => {
+      const next = { ...prev, [key]: value }
+      // Auto-reset status filter when switching to Board view so all 5 columns show.
+      // Constraining to one status defeats the purpose of the Kanban board.
+      if (key === 'viewMode' && value === 'board' && prev.status !== 'All') {
+        next.status = 'All'
+      }
+      return next
+    })
 
     // Update URL for status filter
     if (key === 'status') {
@@ -925,6 +972,22 @@ export default function DealsPage() {
         searchParams?.delete('status')
       } else {
         searchParams?.set('status', value?.toLowerCase())
+      }
+      const newUrl = `${window.location?.pathname}${searchParams?.toString() ? '?' + searchParams?.toString() : ''}`
+      window.history?.replaceState({}, '', newUrl)
+    }
+
+    // Wave XXX-AA: persist viewMode in URL; strip param when returning to default 'card'
+    if (key === 'viewMode') {
+      const searchParams = new URLSearchParams(window.location.search)
+      if (value === 'card') {
+        searchParams?.delete('viewMode')
+      } else {
+        searchParams?.set('viewMode', value)
+      }
+      // Also clear status from URL if we auto-reset it on board toggle
+      if (value === 'board') {
+        searchParams?.delete('status')
       }
       const newUrl = `${window.location?.pathname}${searchParams?.toString() ? '?' + searchParams?.toString() : ''}`
       window.history?.replaceState({}, '', newUrl)
@@ -947,6 +1010,7 @@ export default function DealsPage() {
       promiseEndDate: '',
       createdMonth: '',
       search: '',
+      viewMode: 'card', // Wave XXX-AA: reset to default view
     })
     clearSearch()
 
@@ -1054,12 +1118,13 @@ export default function DealsPage() {
         <DealsKpiRow kpis={kpis} />
 
         {/* Status tabs and search */}
+        {/* Wave XXX-AA: viewMode + onViewModeChange replace showSheetView / setShowSheetView */}
         <DealsFilterBar
           filters={filters}
           updateFilter={updateFilter}
           clearAllFilters={clearAllFilters}
-          showSheetView={showSheetView}
-          setShowSheetView={setShowSheetView}
+          viewMode={filters.viewMode}
+          onViewModeChange={(mode) => updateFilter('viewMode', mode)}
           vendorOptions={vendorOptions}
           salesOptions={salesOptions}
           deliveryOptions={deliveryOptions}
@@ -1092,9 +1157,11 @@ export default function DealsPage() {
           })()}
         </div>
 
-        {/* Desktop/iPad: modern card rows (no horizontal scroll) */}
+        {/* Desktop/iPad: view-mode switcher (Card | Sheet | Board)
+            Wave XXX-AA: 3-way conditional replaces boolean showSheetView gate */}
         <div className="hidden md:block">
-          {showSheetView ? (
+          {/* ── SHEET VIEW ── */}
+          {filters.viewMode === 'sheet' && (
             sortedDeals?.length === 0 ? (
               <div className="bg-card rounded-lg border border-border p-10 text-center">
                 <div className="text-foreground font-medium">
@@ -1121,7 +1188,25 @@ export default function DealsPage() {
                 <SheetViewTable deals={sortedDeals} onRowClick={handleOpenDetail} />
               </>
             )
-          ) : sortedDeals?.length === 0 ? (
+          )}
+
+          {/* ── BOARD VIEW ── Wave XXX-AA: KanbanBoard lazy-loaded */}
+          {filters.viewMode === 'board' && (
+            <React.Suspense fallback={<div className="p-6 text-gray-600">Loading board…</div>}>
+              <KanbanBoard
+                deals={sortedDeals}
+                onOpenDetail={handleOpenDetail}
+                onReverseTrigger={(deal) => {
+                  setReverseTarget(deal)
+                  setReverseModalOpen(true)
+                }}
+              />
+            </React.Suspense>
+          )}
+
+          {/* ── CARD VIEW ── Wave XXX-AA hotfix-1 (release-auditor BLOCKER):
+              outer `&&` guards entire ternary so cards don't leak under sheet/board */}
+          {filters.viewMode === 'card' && (sortedDeals?.length === 0 ? (
             <div className="bg-card rounded-lg border border-border p-10 text-center">
               <div className="text-foreground font-medium">
                 {(deals?.length || 0) > 0 ? 'No results match your filters' : 'No deals'}
@@ -1502,7 +1587,7 @@ export default function DealsPage() {
                 )
               })}
             </div>
-          )}
+          ))}
         </div>
 
         {/* ✅ UPDATED: Mobile Cards with enhanced styling and loaner support */}

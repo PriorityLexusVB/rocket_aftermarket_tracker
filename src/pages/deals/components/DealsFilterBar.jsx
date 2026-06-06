@@ -1,16 +1,28 @@
 // src/pages/deals/components/DealsFilterBar.jsx
 // Status tabs, search input, month filter, advanced filter dropdowns, and view toggle.
+// Wave XXX-AA: replaced 2-button showSheetView toggle with 3-button viewMode pill-group
+// (Card | Sheet | Board) matching CalendarViewTabs.jsx pattern.
 
 import React from 'react'
+import LayoutGrid from 'lucide-react/dist/esm/icons/layout-grid.js'
+import Table from 'lucide-react/dist/esm/icons/table.js'
+import Columns3 from 'lucide-react/dist/esm/icons/columns-3.js'
 import Icon from '../../../components/ui/Icon'
 import Button from '../../../components/ui/Button'
+
+const VIEW_MODES = [
+  { value: 'card', label: 'Card', IconComp: LayoutGrid },
+  { value: 'sheet', label: 'Sheet', IconComp: Table },
+  { value: 'board', label: 'Board', IconComp: Columns3 },
+]
 
 const DealsFilterBar = ({
   filters,
   updateFilter,
   clearAllFilters,
-  showSheetView,
-  setShowSheetView,
+  // Wave XXX-AA: new viewMode props (replaces showSheetView / setShowSheetView)
+  viewMode,
+  onViewModeChange,
   // These are only used inside the hidden advanced filter block (false && ...).
   // Kept as props for backward compatibility if the block is re-enabled.
   vendorOptions,
@@ -178,32 +190,29 @@ const DealsFilterBar = ({
         </Button>
       </div>
 
-      {/* View Toggle (desktop) */}
-      <div className="hidden md:flex items-center gap-2">
-        <button
-          type="button"
-          onClick={() => setShowSheetView(false)}
-          className={`h-9 px-3 rounded-md text-xs font-medium border transition-colors ${
-            showSheetView
-              ? 'bg-card text-muted-foreground border-border'
-              : 'bg-blue-600 text-white border-blue-600'
-          }`}
-          aria-pressed={!showSheetView}
-        >
-          Card View
-        </button>
-        <button
-          type="button"
-          onClick={() => setShowSheetView(true)}
-          className={`h-9 px-3 rounded-md text-xs font-medium border transition-colors ${
-            showSheetView
-              ? 'bg-blue-600 text-white border-blue-600'
-              : 'bg-card text-muted-foreground border-border'
-          }`}
-          aria-pressed={showSheetView}
-        >
-          Sheet View
-        </button>
+      {/* View Toggle (desktop) — Wave XXX-AA: 3-button pill group matching CalendarViewTabs */}
+      <div className="hidden md:flex items-center">
+        <div className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white p-1">
+          {VIEW_MODES.map(({ value, label, IconComp }) => {
+            const active = (viewMode || 'card') === value
+            return (
+              <button
+                key={value}
+                type="button"
+                onClick={() => onViewModeChange?.(value)}
+                aria-pressed={active}
+                className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                  active
+                    ? 'bg-slate-900 text-white shadow-sm'
+                    : 'text-slate-600 hover:bg-slate-100'
+                }`}
+              >
+                <IconComp size={13} />
+                {label}
+              </button>
+            )
+          })}
+        </div>
       </div>
     </div>
 
