@@ -22,7 +22,9 @@ export const KANBAN_COLUMNS = [
     status: 'in_progress',
     title: 'In Progress',
     borderColor: 'border-l-amber-500',
-    emptyHint: 'Clear floor',
+    // Wave XXX-AB hotfix-5 (Codex H): "Clear floor" was shop-floor
+    // jargon, not coordinator voice. Clearer + still warm.
+    emptyHint: 'Nothing in progress',
   },
   {
     status: 'completed',

@@ -49,6 +49,30 @@ function formatScheduledDate(dateString) {
 //   onDragEnd   — (e) => void
 //   onClick     — () => void  (opens DealDetailDrawer)
 const KanbanCard = ({ deal, isDragging, onDragStart, onDragEnd, onClick }) => {
+  // Wave XXX-AB hotfix-5 (Codex J): track drag distance to suppress
+  // accidental onClick fires immediately after a drag. Card has both
+  // `draggable` AND `onClick` — a quick mousedown→mousemove→mouseup
+  // sequence can fire both. Block onClick if a drag JUST happened.
+  const dragJustEndedRef = React.useRef(false)
+  const handleDragStartInner = (e) => {
+    dragJustEndedRef.current = false
+    onDragStart?.(e)
+  }
+  const handleDragEndInner = (e) => {
+    dragJustEndedRef.current = true
+    // Clear after a frame so click handlers fire correctly on next pointer
+    setTimeout(() => {
+      dragJustEndedRef.current = false
+    }, 50)
+    onDragEnd?.(e)
+  }
+  const handleClickInner = (e) => {
+    if (dragJustEndedRef.current) {
+      e.preventDefault()
+      return
+    }
+    onClick?.(e)
+  }
   // customer_name resolved by withCustomerFields in kanbanService (or dealService equivalent)
   // getAllDeals shape: customer_name, vehicle, job_number, job_parts, scheduled_start_time
   const customerName =
@@ -81,24 +105,40 @@ const KanbanCard = ({ deal, isDragging, onDragStart, onDragEnd, onClick }) => {
       layout
       layoutId={String(deal?.id)}
       initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
+      // Wave XXX-AB hotfix-5 (Codex B): Framer Motion owns `transform` here
+      // because of `layout` + `layoutId`. Tailwind transform classes would
+      // be overridden. Route the lift through Framer's `animate` prop so
+      // both layout AND drag-lift cooperate on a single transform stack.
+      animate={
+        isDragging
+          ? {
+              opacity: 0.95,
+              y: 0,
+              scale: 1.03,
+              rotate: 1.2,
+              boxShadow: '0 20px 25px -5px rgba(0,0,0,0.15), 0 8px 10px -6px rgba(0,0,0,0.1)',
+            }
+          : { opacity: 1, y: 0, scale: 1, rotate: 0 }
+      }
       exit={{ opacity: 0, y: -8 }}
       transition={{ duration: 0.15 }}
+      style={{
+        // Framer doesn't manage z-index — set inline so dragging card
+        // floats above neighbors during layout animation.
+        zIndex: isDragging ? 50 : 'auto',
+      }}
       className={[
         'group bg-white rounded-lg border border-slate-200 p-3 shadow-sm',
         'cursor-grab active:cursor-grabbing',
         'hover:shadow-md transition-shadow duration-150',
-        // Wave XXX-AB hotfix-4 fix #5 (fun-checker REQUIRED):
-        // Drag had no lift. Now: rotate-1 + shadow-xl + scale-1.03
-        // signals "you're holding something" instead of "item disappeared".
-        isDragging ? 'opacity-95 rotate-1 shadow-xl scale-[1.03] ring-2 ring-blue-300 z-50' : '',
+        isDragging ? 'ring-2 ring-blue-400' : '',
       ]
         .filter(Boolean)
         .join(' ')}
       draggable
-      onDragStart={onDragStart}
-      onDragEnd={onDragEnd}
-      onClick={onClick}
+      onDragStart={handleDragStartInner}
+      onDragEnd={handleDragEndInner}
+      onClick={handleClickInner}
       title="Click to open · drag to move"
     >
       {/* Header row: priority dot + deal number + drag handle */}
@@ -113,11 +153,11 @@ const KanbanCard = ({ deal, isDragging, onDragStart, onDragEnd, onClick }) => {
           <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${badgeColor}`}>
             {priority.charAt(0).toUpperCase() + priority.slice(1)}
           </span>
-          {/* Wave XXX-AB hotfix-4 fix #3 (sense-check + clarity-auditor REQUIRED):
-              Visible drag-handle affordance so Ashley discovers drag without
-              a hover-cursor change. */}
+          {/* Wave XXX-AB hotfix-5 (Codex F): w-3 was too small to read as
+              affordance — looked like decoration. Bumped to w-4 + darker
+              default color so the drag cue is actually visible. */}
           <GripVertical
-            className="w-3 h-3 text-slate-300 group-hover:text-slate-500 transition-colors"
+            className="w-4 h-4 text-slate-400 group-hover:text-slate-600 transition-colors"
             aria-label="Drag to move"
           />
         </div>

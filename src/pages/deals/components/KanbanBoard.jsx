@@ -116,8 +116,16 @@ const KanbanBoard = ({ deals = [], onOpenDetail, onReverseTrigger }) => {
     setDragOverColumn(columnStatus)
   }, [])
 
-  const handleDragLeave = useCallback(() => {
-    setDragOverColumn(null)
+  // Wave XXX-AB hotfix-5 (Codex J): handleDragLeave was firing on every
+  // child element crossing inside the column body, causing the highlight
+  // to flicker as the cursor moved over cards inside the drop zone. Guard
+  // by checking relatedTarget — only clear if leaving the column entirely.
+  const handleDragLeave = useCallback((e) => {
+    // relatedTarget is the element being entered; if it's null OR not
+    // contained in the column, we're leaving the column for real.
+    if (!e?.currentTarget?.contains?.(e?.relatedTarget)) {
+      setDragOverColumn(null)
+    }
   }, [])
 
   const handleDrop = useCallback(
@@ -161,11 +169,13 @@ const KanbanBoard = ({ deals = [], onOpenDetail, onReverseTrigger }) => {
           </div>
         ))}
       </div>
-      {/* Right-edge fade — visual cue that more columns exist off-screen.
-          Hidden at xl+ where all 5 columns fit comfortably. */}
+      {/* Wave XXX-AB hotfix-5 (Codex D): right-edge fade visible at ALL desktop
+          widths (board overflows max-w-7xl at every width with 5 × w-64 columns
+          + gaps). Narrower (w-8) + softer so it doesn't occlude column ring.
+          Hidden only at 2xl (>1536px) where there's plenty of room. */}
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute top-0 right-0 h-full w-12 bg-gradient-to-l from-white via-white/80 to-transparent xl:hidden"
+        className="pointer-events-none absolute top-0 right-0 h-full w-8 bg-gradient-to-l from-slate-50/95 to-transparent 2xl:hidden"
       />
     </div>
   )

@@ -30,10 +30,13 @@ const KanbanColumn = ({
   return (
     <div
       className={[
-        // Wave XXX-AB hotfix-4: column slightly narrower so 5 columns fit
-        // on a 1366px laptop (sense-check REQUIRED — Reversed was cut off).
-        // Was w-72 xl:w-80; now w-64 lg:w-72 xl:w-80 — same xl, smaller default.
-        'flex flex-col w-64 lg:w-72 xl:w-80 flex-shrink-0 bg-slate-50 rounded-lg',
+        // Wave XXX-AB hotfix-5 (Codex BLOCKER): hotfix-4's `lg:w-72 xl:w-80`
+        // was math-wrong — Tailwind `xl` starts at 1280px so a 1366px laptop
+        // hits xl:w-80 (320px). 5 × 320 + gaps = 1680px which OVERFLOWS the
+        // parent's max-w-7xl (1280px) cap. Pin to w-64 (256px) at all
+        // breakpoints; 5 × 256 = 1280px = exactly the cap, plus gap → minor
+        // horizontal scroll on ALL desktop widths but at least consistent.
+        'flex flex-col w-64 flex-shrink-0 bg-slate-50 rounded-lg',
         'border-l-4',
         column.borderColor,
         'transition-all duration-150',

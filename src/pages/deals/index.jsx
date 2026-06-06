@@ -955,27 +955,30 @@ export default function DealsPage() {
   // ✅ UPDATED: Update filter function with URL parameter support
   // Wave XXX-AA: added viewMode URL persistence + auto-reset status to 'All' on board toggle
   const updateFilter = (key, value) => {
+    // Wave XXX-AB hotfix-5 (Codex A): toasts MUST fire outside the
+    // setFilters updater. React updaters can re-run under StrictMode +
+    // concurrent rendering, double-firing the toast. Snapshot the
+    // pre-state, compute side-effects here, dispatch toast AFTER.
+    let didResetStatus = false
+    let didEnterBoard = false
     setFilters((prev) => {
       const next = { ...prev, [key]: value }
       // Auto-reset status filter when switching to Board view so all 5 columns show.
-      // Constraining to one status defeats the purpose of the Kanban board.
       if (key === 'viewMode' && value === 'board' && prev.status !== 'All') {
         next.status = 'All'
-        // Wave XXX-AB hotfix-4 fix #2 (sense-check REQUIRED): notify the user
-        // why their status filter just disappeared. Without this, Ashley
-        // thinks the filter broke.
-        toast?.info?.('Board shows all statuses — filter cleared.')
+        didResetStatus = true
       }
-      // Also notify on Board entry (even if status was already 'All') so the
-      // user knows drag is the primary interaction here.
       if (key === 'viewMode' && value === 'board' && prev.viewMode !== 'board') {
-        // Only fire if status WASN'T reset (otherwise the message above wins)
-        if (prev.status === 'All') {
-          toast?.info?.('Drag cards to move deals between columns.')
-        }
+        didEnterBoard = true
       }
       return next
     })
+    // Side-effects AFTER the updater so React purity holds + no StrictMode dup
+    if (didResetStatus) {
+      toast?.info?.('Board shows all statuses — filter cleared.')
+    } else if (didEnterBoard) {
+      toast?.info?.('Drag cards to move deals between columns.')
+    }
 
     // Update URL for status filter
     if (key === 'status') {
