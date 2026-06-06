@@ -4,6 +4,8 @@ import { Link, useNavigate, useLocation } from 'react-router-dom'
 import Menu from 'lucide-react/dist/esm/icons/menu.js'
 import X from 'lucide-react/dist/esm/icons/x.js'
 import Bell from 'lucide-react/dist/esm/icons/bell.js'
+// Wave XXX-AE: Help icon for the new How It Works guide
+import HelpCircle from 'lucide-react/dist/esm/icons/circle-help.js'
 import User from 'lucide-react/dist/esm/icons/user.js'
 import LogOut from 'lucide-react/dist/esm/icons/log-out.js'
 import Settings from 'lucide-react/dist/esm/icons/settings.js'
@@ -332,6 +334,16 @@ const Navbar = () => {
 
               {/* Enhanced Notifications with Real Data — Wave J: dark-surface */}
               <div className="relative">
+                {/* Wave XXX-AE: Help button — opens the How It Works guide */}
+                <Link
+                  to="/how-it-works"
+                  className="p-2 text-lex-ink-inv-muted hover:text-lex-ink-inv transition-colors duration-150 rounded-md hover:bg-white/[0.06] mr-1"
+                  aria-label="How Rocket works — guide for coordinators"
+                  title="How it works"
+                >
+                  <HelpCircle className="w-5 h-5" />
+                </Link>
+
                 <button
                   type="button"
                   onClick={() => setIsNotificationOpen(!isNotificationOpen)}

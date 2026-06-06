@@ -22,6 +22,8 @@ const DealsPage = lazy(() => import('./pages/deals'))
 const NewDeal = lazy(() => import('./pages/deals/NewDeal'))
 const EditDeal = lazy(() => import('./pages/deals/EditDeal'))
 const CurrentlyActiveAppointments = lazy(() => import('./pages/currently-active-appointments'))
+// Wave XXX-AE: coordinator-facing visual guide
+const HowItWorks = lazy(() => import('./pages/how-it-works'))
 
 // NEW: Calendar Flow Management Center
 const CalendarFlowManagementCenter = lazy(() => import('./pages/calendar-flow-management-center'))
@@ -122,6 +124,15 @@ const Routes = () => {
                 element={
                   <ProtectedRoute>
                     <DealsPage />
+                  </ProtectedRoute>
+                }
+              />
+              {/* Wave XXX-AE: How It Works guide for new coordinators */}
+              <Route
+                path="/how-it-works"
+                element={
+                  <ProtectedRoute>
+                    <HowItWorks />
                   </ProtectedRoute>
                 }
               />
