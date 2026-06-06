@@ -194,7 +194,7 @@ const NoteCreationModal = ({ isOpen, onClose, onSave, jobInfo, vehicleInfo }) =>
             <button
               type="submit"
               disabled={!formData?.message?.trim() || saving}
-              className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
+              className="flex items-center px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50"
             >
               {saving ? (
                 <>

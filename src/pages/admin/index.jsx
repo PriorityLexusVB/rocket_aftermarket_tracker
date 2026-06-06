@@ -977,7 +977,7 @@ const AdminPage = () => {
 
                 <UIButton
                   onClick={() => (window.location.href = '/authentication-portal')}
-                  className="w-full bg-green-600 hover:bg-green-700 text-white"
+                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
                 >
                   Go to Login
                 </UIButton>

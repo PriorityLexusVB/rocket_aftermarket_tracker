@@ -355,7 +355,7 @@ const VendorManagement = () => {
             <div className="space-x-2">
               <UIButton
                 onClick={() => handleBulkToggleActive(true)}
-                className="text-xs bg-green-600 hover:bg-green-700 text-white"
+                className="text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
               >
                 Activate
               </UIButton>

@@ -823,7 +823,7 @@ const CustomerClaimsSubmissionPortal = () => {
                 <button
                   onClick={submitClaim}
                   disabled={submitLoading}
-                  className="bg-green-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-green-700 transition-colors disabled:opacity-50 flex items-center"
+                  className="bg-emerald-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-emerald-700 transition-colors disabled:opacity-50 flex items-center"
                 >
                   {submitLoading ? (
                     <>

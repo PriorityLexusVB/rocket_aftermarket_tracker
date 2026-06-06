@@ -28,7 +28,7 @@ const AuthenticationPortal = () => {
         <div className="grid w-full gap-6 lg:grid-cols-[1.1fr_0.9fr]">
           <section className="hidden rounded-3xl border border-border 0 p-8 shadow-xl backdrop-blur lg:block">
             <BrandHeader />
-            <div className="mt-8 rounded-2xl border border-border 0 p-5">
+            <div className="mt-8 rounded-lg border border-border p-5">
               <h3 className="mb-2 text-sm font-semibold text-foreground">Quick Access After Login</h3>
               <div className="grid grid-cols-2 gap-3 text-xs text-muted-foreground">
                 <div>• Deals Management</div>

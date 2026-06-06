@@ -28,6 +28,8 @@ const RULES = [
       'src/pages/calendar/CalendarShell.jsx',
       'src/pages/how-it-works/index.jsx',
       'src/pages/guest-claims-submission-form/index.jsx',
+      // dark hero strip (bg-lex-brand) — intentional hero/feature surface per DESIGN.md
+      'src/pages/dashboard/index.jsx',
     ],
   },
   {
@@ -43,6 +45,8 @@ const RULES = [
     allowFiles: [
       // status badges intentionally use green for "approved" — domain color, not a button
       'src/pages/claims-management-center/index.jsx',
+      // filter chips intentionally use green for "completed" status — domain semantic, not a button
+      'src/pages/calendar-flow-management-center/components/QuickFilters.jsx',
     ],
   },
   {

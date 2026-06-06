@@ -142,7 +142,7 @@ const SalesTrendsChart = ({ data, timeframe }) => {
   ]
 
   return (
-    <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
+    <div className="bg-white rounded-lg shadow-lg border border-gray-100 p-6">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h3 className="text-xl font-bold text-gray-900 flex items-center">

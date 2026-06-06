@@ -50,7 +50,7 @@ const PerformanceWidget = ({ metrics, onClose }) => {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
           {/* Today's Completion */}
           <div
-            className={`rounded-2xl border-2 p-4 ${getCompletionRateBg(metrics?.todayCompletionRate || 0)}`}
+            className={`rounded-xl border-2 p-4 ${getCompletionRateBg(metrics?.todayCompletionRate || 0)}`}
           >
             <div className="flex items-center justify-between mb-2">
               <Calendar className="w-5 h-5 text-gray-600" />
@@ -70,7 +70,7 @@ const PerformanceWidget = ({ metrics, onClose }) => {
 
           {/* This Week's Completion */}
           <div
-            className={`rounded-2xl border-2 p-4 ${getCompletionRateBg(metrics?.weekCompletionRate || 0)}`}
+            className={`rounded-xl border-2 p-4 ${getCompletionRateBg(metrics?.weekCompletionRate || 0)}`}
           >
             <div className="flex items-center justify-between mb-2">
               <TrendingUp className="w-5 h-5 text-gray-600" />
@@ -89,7 +89,7 @@ const PerformanceWidget = ({ metrics, onClose }) => {
           </div>
 
           {/* Average Completion Time */}
-          <div className="rounded-2xl border-2 p-4 bg-blue-50 border-blue-200">
+          <div className="rounded-xl border-2 p-4 bg-blue-50 border-blue-200">
             <div className="flex items-center justify-between mb-2">
               <Clock className="w-5 h-5 text-blue-600" />
               <div className="text-xs font-semibold text-blue-600">
@@ -103,7 +103,7 @@ const PerformanceWidget = ({ metrics, onClose }) => {
           </div>
 
           {/* Efficiency Score */}
-          <div className="rounded-2xl border-2 p-4 bg-purple-50 border-purple-200">
+          <div className="rounded-xl border-2 p-4 bg-purple-50 border-purple-200">
             <div className="flex items-center justify-between mb-2">
               <CheckCircle className="w-5 h-5 text-purple-600" />
               <div className="text-xs font-semibold text-purple-600">

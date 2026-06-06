@@ -63,7 +63,7 @@ export default function EditDeal() {
   return (
     <AppLayout>
       <div className="mx-auto max-w-6xl p-4 md:p-8" style={{ paddingTop: '5rem' }}>
-        <div className="rounded-2xl border border-border bg-card shadow-sm">
+        <div className="rounded-lg border border-border bg-card shadow-sm">
           <div className="flex items-start justify-between gap-3 border-b border-border p-6">
             <div>
               <h1 className="text-2xl font-semibold text-foreground">Edit Deal</h1>

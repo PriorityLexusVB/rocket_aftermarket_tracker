@@ -81,7 +81,7 @@ const AppointmentCard = ({
   return (
     <div
       onClick={handleCardClick}
-      className={`group relative bg-white rounded-2xl shadow-sm border transition-all duration-300 overflow-hidden cursor-pointer hover:shadow-xl hover:border-gray-200 ${
+      className={`group relative bg-white rounded-xl shadow-sm border transition-all duration-300 overflow-hidden cursor-pointer hover:shadow-xl hover:border-gray-200 ${
         isOverdue ? 'border-red-200 bg-red-50/30' : 'border-gray-100'
       } ${isSelected ? 'ring-2 ring-indigo-500 border-indigo-200' : ''} ${
         bulkMode ? 'hover:ring-2 hover:ring-indigo-300' : ''

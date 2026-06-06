@@ -196,7 +196,7 @@ const AppointmentDetailPanel = ({ appointment, onClose, onUpdate }) => {
 
         {/* Appointment Overview */}
         <div
-          className={`rounded-2xl p-6 border ${
+          className={`rounded-xl p-6 border ${
             isOverdue
               ? 'bg-gradient-to-r from-red-50 to-red-100 border-red-200'
               : 'bg-gradient-to-r from-indigo-50 to-purple-50 border-indigo-200'
@@ -260,7 +260,7 @@ const AppointmentDetailPanel = ({ appointment, onClose, onUpdate }) => {
         {/* Vehicle & Customer Information */}
         <div className="grid grid-cols-1 gap-6">
           {/* Vehicle Details */}
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+          <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-100">
             <div className="flex items-center space-x-2 mb-4">
               <Car className="w-5 h-5 text-gray-600" />
               <h5 className="font-semibold text-gray-900">Vehicle Information</h5>
@@ -298,7 +298,7 @@ const AppointmentDetailPanel = ({ appointment, onClose, onUpdate }) => {
           </div>
 
           {/* Customer Details */}
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+          <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-100">
             <div className="flex items-center space-x-2 mb-4">
               <User className="w-5 h-5 text-gray-600" />
               <h5 className="font-semibold text-gray-900">Customer Information</h5>
@@ -348,7 +348,7 @@ const AppointmentDetailPanel = ({ appointment, onClose, onUpdate }) => {
         {/* Schedule & Vendor Information */}
         <div className="grid grid-cols-1 gap-6">
           {/* Schedule Details */}
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+          <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-100">
             <div className="flex items-center space-x-2 mb-4">
               <CalendarClock className="w-5 h-5 text-gray-600" />
               <h5 className="font-semibold text-gray-900">Schedule Information</h5>
@@ -390,7 +390,7 @@ const AppointmentDetailPanel = ({ appointment, onClose, onUpdate }) => {
 
           {/* Vendor Details */}
           {appointment?.vendors && (
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+            <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-100">
               <div className="flex items-center space-x-2 mb-4">
                 <Building2 className="w-5 h-5 text-gray-600" />
                 <h5 className="font-semibold text-gray-900">Vendor Information</h5>
@@ -438,7 +438,7 @@ const AppointmentDetailPanel = ({ appointment, onClose, onUpdate }) => {
 
         {/* Cost Information */}
         {(appointment?.estimated_cost || totalEstimatedCost > 0 || appointment?.actual_cost) && (
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+          <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-100">
             <div className="flex items-center space-x-2 mb-4">
               <DollarSign className="w-5 h-5 text-gray-600" />
               <h5 className="font-semibold text-gray-900">Cost Information</h5>
@@ -474,7 +474,7 @@ const AppointmentDetailPanel = ({ appointment, onClose, onUpdate }) => {
         )}
 
         {/* Notes Section */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+        <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-100">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center space-x-2">
               <FileText className="w-5 h-5 text-gray-600" />
@@ -513,7 +513,7 @@ const AppointmentDetailPanel = ({ appointment, onClose, onUpdate }) => {
         </div>
 
         {/* Communications Section */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+        <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-100">
           <div className="flex items-center space-x-2 mb-4">
             <MessageCircle className="w-5 h-5 text-gray-600" />
             <h5 className="font-semibold text-gray-900">Communications</h5>

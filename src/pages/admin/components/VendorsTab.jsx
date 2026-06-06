@@ -17,9 +17,9 @@ const VendorsTab = ({
   handleDelete,
 }) => (
   <div>
-    <div className="flex justify-between items-center mb-6">
-      <h3 className="text-lg font-semibold">Vendors ({vendors.length})</h3>
-      <div className="flex items-center gap-3">
+    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-6">
+      <h3 className="text-lg font-semibold text-foreground">Vendors ({vendors.length})</h3>
+      <div className="flex flex-wrap items-center gap-2">
         <label className="inline-flex items-center gap-2">
           <input
             type="checkbox"

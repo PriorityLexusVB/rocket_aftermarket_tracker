@@ -5,7 +5,7 @@ const BrandHeader = () => {
     <div className="text-center mb-8">
       {/* Logo */}
       <div className="flex items-center justify-center mb-6">
-        <div className="flex items-center justify-center w-16 h-16 bg-primary rounded-2xl shadow-elevation-2">
+        <div className="flex items-center justify-center w-16 h-16 bg-primary rounded-xl shadow-elevation-2">
           <img
             src="/brand/rat-icon-master.svg"
             alt="Rocket Aftermarket Tracker"

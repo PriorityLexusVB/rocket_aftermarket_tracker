@@ -313,6 +313,11 @@ const Routes = () => {
 
               {/* Short-URL alias — nav label is "Loaners"; the bookmarkable path matches. */}
               <Route path="/loaners" element={<Navigate to="/loaner-management-drawer" replace />} />
+              {/* Wave XXX-AM: short URL aliases for the long route names */}
+              <Route path="/loaner-management" element={<Navigate to="/loaner-management-drawer" replace />} />
+              <Route path="/currently-active" element={<Navigate to="/currently-active-appointments" replace />} />
+              <Route path="/analytics" element={<Navigate to="/advanced-business-intelligence-analytics" replace />} />
+              <Route path="/bi" element={<Navigate to="/advanced-business-intelligence-analytics" replace />} />
 
               {/* Claims Management - Internal only */}
               <Route

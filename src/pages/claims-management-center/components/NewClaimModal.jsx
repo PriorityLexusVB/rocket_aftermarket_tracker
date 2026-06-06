@@ -188,7 +188,7 @@ export default function NewClaimModal({ isOpen, onClose, onCreated }) {
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: 24, opacity: 0 }}
           transition={{ duration: 0.18 }}
-          className="bg-white w-full sm:max-w-2xl sm:rounded-2xl rounded-t-2xl shadow-2xl max-h-[92vh] flex flex-col"
+          className="bg-white w-full sm:max-w-2xl sm:rounded-xl rounded-t-xl shadow-2xl max-h-[92vh] flex flex-col"
         >
           {/* Header */}
           <div className="px-5 sm:px-6 py-4 border-b border-slate-200 flex items-center justify-between">

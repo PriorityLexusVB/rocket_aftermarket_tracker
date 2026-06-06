@@ -154,7 +154,7 @@ export default function AdminCapabilities() {
               >
                 Export
               </button>
-              <label className="cursor-pointer rounded bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700">
+              <label className="cursor-pointer rounded bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700">
                 Import
                 <input
                   type="file"
