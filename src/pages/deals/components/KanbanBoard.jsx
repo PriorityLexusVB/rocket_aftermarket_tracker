@@ -70,10 +70,13 @@ const KanbanBoard = ({ deals = [], onOpenDetail, onReverseTrigger }) => {
         const lower = msg.toLowerCase()
         // Always log so dev console + production reports show the actual cause
         console.warn('[KanbanBoard] Drop rejected:', msg)
+        // Wave XXX-AB hotfix-4 fix #4 (clarity-auditor BLOCKER):
+        // "Status transition not allowed" was engineering jargon leaking
+        // to a coordinator. Rewrote to plain English.
         if (msg.includes('Invalid status progression')) {
-          toast?.error?.('Status transition not allowed from the current step.')
+          toast?.error?.("Can't move this deal from here — some steps must happen in order.")
         } else if (lower.includes('vendor') && lower.includes('scheduled start time')) {
-          toast?.error?.("Open the deal to set a vendor start time before scheduling.")
+          toast?.error?.("Open the deal and add a start time before moving it to Scheduled.")
         } else if (lower.includes('start time') || lower.includes('scheduling')) {
           toast?.error?.("Set a start time first — open the deal and add scheduling.")
         } else {
@@ -135,23 +138,35 @@ const KanbanBoard = ({ deals = [], onOpenDetail, onReverseTrigger }) => {
   )
 
   return (
-    <div className="flex gap-3 px-4 pb-4 overflow-x-auto snap-x snap-mandatory lg:snap-none">
-      {KANBAN_COLUMNS.map((column) => (
-        <div key={column.status} className="snap-start">
-          <KanbanColumn
-            column={column}
-            deals={dealsByStatus[column.status] ?? []}
-            draggedDealId={draggedDealId}
-            isOver={dragOverColumn === column.status}
-            onDragOver={(e) => handleDragOver(e, column.status)}
-            onDragLeave={handleDragLeave}
-            onDrop={(e) => handleDrop(e, column.status)}
-            onCardDragStart={handleDragStart}
-            onCardDragEnd={handleDragEnd}
-            onCardClick={onOpenDetail}
-          />
-        </div>
-      ))}
+    // Wave XXX-AB hotfix-4 fix #6 (sense-check REQUIRED):
+    // At 1366px (standard dealership laptop) 5 columns don't fit even with
+    // narrower w-64 column width. Wrap in a relative container with a right-
+    // edge gradient fade so the user knows there's more board to scroll to.
+    <div className="relative">
+      <div className="flex gap-3 px-4 pb-4 overflow-x-auto snap-x snap-mandatory lg:snap-none scroll-smooth">
+        {KANBAN_COLUMNS.map((column) => (
+          <div key={column.status} className="snap-start">
+            <KanbanColumn
+              column={column}
+              deals={dealsByStatus[column.status] ?? []}
+              draggedDealId={draggedDealId}
+              isOver={dragOverColumn === column.status}
+              onDragOver={(e) => handleDragOver(e, column.status)}
+              onDragLeave={handleDragLeave}
+              onDrop={(e) => handleDrop(e, column.status)}
+              onCardDragStart={handleDragStart}
+              onCardDragEnd={handleDragEnd}
+              onCardClick={onOpenDetail}
+            />
+          </div>
+        ))}
+      </div>
+      {/* Right-edge fade — visual cue that more columns exist off-screen.
+          Hidden at xl+ where all 5 columns fit comfortably. */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute top-0 right-0 h-full w-12 bg-gradient-to-l from-white via-white/80 to-transparent xl:hidden"
+      />
     </div>
   )
 }

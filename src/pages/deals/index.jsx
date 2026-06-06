@@ -961,6 +961,18 @@ export default function DealsPage() {
       // Constraining to one status defeats the purpose of the Kanban board.
       if (key === 'viewMode' && value === 'board' && prev.status !== 'All') {
         next.status = 'All'
+        // Wave XXX-AB hotfix-4 fix #2 (sense-check REQUIRED): notify the user
+        // why their status filter just disappeared. Without this, Ashley
+        // thinks the filter broke.
+        toast?.info?.('Board shows all statuses — filter cleared.')
+      }
+      // Also notify on Board entry (even if status was already 'All') so the
+      // user knows drag is the primary interaction here.
+      if (key === 'viewMode' && value === 'board' && prev.viewMode !== 'board') {
+        // Only fire if status WASN'T reset (otherwise the message above wins)
+        if (prev.status === 'All') {
+          toast?.info?.('Drag cards to move deals between columns.')
+        }
       }
       return next
     })

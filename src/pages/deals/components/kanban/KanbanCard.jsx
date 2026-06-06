@@ -5,7 +5,12 @@ import React, { useState } from 'react'
 import { motion } from 'framer-motion'
 import Calendar from 'lucide-react/dist/esm/icons/calendar.js'
 import User from 'lucide-react/dist/esm/icons/user.js'
-import Wrench from 'lucide-react/dist/esm/icons/wrench.js'
+// Wave XXX-AB hotfix-4 fix #3 + clarity-auditor RECOMMENDED:
+// Wrench icon for vehicle was semantically odd. Swapped to Car.
+// GripVertical added as drag-handle affordance — Ashley can't discover
+// drag without a visible cue.
+import Car from 'lucide-react/dist/esm/icons/car.js'
+import GripVertical from 'lucide-react/dist/esm/icons/grip-vertical.js'
 
 // Priority dot colors
 const PRIORITY_DOT = {
@@ -80,10 +85,13 @@ const KanbanCard = ({ deal, isDragging, onDragStart, onDragEnd, onClick }) => {
       exit={{ opacity: 0, y: -8 }}
       transition={{ duration: 0.15 }}
       className={[
-        'bg-white rounded-lg border border-slate-200 p-3 shadow-sm',
+        'group bg-white rounded-lg border border-slate-200 p-3 shadow-sm',
         'cursor-grab active:cursor-grabbing',
         'hover:shadow-md transition-shadow duration-150',
-        isDragging ? 'opacity-40' : '',
+        // Wave XXX-AB hotfix-4 fix #5 (fun-checker REQUIRED):
+        // Drag had no lift. Now: rotate-1 + shadow-xl + scale-1.03
+        // signals "you're holding something" instead of "item disappeared".
+        isDragging ? 'opacity-95 rotate-1 shadow-xl scale-[1.03] ring-2 ring-blue-300 z-50' : '',
       ]
         .filter(Boolean)
         .join(' ')}
@@ -91,18 +99,28 @@ const KanbanCard = ({ deal, isDragging, onDragStart, onDragEnd, onClick }) => {
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
       onClick={onClick}
+      title="Click to open · drag to move"
     >
-      {/* Header row: priority dot + deal number */}
+      {/* Header row: priority dot + deal number + drag handle */}
       <div className="flex items-center justify-between mb-1.5">
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 min-w-0">
           <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${dotColor}`} />
           {dealNumber && (
-            <span className="text-[11px] text-slate-400 font-mono">{dealNumber}</span>
+            <span className="text-[11px] text-slate-400 font-mono truncate">RO #{dealNumber}</span>
           )}
         </div>
-        <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${badgeColor}`}>
-          {priority.charAt(0).toUpperCase() + priority.slice(1)}
-        </span>
+        <div className="flex items-center gap-1 flex-shrink-0">
+          <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${badgeColor}`}>
+            {priority.charAt(0).toUpperCase() + priority.slice(1)}
+          </span>
+          {/* Wave XXX-AB hotfix-4 fix #3 (sense-check + clarity-auditor REQUIRED):
+              Visible drag-handle affordance so Ashley discovers drag without
+              a hover-cursor change. */}
+          <GripVertical
+            className="w-3 h-3 text-slate-300 group-hover:text-slate-500 transition-colors"
+            aria-label="Drag to move"
+          />
+        </div>
       </div>
 
       {/* Customer name — primary field */}
@@ -110,10 +128,10 @@ const KanbanCard = ({ deal, isDragging, onDragStart, onDragEnd, onClick }) => {
         {customerName ?? '—'}
       </p>
 
-      {/* Vehicle stub */}
+      {/* Vehicle stub — Car icon (was Wrench, semantically wrong) */}
       {vehicleLabel && (
         <div className="flex items-center gap-1 text-xs text-slate-500 mb-1.5 min-w-0">
-          <Wrench className="w-3 h-3 flex-shrink-0" />
+          <Car className="w-3 h-3 flex-shrink-0" />
           <span className="truncate">{vehicleLabel}</span>
         </div>
       )}

@@ -30,11 +30,16 @@ const KanbanColumn = ({
   return (
     <div
       className={[
-        'flex flex-col w-72 xl:w-80 flex-shrink-0 bg-slate-50 rounded-lg',
+        // Wave XXX-AB hotfix-4: column slightly narrower so 5 columns fit
+        // on a 1366px laptop (sense-check REQUIRED — Reversed was cut off).
+        // Was w-72 xl:w-80; now w-64 lg:w-72 xl:w-80 — same xl, smaller default.
+        'flex flex-col w-64 lg:w-72 xl:w-80 flex-shrink-0 bg-slate-50 rounded-lg',
         'border-l-4',
         column.borderColor,
         'transition-all duration-150',
-        isOver ? 'ring-2 ring-blue-400 ring-offset-1' : '',
+        // Wave XXX-AB hotfix-4 fix #5 (fun-checker REQUIRED):
+        // Drop-target column glow stronger + subtle scale for "I will catch this"
+        isOver ? 'ring-2 ring-blue-500 ring-offset-1 shadow-lg scale-[1.005]' : '',
       ]
         .filter(Boolean)
         .join(' ')}
@@ -79,10 +84,11 @@ const KanbanColumn = ({
           ))}
         </AnimatePresence>
 
-        {/* Empty state */}
+        {/* Empty state — Wave XXX-AB hotfix-4 (fun-checker RECOMMENDED):
+            per-column voice instead of generic "No deals" */}
         {deals.length === 0 && !draggedDealId && (
-          <div className="flex items-center justify-center h-20 text-xs text-slate-400">
-            No deals
+          <div className="flex items-center justify-center h-20 text-xs text-slate-400 italic">
+            {column.emptyHint ?? 'No deals'}
           </div>
         )}
 
