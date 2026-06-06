@@ -162,7 +162,7 @@
     "vite": "^7.3.5",
     "vite-tsconfig-paths": "3.6.0",
     "vitest": "^3.2.6",
-    "webpack": "5.107.1"
+    "webpack": "^5.107.2"
   },
   "pnpm": {
     "auditConfig": {
