@@ -61,11 +61,24 @@ const KanbanBoard = ({ deals = [], onOpenDetail, onReverseTrigger }) => {
       // All other transitions: call kanbanService.updateJobStatus
       const { error } = await kanbanService.updateJobStatus(deal.id, newStatus)
       if (error) {
+        // Wave XXX-AA hotfix-3 (browser-tester REQUIRED finding): surface
+        // actual server error instead of swallowing with generic copy.
+        // Browser-tester saw a silent snap-back when validate_vendor_job_scheduling
+        // rejected a vendor-job drag-to-Scheduled without a start time. The
+        // generic "Try again" message hid WHY the drop failed.
         const msg = error?.message || String(error)
+        const lower = msg.toLowerCase()
+        // Always log so dev console + production reports show the actual cause
+        console.warn('[KanbanBoard] Drop rejected:', msg)
         if (msg.includes('Invalid status progression')) {
-          toast?.error?.("Status transition not allowed from the current step.")
+          toast?.error?.('Status transition not allowed from the current step.')
+        } else if (lower.includes('vendor') && lower.includes('scheduled start time')) {
+          toast?.error?.("Open the deal to set a vendor start time before scheduling.")
+        } else if (lower.includes('start time') || lower.includes('scheduling')) {
+          toast?.error?.("Set a start time first — open the deal and add scheduling.")
         } else {
-          toast?.error?.("Couldn't update status. Try again.")
+          // Surface the actual server error so the user knows WHY it failed
+          toast?.error?.(msg || "Couldn't update status. Try again.")
         }
         return false
       }
