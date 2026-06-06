@@ -20,13 +20,13 @@ const AuthenticationPortal = () => {
   return (
     <div className="relative min-h-screen overflow-hidden bg-background text-foreground">
       <div className="pointer-events-none absolute inset-0 opacity-80">
-        <div className="absolute -top-24 left-1/3 h-72 w-72 rounded-full 0 blur-3xl" />
-        <div className="absolute bottom-0 right-0 h-80 w-80 rounded-full 0 blur-3xl" />
+        <div className="absolute -top-24 left-1/3 h-72 w-72 rounded-full bg-blue-500/10 blur-3xl" />
+        <div className="absolute bottom-0 right-0 h-80 w-80 rounded-full bg-primary/10 blur-3xl" />
       </div>
 
       <div className="relative mx-auto flex min-h-screen w-full max-w-6xl items-center px-4 py-8 md:px-8">
         <div className="grid w-full gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-          <section className="hidden rounded-3xl border border-border 0 p-8 shadow-xl backdrop-blur lg:block">
+          <section className="hidden rounded-xl border border-border bg-card/60 p-8 shadow-xl backdrop-blur lg:block">
             <BrandHeader />
             <div className="mt-8 rounded-lg border border-border p-5">
               <h3 className="mb-2 text-sm font-semibold text-foreground">Quick Access After Login</h3>
@@ -40,7 +40,7 @@ const AuthenticationPortal = () => {
             <SystemInfo />
           </section>
 
-          <section className="rounded-3xl border border-border 0 p-6 shadow-2xl backdrop-blur md:p-8">
+          <section className="rounded-xl border border-border bg-card p-6 shadow-2xl backdrop-blur md:p-8">
             <div className="mb-6 lg:hidden">
               <BrandHeader />
             </div>
