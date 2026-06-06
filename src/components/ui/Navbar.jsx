@@ -526,6 +526,16 @@ const Navbar = () => {
 
           {/* Mobile Actions — Wave J: dark-surface treatment */}
           <div className="flex items-center space-x-2">
+            {/* Wave XXX-AE: Help button on mobile — coordinator guide MUST be
+                reachable from phones (where new reps often look first). */}
+            <Link
+              to="/how-it-works"
+              className="p-2 text-lex-ink-inv-muted hover:text-lex-ink-inv rounded-md hover:bg-white/[0.06] transition-colors"
+              aria-label="How Rocket works — guide for coordinators"
+              title="How it works"
+            >
+              <HelpCircle className="w-5 h-5" />
+            </Link>
             {/* Mobile Notifications */}
             <button
               type="button"

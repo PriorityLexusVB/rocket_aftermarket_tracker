@@ -525,6 +525,104 @@ const HowItWorks = () => {
         </div>
       </section>
 
+      {/* ─────────────── OTHER SECTIONS (one-line tour) ─────────────── */}
+      <section className="max-w-6xl mx-auto px-4 sm:px-6 py-16">
+        <motion.div
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: '-100px' }}
+          variants={fadeUp}
+          className="text-center mb-10"
+        >
+          <div className="inline-flex items-center gap-1.5 bg-indigo-100 px-3 py-1 rounded-full text-xs font-semibold text-indigo-700 uppercase tracking-wider mb-4">
+            <Sparkles className="w-3 h-3" />
+            The Rest of the App
+          </div>
+          <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-3">
+            What lives in the other tabs
+          </h2>
+          <p className="text-lg text-slate-600 max-w-2xl mx-auto">
+            A one-line tour of everything else in the navbar.
+          </p>
+        </motion.div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {[
+            {
+              name: 'Home',
+              href: '/',
+              icon: BarChart3,
+              color: 'text-slate-700 bg-slate-100',
+              desc: 'Big-picture dashboard — KPIs, stale-pending watchdog, what needs attention today.',
+            },
+            {
+              name: 'Calendar',
+              href: '/calendar',
+              icon: Calendar,
+              color: 'text-blue-700 bg-blue-100',
+              desc: 'Day / week / month grid + all-day promise lane. Schedule jobs visually.',
+            },
+            {
+              name: 'Overdue',
+              href: '/overdue',
+              icon: AlertTriangle,
+              color: 'text-amber-700 bg-amber-100',
+              desc: 'Anything past its promise date. Tackle this list first thing each morning.',
+            },
+            {
+              name: 'Appointments',
+              href: '/currently-active-appointments',
+              icon: Clock,
+              color: 'text-emerald-700 bg-emerald-100',
+              desc: 'Real-time view of who is here / on their way / running late.',
+            },
+            {
+              name: 'Claims',
+              href: '/claims-management-center',
+              icon: Undo2,
+              color: 'text-red-700 bg-red-100',
+              desc: 'Warranty + customer claims tracking and resolution status.',
+            },
+            {
+              name: 'Loaners',
+              href: '/loaner-management-drawer',
+              icon: Wrench,
+              color: 'text-purple-700 bg-purple-100',
+              desc: 'Loaner car assignments — who has what, when it comes back.',
+            },
+          ].map((item, idx) => {
+            const Icon = item.icon
+            return (
+              <motion.div
+                key={item.name}
+                initial={{ opacity: 0, y: 16 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: idx * 0.04, duration: 0.3 }}
+              >
+                <Link
+                  to={item.href}
+                  className="block bg-white rounded-xl border border-slate-200 p-4 hover:shadow-md hover:border-indigo-300 transition-all group"
+                >
+                  <div className="flex items-center gap-3 mb-2">
+                    <div
+                      className={`inline-flex items-center justify-center w-8 h-8 rounded-lg ${item.color}`}
+                    >
+                      <Icon className="w-4 h-4" />
+                    </div>
+                    <div className="font-bold text-base text-slate-900 group-hover:text-indigo-700 transition-colors">
+                      {item.name}
+                    </div>
+                    <ArrowRight className="ml-auto w-4 h-4 text-slate-300 group-hover:text-indigo-500 transition-colors" />
+                  </div>
+                  <div className="text-sm text-slate-600 leading-snug">{item.desc}</div>
+                </Link>
+              </motion.div>
+            )
+          })}
+        </div>
+      </section>
+
       {/* ─────────────── COLOR LEGEND ─────────────── */}
       <section className="max-w-5xl mx-auto px-4 sm:px-6 py-16">
         <motion.div
