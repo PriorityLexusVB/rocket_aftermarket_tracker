@@ -74,7 +74,7 @@ const Header = ({ onMenuToggle, isMenuOpen = false }) => {
       '/administrative-configuration-center': 'Administrative Configuration Center',
       '/calendar-scheduling-center': 'Calendar Scheduling Center',
       '/kanban-status-board': 'Kanban Status Board',
-      '/photo-documentation-center': 'Photo Documentation Center',
+      // Wave XXX-AN: /photo-documentation-center decommissioned (redirects to /deals)
     }
     return pathTitles?.[location?.pathname] || 'Rocket Aftermarket Tracker'
   }
@@ -122,10 +122,7 @@ const Header = ({ onMenuToggle, isMenuOpen = false }) => {
         { label: 'Reporting', path: '#' },
         { label: 'Business Intelligence', path: '/business-intelligence-reports' },
       ],
-      '/photo-documentation-center': [
-        { label: 'Reporting', path: '#' },
-        { label: 'Photo Documentation', path: '/photo-documentation-center' },
-      ],
+      // Wave XXX-AN: /photo-documentation-center decommissioned (redirects to /deals)
       '/administrative-configuration-center': [
         { label: 'Management', path: '#' },
         { label: 'Configuration', path: '/administrative-configuration-center' },
