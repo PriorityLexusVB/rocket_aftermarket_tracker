@@ -580,8 +580,13 @@ export const claimsService = {
    */
   subscribeToClaims(onChange) {
     try {
+      // Wave XXX-AM hotfix-1 (browser-tester INFORMATIONAL): channel name was
+      // fixed string 'claims_realtime' which caused Supabase to reject the
+      // second concurrent subscription (navbar pill + claims page both
+      // subscribe). Unique name per call avoids the "cannot add callbacks
+      // after subscribe()" guard while keeping both subscribers alive.
       const channel = supabase
-        ?.channel('claims_realtime')
+        ?.channel(`claims_realtime_${Math.random().toString(36).slice(2, 10)}`)
         ?.on(
           'postgres_changes',
           { event: '*', schema: 'public', table: 'claims' },
