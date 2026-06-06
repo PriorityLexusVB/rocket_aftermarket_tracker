@@ -52,7 +52,7 @@
     "react-dom": "^18.2.0",
     "react-helmet": "^6.1.0",
     "react-hook-form": "^7.76.1",
-    "react-router-dom": "6.30.3",
+    "react-router-dom": "6.30.4",
     "react-router-hash-link": "^2.4.3",
     "recharts": "^3.8.1",
     "redux": "^5.0.1",
