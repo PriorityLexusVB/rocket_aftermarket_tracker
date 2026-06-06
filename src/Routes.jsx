@@ -9,6 +9,22 @@ import {
 import ErrorBoundary from './components/ErrorBoundary'
 import ScrollToTop from './components/ScrollToTop'
 import ProtectedRoute from './components/ProtectedRoute'
+import { useAuth } from './contexts/AuthContext'
+
+// Wave XXX-AL hotfix-2 (browser-tester REQUIRED): /claims and /claim were
+// redirecting EVERYONE to the customer guest form, including authenticated
+// staff. Fix: branch on auth — signed-in users go to the management center,
+// guests (no session) go to the customer submission form.
+const ClaimsAuthRedirect = () => {
+  const { user, loading } = useAuth() || {}
+  if (loading) return null // wait for auth context to resolve
+  return (
+    <Navigate
+      to={user ? '/claims-management-center' : '/guest-claims-submission-form'}
+      replace
+    />
+  )
+}
 import { ThemeProvider } from './contexts/ThemeContext'
 import { isCalendarUnifiedShellEnabled } from './config/featureFlags'
 import { getCalendarDestination } from './lib/navigation/calendarNavigation'
@@ -435,14 +451,10 @@ const Routes = () => {
                 path="/customer-claims-submission-portal"
                 element={<Navigate to="/guest-claims-submission-form" replace />}
               />
-              <Route
-                path="/claims"
-                element={<Navigate to="/guest-claims-submission-form" replace />}
-              />
-              <Route
-                path="/claim"
-                element={<Navigate to="/guest-claims-submission-form" replace />}
-              />
+              {/* Wave XXX-AL hotfix-2: auth-aware redirect — staff → management,
+                  guests → submission form */}
+              <Route path="/claims" element={<ClaimsAuthRedirect />} />
+              <Route path="/claim" element={<ClaimsAuthRedirect />} />
               <Route
                 path="/claims-analytics-dashboard"
                 element={
