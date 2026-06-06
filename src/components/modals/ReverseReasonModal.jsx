@@ -108,7 +108,15 @@ export default function ReverseReasonModal({
   }
 
   const handleBackdropClick = (e) => {
-    if (e.target === e.currentTarget && !loading) {
+    // Wave XXX-Z hotfix-2 (Codex post-hotfix-1 catch): the original
+    // e.target === e.currentTarget check failed because the visible dark
+    // backdrop is a child div, not the wrapper itself. Users clicking
+    // outside the panel hit the backdrop child — equality check returned
+    // false — modal never dismissed. Now: check whether click is OUTSIDE
+    // the dialog panel (negated contains) so any click outside the panel
+    // closes the modal regardless of which inert overlay it lands on.
+    if (loading) return
+    if (dialogRef.current && !dialogRef.current.contains(e.target)) {
       onClose?.()
     }
   }
