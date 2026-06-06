@@ -1066,9 +1066,14 @@ const AdminPage = () => {
             </div>
           </div>
 
-          {/* Tab Navigation — pill group matching Claims + Deals pattern */}
-          <div className="mb-6">
-            <div className="inline-flex flex-wrap items-center gap-1 rounded-lg border border-border bg-card p-1">
+          {/* Tab Navigation — Wave XXX-AK: role="tablist" a11y + horizontal scroll
+              (no flex-wrap) eliminates 375px overflow and unplanned 2-row wrap. */}
+          <div className="mb-6 overflow-x-auto">
+            <div
+              role="tablist"
+              aria-label="Admin sections"
+              className="flex items-center gap-1 rounded-lg border border-border bg-card p-1 min-w-max"
+            >
               {tabs?.map((tab) => {
                 const Icon = tab?.icon
                 let count = 0
@@ -1084,9 +1089,12 @@ const AdminPage = () => {
                   <button
                     key={tab?.id}
                     type="button"
+                    role="tab"
+                    aria-selected={active}
+                    aria-controls="admin-panel-container"
+                    id={`admin-tab-${tab?.id}`}
                     onClick={() => setActiveTab(tab?.id)}
-                    aria-pressed={active}
-                    className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${
+                    className={`whitespace-nowrap inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
                       active
                         ? 'bg-slate-900 text-white shadow-sm'
                         : 'text-muted-foreground hover:bg-muted'
@@ -1111,8 +1119,16 @@ const AdminPage = () => {
             </div>
           </div>
 
-          {/* Tab Content — card matches Claims + Deals pattern */}
-          <div className="bg-card rounded-lg shadow-sm border border-border p-5 sm:p-6">
+          {/* Tab Content — Wave XXX-AK hotfix-1 (Codex C): aria-controls on
+              each tab button references this STABLE id so all tabs (active +
+              inactive) reference a real DOM target. Was dynamic id per tab
+              which broke the DOM contract for inactive tabs. */}
+          <div
+            role="tabpanel"
+            id="admin-panel-container"
+            aria-labelledby={`admin-tab-${activeTab}`}
+            className="bg-card rounded-lg shadow-sm border border-border p-5 sm:p-6"
+          >
             {activeTab === 'userAccounts' && (
               <UserAccountsTab
                 userAccounts={userAccounts}

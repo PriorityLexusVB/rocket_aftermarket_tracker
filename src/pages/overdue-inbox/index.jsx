@@ -243,10 +243,10 @@ export default function OverdueInbox() {
   return (
     <AppLayout>
       <div className="mx-auto w-full max-w-7xl space-y-4 p-4 md:px-6 md:py-6">
-        <section className="rounded-xl border border-border bg-card p-4 shadow-sm">
+        <section className="rounded-lg border border-border bg-card p-4 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h1 className="text-xl font-semibold text-foreground">Overdue Inbox</h1>
+              <h1 className="text-2xl md:text-3xl font-bold text-foreground">Overdue Inbox</h1>
               <p className="text-sm text-muted-foreground">
                 Past-due items waiting for delivery coordinator action.
               </p>
@@ -263,7 +263,7 @@ export default function OverdueInbox() {
           </div>
         </section>
 
-        <section className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+        <section className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
           {loading ? (
             <div className="p-6 text-sm text-muted-foreground">Loading overdue items…</div>
           ) : error ? (

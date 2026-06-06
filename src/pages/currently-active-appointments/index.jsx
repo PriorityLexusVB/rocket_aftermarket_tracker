@@ -376,7 +376,7 @@ const CurrentlyActiveAppointmentsLegacy = () => {
       <AppLayout>
         <div className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-indigo-50 flex items-center justify-center">
           <div className="text-center">
-            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-r from-indigo-600 to-purple-600 flex items-center justify-center shadow-xl">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-r from-indigo-600 to-purple-600 flex items-center justify-center shadow-sm">
               <div className="animate-spin rounded-full h-8 w-8 border-2 border-white border-t-transparent"></div>
             </div>
             <p className="text-gray-600 font-medium">Loading workflow center...</p>
@@ -397,14 +397,14 @@ const CurrentlyActiveAppointmentsLegacy = () => {
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-6">
                 <div className="flex items-center space-x-4">
-                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 flex items-center justify-center shadow-xl">
+                  <div className="w-14 h-14 rounded-lg bg-blue-600 flex items-center justify-center shadow-sm">
                     <Clock className="w-7 h-7 text-white" />
                   </div>
                   <div>
-                    <h1 className="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
+                    <h1 className="text-2xl md:text-3xl font-bold text-foreground">
                       Vehicles
                     </h1>
-                    <p className="text-sm text-gray-600 font-medium">
+                    <p className="text-sm text-muted-foreground mt-1">
                       Vehicles in your inventory with active aftermarket work
                     </p>
                   </div>
@@ -418,7 +418,7 @@ const CurrentlyActiveAppointmentsLegacy = () => {
                     placeholder="Search jobs, vehicles, customers, or vendors..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e?.target?.value)}
-                    className="pl-12 pr-6 py-3.5 border border-gray-200 rounded-2xl w-96 focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-md transition-all duration-200 text-gray-900 placeholder-gray-500"
+                    className="pl-12 pr-6 py-3.5 border border-gray-200 rounded-lg w-96 focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-md transition-all duration-200 text-gray-900 placeholder-gray-500"
                   />
                 </div>
               </div>
@@ -427,7 +427,7 @@ const CurrentlyActiveAppointmentsLegacy = () => {
                 {/* Workflow Management Tools */}
                 <button
                   onClick={() => setShowPerformanceWidget(!showPerformanceWidget)}
-                  className={`px-4 py-3 rounded-xl border text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 flex items-center space-x-2 ${showPerformanceWidget ? 'bg-indigo-50 border-indigo-200 text-indigo-600' : 'border-gray-200'}`}
+                  className={`px-4 py-3 rounded-xl border text-gray-600 hover:bg-muted hover:border-gray-300 transition-all duration-200 flex items-center space-x-2 ${showPerformanceWidget ? 'bg-indigo-50 border-indigo-200 text-indigo-600' : 'border-gray-200'}`}
                 >
                   <BarChart3 className="w-4 h-4" />
                   <span>Analytics</span>
@@ -435,7 +435,7 @@ const CurrentlyActiveAppointmentsLegacy = () => {
 
                 <button
                   onClick={() => setBulkOperationsMode(!bulkOperationsMode)}
-                  className={`px-4 py-3 rounded-xl border text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 flex items-center space-x-2 ${bulkOperationsMode ? 'bg-orange-50 border-orange-200 text-orange-600' : 'border-gray-200'}`}
+                  className={`px-4 py-3 rounded-xl border text-gray-600 hover:bg-muted hover:border-gray-300 transition-all duration-200 flex items-center space-x-2 ${bulkOperationsMode ? 'bg-orange-50 border-orange-200 text-orange-600' : 'border-gray-200'}`}
                 >
                   <CheckCheck className="w-4 h-4" />
                   <span>Bulk Actions</span>
@@ -449,7 +449,7 @@ const CurrentlyActiveAppointmentsLegacy = () => {
                 <button
                   onClick={handleRefresh}
                   disabled={refreshing}
-                  className={`px-4 py-3 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 flex items-center space-x-2 ${refreshing ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  className={`px-4 py-3 rounded-xl border border-gray-200 text-gray-600 hover:bg-muted hover:border-gray-300 transition-all duration-200 flex items-center space-x-2 ${refreshing ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
                   <span>Refresh</span>

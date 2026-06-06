@@ -376,17 +376,22 @@ const GuestClaimsSubmissionForm = () => {
       </div>
 
       <div className="max-w-3xl mx-auto px-4 sm:px-6 py-12">
-        {/* Hero */}
-        <div className="text-center mb-10">
-          <div className="w-14 h-14 bg-blue-100 text-blue-700 rounded-xl flex items-center justify-center mx-auto mb-5">
-            <FileText className="w-7 h-7" />
+        {/* Hero — Wave XXX-AK: anchored gradient surface so the icon feels like
+            part of a deliberate header band, not a floating orphan. */}
+        <div className="relative -mx-4 sm:-mx-6 mb-10 overflow-hidden">
+          {/* Subtle gradient backdrop */}
+          <div className="absolute inset-0 bg-gradient-to-b from-blue-50/80 to-transparent" />
+          <div className="relative text-center px-4 sm:px-6 pt-10 pb-12">
+            <div className="inline-flex w-16 h-16 bg-blue-600 text-white rounded-xl items-center justify-center mb-5 shadow-lg shadow-blue-500/20 ring-1 ring-blue-700/30">
+              <FileText className="w-8 h-8" />
+            </div>
+            <h1 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-3 tracking-tight">
+              Submit a Warranty Claim
+            </h1>
+            <p className="text-lg text-slate-600 max-w-xl mx-auto">
+              Tell us what happened. A member of our team will contact you to follow up.
+            </p>
           </div>
-          <h1 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-3">
-            Submit a Warranty Claim
-          </h1>
-          <p className="text-lg text-slate-600 max-w-xl mx-auto">
-            Tell us what happened. A member of our team will contact you to follow up.
-          </p>
         </div>
 
         {/* Submit error banner */}
