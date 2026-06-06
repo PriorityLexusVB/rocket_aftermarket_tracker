@@ -173,12 +173,11 @@ export default function DealDrawer({ open, deal, onClose, onStatusChange }) {
     if (dealStatus === 'in_progress' && deal?.quality_checked_at) {
       return { label: 'Mark Complete', targetStatus: 'completed' }
     }
-    if (
-      dealStatus === 'unscheduled' ||
-      dealStatus === 'promised' ||
-      dealStatus === 'pending' ||
-      dealStatus === 'draft'
-    ) {
+    // Wave XXX-Z stale-reference cleanup: 'unscheduled', 'promised', 'draft'
+    // are all retired or never-real status strings. job_status is now constrained
+    // to the 5-state enum (pending/scheduled/in_progress/completed/reversed).
+    // Only 'pending' is a real status that means "not scheduled yet."
+    if (dealStatus === 'pending') {
       return { label: 'Not scheduled yet', disabled: true, needsScheduling: true }
     }
     return { label: 'Select action', disabled: true }
