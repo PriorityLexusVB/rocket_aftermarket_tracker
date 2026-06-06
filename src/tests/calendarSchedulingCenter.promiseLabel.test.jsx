@@ -73,13 +73,14 @@ describe('CalendarSchedulingCenter promise-only label', () => {
     const card = customer.closest('[role="button"]')
     expect(card).toBeTruthy()
 
-    await waitFor(() => {
-      expect(within(card).getByText('PROMISE')).toBeTruthy()
-    })
-
+    // Wave XXX-V: the "PROMISE" / "BOOKED" text badges were removed; promise-only
+    // items are now visually distinguished by left border + amber tint.
     expect(within(card).getByText('Jane Customer')).toBeTruthy()
     expect(within(card).queryByText('BOOKED')).toBeNull()
-    expect(within(card).getByText(/Promise:/i)).toBeTruthy()
+    expect(within(card).queryByText('PROMISE')).toBeNull()
+    // Visual marker: green left border + amber color denote promise-only state.
+    expect(card.className).toMatch(/border-l-green-500/)
+    expect(card.className).toMatch(/(amber|text-amber)/)
   })
 
   it('reopens completed jobs to in_progress (Wave XXX-V — quality_check collapsed)', async () => {

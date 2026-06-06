@@ -122,7 +122,9 @@ describe('DealDrawer', () => {
     trigger.focus()
     await user.click(trigger)
 
-    const closeButton = await screen.findByRole('button', { name: /close/i })
+    // Wave XXX-W phase 2 added a bottom action row with its own "Close drawer"
+    // button. Be specific so we don't match both close buttons.
+    const closeButton = await screen.findByRole('button', { name: /Close deal drawer/i })
     await user.click(closeButton)
     expect(trigger).toHaveFocus()
   })

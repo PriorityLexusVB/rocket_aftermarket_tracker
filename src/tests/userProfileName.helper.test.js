@@ -60,8 +60,10 @@ describe('userProfileName helper', () => {
       ).toBe('Alice S.')
     })
 
-    it('returns email local-part when no name fields populated', () => {
-      expect(resolveUserProfileName({ email: 'localpart@example.com' })).toBe('localpart')
+    it('returns humanized email local-part when no name fields populated', () => {
+      // Wave J: email-handle fallback is title-cased ('localpart' → 'Localpart')
+      // instead of returning the raw handle. Test updated to match current impl.
+      expect(resolveUserProfileName({ email: 'localpart@example.com' })).toBe('Localpart')
     })
 
     it('returns null when no usable fields present', () => {

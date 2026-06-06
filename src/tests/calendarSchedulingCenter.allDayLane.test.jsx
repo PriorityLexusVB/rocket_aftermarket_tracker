@@ -87,10 +87,17 @@ describe('CalendarSchedulingCenter all-day promise lane', () => {
     const promiseCard = promiseCustomer.closest('[role="button"]')
     expect(promiseCard).toBeTruthy()
 
+    // Wave XXX-V: PROMISE / BOOKED text badges removed. Promise-only items use
+    // amber tint (border-amber + text-amber + bg-white); timed items use blue
+    // tint (bg-blue-200 + text-blue-900). The green LEFT border is the onsite
+    // service-type indicator and is present on BOTH — not a promise discriminator.
     expect(within(promiseCard).getByText('Promise Customer')).toBeInTheDocument()
-    expect(within(promiseCard).getByText('PROMISE')).toBeInTheDocument()
+    expect(promiseCard.className).toMatch(/border-amber|text-amber/)
     expect(screen.getByText('Timed Customer')).toBeInTheDocument()
-    expect(screen.getByText('BOOKED')).toBeInTheDocument()
+    // Timed (BOOKED) items should NOT have amber promise tint
+    const timedCard = screen.getByText('Timed Customer').closest('[role="button"]')
+    expect(timedCard.className).not.toMatch(/border-amber|text-amber/)
+    expect(timedCard.className).toMatch(/bg-blue|text-blue/)
 
     expect(screen.getAllByText('Promise Customer')).toHaveLength(1)
   })

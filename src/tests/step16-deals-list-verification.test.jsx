@@ -251,6 +251,14 @@ describe('Step 16: Deals List Screen Verification', () => {
   beforeEach(() => {
     vi?.clearAllMocks()
     dealService?.getAllDeals?.mockResolvedValue(mockDealsData)
+    // Wave XXX-AD: reset jsdom URL between tests because Wave XXX-AA added
+    // viewMode URL persistence (?viewMode=sheet etc) — the sheet-view test
+    // writes the param via history.replaceState which persists in jsdom and
+    // makes subsequent tests boot into Sheet view instead of Card view (no
+    // deal-row-* testids in Sheet view).
+    if (typeof window !== 'undefined' && window.history?.replaceState) {
+      window.history.replaceState({}, '', window.location.pathname)
+    }
   })
 
   afterEach(() => {
@@ -449,7 +457,9 @@ describe('Step 16: Deals List Screen Verification', () => {
       expect(screen.getAllByTestId(/deal-row-/)).toHaveLength(mockDealsData.length)
     })
 
-    const sheetToggle = screen.getByRole('button', { name: /sheet view/i })
+    // Wave XXX-AA: showSheetView 2-button toggle replaced by 3-button viewMode
+    // pill (Card | Sheet | Board). Accessible name is just the label "Sheet".
+    const sheetToggle = screen.getByRole('button', { name: /^sheet$/i })
     sheetToggle.click()
 
     await waitFor(() => {

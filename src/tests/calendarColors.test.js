@@ -12,7 +12,7 @@ describe('calendarColors', () => {
     it('should return onsite colors for onsite service type', () => {
       const colors = getEventColors('onsite', 'scheduled')
 
-      expect(colors.bg).toBe('bg-blue-100')
+      expect(colors.bg).toBe('bg-blue-200')
       expect(colors.text).toBe('text-blue-900')
       expect(colors.hex).toBe('#3B82F6')
     })
@@ -20,7 +20,7 @@ describe('calendarColors', () => {
     it('should return vendor colors for vendor service type', () => {
       const colors = getEventColors('vendor', 'scheduled')
 
-      expect(colors.bg).toBe('bg-purple-100')
+      expect(colors.bg).toBe('bg-purple-200')
       expect(colors.text).toBe('text-purple-900')
       expect(colors.hex).toBe('#A855F7')
     })
@@ -28,14 +28,14 @@ describe('calendarColors', () => {
     it('should return vendor colors for offsite service type', () => {
       const colors = getEventColors('offsite', 'scheduled')
 
-      expect(colors.bg).toBe('bg-purple-100')
+      expect(colors.bg).toBe('bg-purple-200')
       expect(colors.text).toBe('text-purple-900')
     })
 
     it('should default to onsite for undefined service type', () => {
       const colors = getEventColors(null, 'scheduled')
 
-      expect(colors.bg).toBe('bg-blue-100')
+      expect(colors.bg).toBe('bg-blue-200')
     })
 
     it('should include status overlay for in_progress', () => {
@@ -48,7 +48,7 @@ describe('calendarColors', () => {
     it('should include combined className', () => {
       const colors = getEventColors('onsite', 'scheduled')
 
-      expect(colors.className).toContain('bg-blue-100')
+      expect(colors.className).toContain('bg-blue-200')
       expect(colors.className).toContain('text-blue-900')
       expect(colors.className).toContain('opacity-90')
     })
@@ -58,14 +58,14 @@ describe('calendarColors', () => {
     it('should return onsite lane colors', () => {
       const colors = getLaneColors('onsite')
 
-      expect(colors.bg).toBe('bg-blue-100')
+      expect(colors.bg).toBe('bg-blue-200')
       expect(colors.headerGradient).toBe('from-blue-500 to-blue-600')
     })
 
     it('should return vendor lane colors', () => {
       const colors = getLaneColors('vendor')
 
-      expect(colors.bg).toBe('bg-purple-100')
+      expect(colors.bg).toBe('bg-purple-200')
       expect(colors.headerGradient).toBe('from-purple-500 to-purple-600')
     })
   })
