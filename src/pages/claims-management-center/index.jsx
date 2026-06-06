@@ -10,10 +10,12 @@ import DollarSign from 'lucide-react/dist/esm/icons/dollar-sign.js'
 import FileText from 'lucide-react/dist/esm/icons/file-text.js'
 import Eye from 'lucide-react/dist/esm/icons/eye.js'
 import ArrowUpDown from 'lucide-react/dist/esm/icons/arrow-up-down.js'
+import Plus from 'lucide-react/dist/esm/icons/plus.js'
 import { claimsService } from '../../services/claimsService'
 import { handleAuthError } from '@/lib/authErrorHandler'
 import ClaimProcessingModal from './components/ClaimProcessingModal'
 import ClaimStatsWidget from './components/ClaimStatsWidget'
+import NewClaimModal from './components/NewClaimModal'
 import AppLayout from '../../components/layouts/AppLayout'
 
 const ClaimsManagementCenter = () => {
@@ -31,20 +33,14 @@ const ClaimsManagementCenter = () => {
   const [sortBy, setSortBy] = useState('created_at')
   const [sortOrder, setSortOrder] = useState('desc')
 
-  // Wave XXX-AF: Hide resolved claims by default so coordinators have a clean queue.
-  // Toggle off to see the full history.
-  const [hideResolved, setHideResolved] = useState(true)
+  // Wave XXX-AG: Active/Completed tabs. Default Active = work-queue view.
+  // Completed = archive view with totals strip.
+  const [activeTab, setActiveTab] = useState('active') // 'active' | 'completed'
+  const [showNewClaimModal, setShowNewClaimModal] = useState(false)
 
   useEffect(() => {
     loadData()
   }, [])
-
-  // Wave XXX-AF: Auto-disable hideResolved when user explicitly picks "resolved" status filter
-  useEffect(() => {
-    if (statusFilter === 'resolved' && hideResolved) {
-      setHideResolved(false)
-    }
-  }, [statusFilter])
 
   const loadData = async () => {
     try {
@@ -152,8 +148,11 @@ const ClaimsManagementCenter = () => {
         const matchesStatus = statusFilter === 'all' || claim?.status === statusFilter
         const matchesPriority = priorityFilter === 'all' || claim?.priority === priorityFilter
 
-        // Wave XXX-AF: Hide resolved claims unless explicitly disabled OR user picked "resolved" filter
-        if (hideResolved && statusFilter !== 'resolved' && claim?.status === 'resolved') {
+        // Wave XXX-AG: tab-based partition. Active hides resolved; Completed shows only resolved.
+        if (activeTab === 'active' && claim?.status === 'resolved') {
+          return false
+        }
+        if (activeTab === 'completed' && claim?.status !== 'resolved') {
           return false
         }
 
@@ -190,11 +189,11 @@ const ClaimsManagementCenter = () => {
     }
   }
 
-  // Wave XXX-AF: count resolved claims hidden from view for the summary line
-  const resolvedHiddenCount =
-    hideResolved && statusFilter !== 'resolved'
-      ? claims?.filter((c) => c?.status === 'resolved')?.length || 0
-      : 0
+  // Wave XXX-AG: tab-aware total for the summary line
+  const tabTotal =
+    activeTab === 'active'
+      ? claims?.filter((c) => c?.status !== 'resolved')?.length || 0
+      : claims?.filter((c) => c?.status === 'resolved')?.length || 0
 
   if (loading) {
     return (
@@ -229,6 +228,14 @@ const ClaimsManagementCenter = () => {
                 >
                   Refresh
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setShowNewClaimModal(true)}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg shadow-sm transition-colors"
+                >
+                  <Plus className="w-4 h-4" />
+                  New Claim
+                </button>
               </div>
             </div>
           </div>
@@ -253,8 +260,84 @@ const ClaimsManagementCenter = () => {
           {/* Stats Dashboard */}
           {stats && <ClaimStatsWidget stats={stats} />}
 
+          {/* Active / Completed tab pills */}
+          <div className="mt-6 inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white p-1">
+            {['active', 'completed'].map((tab) => {
+              const active = activeTab === tab
+              const label = tab === 'active' ? 'Active Claims' : 'Completed'
+              const count = tab === 'active'
+                ? claims.filter(c => c?.status !== 'resolved').length
+                : claims.filter(c => c?.status === 'resolved').length
+              return (
+                <button
+                  key={tab}
+                  type="button"
+                  onClick={() => setActiveTab(tab)}
+                  aria-pressed={active}
+                  className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                    active
+                      ? 'bg-slate-900 text-white shadow-sm'
+                      : 'text-slate-600 hover:bg-slate-100'
+                  }`}
+                >
+                  {label}
+                  <span className={`text-xs font-semibold rounded-full px-1.5 py-0.5 ${
+                    active ? 'bg-white/15 text-white' : 'bg-slate-100 text-slate-600'
+                  }`}>
+                    {count}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+
+          {/* Totals strip — visible only on Completed tab */}
+          {activeTab === 'completed' && (() => {
+            const completedClaims = claims.filter(c => c?.status === 'resolved')
+            const count = completedClaims.length
+            const totalPayout = completedClaims.reduce((sum, c) => sum + (Number(c?.claim_amount) || 0), 0)
+            // Wave XXX-AG hotfix-1 (Codex REQUIRED B): avg-resolution math was
+            // distorted — divided totalDays by full count even when many claims
+            // had null resolved_at. Now divide by claims with BOTH timestamps;
+            // show "N/A" if zero usable.
+            const claimsWithTimestamps = completedClaims.filter(
+              (c) => c?.created_at && c?.resolved_at,
+            )
+            const totalResolutionDays = claimsWithTimestamps.reduce((sum, c) => {
+              const days =
+                (new Date(c.resolved_at) - new Date(c.created_at)) / (1000 * 60 * 60 * 24)
+              return sum + Math.max(0, days)
+            }, 0)
+            const avgResolutionDays =
+              claimsWithTimestamps.length > 0
+                ? (totalResolutionDays / claimsWithTimestamps.length)
+                : null
+            return (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4 mb-2">
+                <div className="bg-emerald-50 border border-emerald-200 rounded-lg px-4 py-3">
+                  <div className="text-[11px] font-semibold uppercase tracking-wider text-emerald-700">Resolved</div>
+                  <div className="text-2xl font-bold text-emerald-900 mt-0.5">{count}</div>
+                </div>
+                <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
+                  <div className="text-[11px] font-semibold uppercase tracking-wider text-blue-700">Total Payout</div>
+                  <div className="text-2xl font-bold text-blue-900 mt-0.5">
+                    ${totalPayout.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                  </div>
+                </div>
+                <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
+                  <div className="text-[11px] font-semibold uppercase tracking-wider text-amber-700">Avg Resolution</div>
+                  <div className="text-2xl font-bold text-amber-900 mt-0.5">
+                    {avgResolutionDays === null
+                      ? <span className="text-base">N/A</span>
+                      : <>{avgResolutionDays.toFixed(1)} <span className="text-base font-medium">days</span></>}
+                  </div>
+                </div>
+              </div>
+            )
+          })()}
+
           {/* Main Content */}
-          <div className="mt-8 bg-white rounded-xl shadow-sm border border-gray-200">
+          <div className="mt-4 bg-white rounded-xl shadow-sm border border-gray-200">
             {/* Controls */}
             <div className="p-6 border-b border-gray-200">
               <div className="flex flex-col lg:flex-row gap-4">
@@ -274,7 +357,18 @@ const ClaimsManagementCenter = () => {
                 <div className="flex flex-wrap items-center gap-3">
                   <select
                     value={statusFilter}
-                    onChange={(e) => setStatusFilter(e?.target?.value)}
+                    onChange={(e) => {
+                      const v = e?.target?.value
+                      setStatusFilter(v)
+                      // Wave XXX-AG hotfix-1 (Codex REQUIRED A): auto-switch tab
+                      // so the status filter doesn't contradict the tab gate
+                      // and silently show zero rows.
+                      if (v === 'resolved' && activeTab !== 'completed') {
+                        setActiveTab('completed')
+                      } else if (v !== 'resolved' && v !== 'all' && activeTab !== 'active') {
+                        setActiveTab('active')
+                      }
+                    }}
                     className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
                     <option value="all">All Status</option>
@@ -297,25 +391,13 @@ const ClaimsManagementCenter = () => {
                     <option value="low">Low</option>
                   </select>
 
-                  {/* Wave XXX-AF: Hide Resolved toggle — default ON so coordinators see a clean queue */}
-                  <label className="inline-flex items-center gap-2 ml-1 text-sm font-medium text-slate-700 cursor-pointer select-none">
-                    <input
-                      type="checkbox"
-                      checked={hideResolved}
-                      onChange={(e) => setHideResolved(e.target.checked)}
-                      className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-2 focus:ring-blue-500"
-                    />
-                    Hide resolved
-                  </label>
                 </div>
               </div>
 
               <div className="mt-4 flex items-center justify-between">
                 <p className="text-sm text-gray-600">
-                  Showing {filteredAndSortedClaims?.length || 0} of {claims?.length || 0} claims
-                  {resolvedHiddenCount > 0 && (
-                    <span className="ml-1 text-gray-400">({resolvedHiddenCount} resolved hidden)</span>
-                  )}
+                  Showing {filteredAndSortedClaims?.length || 0} of {tabTotal}{' '}
+                  {activeTab === 'active' ? 'active' : 'completed'} claims
                 </p>
                 <div className="text-sm text-gray-600">
                   {filteredAndSortedClaims?.filter((claim) => isOverdue(claim))?.length || 0}{' '}
@@ -508,10 +590,12 @@ const ClaimsManagementCenter = () => {
                   <p className="text-gray-500 mb-4">No claims found matching your filters</p>
                   <button
                     onClick={() => {
+                      // Wave XXX-AG hotfix-1 (Codex REQUIRED I): clear-filters
+                      // should ONLY reset filter inputs, NOT yank the user out
+                      // of the tab they're intentionally viewing.
                       setSearchTerm('')
                       setStatusFilter('all')
                       setPriorityFilter('all')
-                      setHideResolved(true)
                     }}
                     className="text-blue-600 hover:text-blue-700 font-medium"
                   >
@@ -534,6 +618,16 @@ const ClaimsManagementCenter = () => {
             onUpdate={handleUpdateClaim}
           />
         )}
+        <NewClaimModal
+          isOpen={showNewClaimModal}
+          onClose={() => setShowNewClaimModal(false)}
+          // Wave XXX-AG hotfix-1 (Codex RECOMMENDED G+J): modal calls onClose
+          // itself after onCreated, so we don't double-close here. Also await
+          // loadData so the refresh runs to completion before the modal teardown.
+          onCreated={async () => {
+            await loadData()
+          }}
+        />
       </div>
     </AppLayout>
   )
