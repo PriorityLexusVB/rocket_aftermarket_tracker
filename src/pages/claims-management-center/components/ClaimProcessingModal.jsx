@@ -15,12 +15,11 @@ import Mail from 'lucide-react/dist/esm/icons/mail.js'
 import Phone from 'lucide-react/dist/esm/icons/phone.js'
 import { claimsService } from '../../../services/claimsService'
 
-const ClaimProcessingModal = ({ claim, staff, onClose, onUpdate }) => {
+const ClaimProcessingModal = ({ claim, onClose, onUpdate }) => {
   const [formData, setFormData] = useState({
     status: claim?.status || 'submitted',
     priority: claim?.priority || 'medium',
-    assigned_to: claim?.assigned_to || '',
-    resolution_notes: claim?.resolution_notes || '',
+resolution_notes: claim?.resolution_notes || '',
     claim_amount: claim?.claim_amount || '',
   })
 
@@ -380,25 +379,6 @@ const ClaimProcessingModal = ({ claim, staff, onClose, onUpdate }) => {
                       <option value="medium">Medium</option>
                       <option value="high">High</option>
                       <option value="urgent">Urgent</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Assign To
-                    </label>
-                    <select
-                      name="assigned_to"
-                      value={formData?.assigned_to}
-                      onChange={handleInputChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                    >
-                      <option value="">Unassigned</option>
-                      {staff?.map((member) => (
-                        <option key={member?.id} value={member?.id}>
-                          {member?.full_name} ({member?.role})
-                        </option>
-                      ))}
                     </select>
                   </div>
 

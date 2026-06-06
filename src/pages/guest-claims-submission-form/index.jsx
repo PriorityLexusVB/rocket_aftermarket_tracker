@@ -315,14 +315,16 @@ const GuestClaimsSubmissionForm = () => {
               </div>
             </div>
 
+            {/* Wave XXX-AF: Removed false email-confirmation promise. We do not send automated
+                confirmation emails. Copy now tells the customer to save their claim number
+                and that the team will follow up directly. */}
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 text-left">
               <h3 className="font-semibold text-blue-900 mb-2">What happens next:</h3>
               <ul className="text-blue-800 text-sm space-y-1">
-                <li>• You will receive an email confirmation shortly</li>
+                <li>• Please save your claim number above — it is your reference for this request</li>
+                <li>• A member of the Priority Lexus team will contact you to follow up</li>
                 <li>• Our warranty team will review your claim within 1-2 business days</li>
-                <li>• We may contact you if additional information is needed</li>
-                <li>• You will be notified of our decision via email</li>
-                <li>• Keep your claim number for future reference</li>
+                <li>• We may reach out if additional information is needed</li>
               </ul>
             </div>
 

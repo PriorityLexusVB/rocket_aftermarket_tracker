@@ -4,7 +4,6 @@ import Clock from 'lucide-react/dist/esm/icons/clock.js'
 import AlertCircle from 'lucide-react/dist/esm/icons/alert-circle.js'
 import CheckCircle from 'lucide-react/dist/esm/icons/check-circle.js'
 import XCircle from 'lucide-react/dist/esm/icons/x-circle.js'
-import User from 'lucide-react/dist/esm/icons/user.js'
 import Car from 'lucide-react/dist/esm/icons/car.js'
 import Package from 'lucide-react/dist/esm/icons/package.js'
 import DollarSign from 'lucide-react/dist/esm/icons/dollar-sign.js'
@@ -15,44 +14,49 @@ import { claimsService } from '../../services/claimsService'
 import { handleAuthError } from '@/lib/authErrorHandler'
 import ClaimProcessingModal from './components/ClaimProcessingModal'
 import ClaimStatsWidget from './components/ClaimStatsWidget'
-import ClaimAssignmentModal from './components/ClaimAssignmentModal'
 import AppLayout from '../../components/layouts/AppLayout'
 
 const ClaimsManagementCenter = () => {
   const [claims, setClaims] = useState([])
-  const [staff, setStaff] = useState([])
   const [stats, setStats] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [selectedClaim, setSelectedClaim] = useState(null)
   const [showProcessingModal, setShowProcessingModal] = useState(false)
-  const [showAssignmentModal, setShowAssignmentModal] = useState(false)
 
   // Filters and search
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [priorityFilter, setPriorityFilter] = useState('all')
-  const [assigneeFilter, setAssigneeFilter] = useState('all')
   const [sortBy, setSortBy] = useState('created_at')
   const [sortOrder, setSortOrder] = useState('desc')
+
+  // Wave XXX-AF: Hide resolved claims by default so coordinators have a clean queue.
+  // Toggle off to see the full history.
+  const [hideResolved, setHideResolved] = useState(true)
 
   useEffect(() => {
     loadData()
   }, [])
+
+  // Wave XXX-AF: Auto-disable hideResolved when user explicitly picks "resolved" status filter
+  useEffect(() => {
+    if (statusFilter === 'resolved' && hideResolved) {
+      setHideResolved(false)
+    }
+  }, [statusFilter])
 
   const loadData = async () => {
     try {
       setLoading(true)
       setError(null)
 
-      const [claimsData, staffData, statsData] = await Promise.all([
+      const [claimsData, statsData] = await Promise.all([
         claimsService?.getAllClaims(),
-        claimsService?.getStaff(),
         claimsService?.getClaimsStats(),
       ])
 
       setClaims(claimsData || [])
-      setStaff(staffData || [])
       setStats(statsData)
     } catch (err) {
       console.error('Error loading claims data:', err)
@@ -147,12 +151,13 @@ const ClaimsManagementCenter = () => {
 
         const matchesStatus = statusFilter === 'all' || claim?.status === statusFilter
         const matchesPriority = priorityFilter === 'all' || claim?.priority === priorityFilter
-        const matchesAssignee =
-          assigneeFilter === 'all' ||
-          (assigneeFilter === 'unassigned' && !claim?.assigned_to) ||
-          claim?.assigned_to === assigneeFilter
 
-        return matchesSearch && matchesStatus && matchesPriority && matchesAssignee
+        // Wave XXX-AF: Hide resolved claims unless explicitly disabled OR user picked "resolved" filter
+        if (hideResolved && statusFilter !== 'resolved' && claim?.status === 'resolved') {
+          return false
+        }
+
+        return matchesSearch && matchesStatus && matchesPriority
       })
       ?.sort((a, b) => {
         let aValue = a?.[sortBy]
@@ -162,9 +167,6 @@ const ClaimsManagementCenter = () => {
         if (sortBy === 'customer_name') {
           aValue = a?.customer_name || ''
           bValue = b?.customer_name || ''
-        } else if (sortBy === 'assigned_to_name') {
-          aValue = a?.assigned_to_profile?.full_name || ''
-          bValue = b?.assigned_to_profile?.full_name || ''
         }
 
         if (typeof aValue === 'string') {
@@ -187,6 +189,12 @@ const ClaimsManagementCenter = () => {
       setSortOrder('asc')
     }
   }
+
+  // Wave XXX-AF: count resolved claims hidden from view for the summary line
+  const resolvedHiddenCount =
+    hideResolved && statusFilter !== 'resolved'
+      ? claims?.filter((c) => c?.status === 'resolved')?.length || 0
+      : 0
 
   if (loading) {
     return (
@@ -263,7 +271,7 @@ const ClaimsManagementCenter = () => {
                 </div>
 
                 {/* Filters */}
-                <div className="flex gap-3">
+                <div className="flex flex-wrap items-center gap-3">
                   <select
                     value={statusFilter}
                     onChange={(e) => setStatusFilter(e?.target?.value)}
@@ -289,25 +297,25 @@ const ClaimsManagementCenter = () => {
                     <option value="low">Low</option>
                   </select>
 
-                  <select
-                    value={assigneeFilter}
-                    onChange={(e) => setAssigneeFilter(e?.target?.value)}
-                    className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    <option value="all">All Assignees</option>
-                    <option value="unassigned">Unassigned</option>
-                    {staff?.map((member) => (
-                      <option key={member?.id} value={member?.id}>
-                        {member?.full_name}
-                      </option>
-                    ))}
-                  </select>
+                  {/* Wave XXX-AF: Hide Resolved toggle — default ON so coordinators see a clean queue */}
+                  <label className="inline-flex items-center gap-2 ml-1 text-sm font-medium text-slate-700 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={hideResolved}
+                      onChange={(e) => setHideResolved(e.target.checked)}
+                      className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-2 focus:ring-blue-500"
+                    />
+                    Hide resolved
+                  </label>
                 </div>
               </div>
 
               <div className="mt-4 flex items-center justify-between">
                 <p className="text-sm text-gray-600">
                   Showing {filteredAndSortedClaims?.length || 0} of {claims?.length || 0} claims
+                  {resolvedHiddenCount > 0 && (
+                    <span className="ml-1 text-gray-400">({resolvedHiddenCount} resolved hidden)</span>
+                  )}
                 </p>
                 <div className="text-sm text-gray-600">
                   {filteredAndSortedClaims?.filter((claim) => isOverdue(claim))?.length || 0}{' '}
@@ -366,15 +374,6 @@ const ClaimsManagementCenter = () => {
                         className="flex items-center gap-1 text-xs font-medium text-gray-500 uppercase tracking-wider hover:text-gray-700"
                       >
                         Amount
-                        <ArrowUpDown className="w-3 h-3" />
-                      </button>
-                    </th>
-                    <th className="px-6 py-3 text-left">
-                      <button
-                        onClick={() => handleSort('assigned_to_name')}
-                        className="flex items-center gap-1 text-xs font-medium text-gray-500 uppercase tracking-wider hover:text-gray-700"
-                      >
-                        Assigned To
                         <ArrowUpDown className="w-3 h-3" />
                       </button>
                     </th>
@@ -471,13 +470,6 @@ const ClaimsManagementCenter = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-900">
-                          {claim?.assigned_to_profile?.full_name || (
-                            <span className="text-gray-400 italic">Unassigned</span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">
                           {new Date(claim?.created_at)?.toLocaleDateString()}
                         </div>
                         <div className="text-xs text-gray-500">
@@ -486,17 +478,6 @@ const ClaimsManagementCenter = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <div className="flex items-center gap-2">
-                          <button
-                            onClick={(e) => {
-                              e?.stopPropagation()
-                              setSelectedClaim(claim)
-                              setShowAssignmentModal(true)
-                            }}
-                            className="text-blue-600 hover:text-blue-900"
-                            title="Assign"
-                          >
-                            <User className="w-4 h-4" />
-                          </button>
                           <button
                             onClick={(e) => {
                               e?.stopPropagation()
@@ -530,7 +511,7 @@ const ClaimsManagementCenter = () => {
                       setSearchTerm('')
                       setStatusFilter('all')
                       setPriorityFilter('all')
-                      setAssigneeFilter('all')
+                      setHideResolved(true)
                     }}
                     className="text-blue-600 hover:text-blue-700 font-medium"
                   >
@@ -546,20 +527,8 @@ const ClaimsManagementCenter = () => {
         {showProcessingModal && selectedClaim && (
           <ClaimProcessingModal
             claim={selectedClaim}
-            staff={staff}
             onClose={() => {
               setShowProcessingModal(false)
-              setSelectedClaim(null)
-            }}
-            onUpdate={handleUpdateClaim}
-          />
-        )}
-        {showAssignmentModal && selectedClaim && (
-          <ClaimAssignmentModal
-            claim={selectedClaim}
-            staff={staff}
-            onClose={() => {
-              setShowAssignmentModal(false)
               setSelectedClaim(null)
             }}
             onUpdate={handleUpdateClaim}
