@@ -360,32 +360,36 @@ const Navbar = () => {
 
               {/* Enhanced Notifications with Real Data — Wave J: dark-surface */}
               <div className="relative">
-                {/* Wave XXX-AH: New Claims pill — real-time count of unworked
-                    customer-submitted claims. Pulses when a new one arrives
-                    since the user's last claims-page visit. */}
+                {/* Wave XXX-AH hotfix-2 (Rob screenshot — pill clashed visually
+                    with the Bell + felt "bundled up"). Switched to the SAME
+                    visual pattern as Bell: an icon button with a red count
+                    badge top-right. Consistent navbar language; pulse-glow
+                    is on the BADGE not the whole pill so it's subtle. */}
                 {claimsBadge?.count > 0 && (
                   <Link
                     to="/claims-management-center?status=submitted"
                     onClick={() => claimsBadge?.markAsSeen?.()}
-                    className={`relative inline-flex items-center gap-1.5 mr-1 px-2.5 py-1.5 rounded-full text-xs font-semibold ring-1 transition-all
-                      ${
-                        claimsBadge?.shouldPulse
-                          ? 'bg-red-500/15 text-red-100 ring-red-400/60 animate-pulse-slow'
-                          : 'bg-white/[0.08] text-lex-ink-inv ring-white/15 hover:bg-white/[0.12]'
-                      }`}
-                    aria-label={`${claimsBadge.count} new claim${claimsBadge.count === 1 ? '' : 's'} waiting`}
-                    title="New claim submissions"
+                    className="relative p-2 text-lex-ink-inv-muted hover:text-lex-ink-inv transition-colors duration-150 rounded-md hover:bg-white/[0.06]"
+                    aria-label={`${claimsBadge.count} new claim${claimsBadge.count === 1 ? '' : 's'}`}
+                    title={`${claimsBadge.count} new claim${claimsBadge.count === 1 ? '' : 's'}`}
                   >
+                    <FileTextAlert className="w-5 h-5" />
+                    {/* Red count badge — matches the Bell's existing badge
+                        position + ring treatment. Pulses ONLY when there's a
+                        truly-new claim since the user's last visit. */}
+                    <div
+                      className={`absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-lex-urgent rounded-full text-[10px] text-white flex items-center justify-center font-bold px-1 ring-2 ring-lex-brand ${
+                        claimsBadge?.shouldPulse ? 'animate-pulse-slow' : ''
+                      }`}
+                    >
+                      {claimsBadge.count > 99 ? '99+' : claimsBadge.count}
+                    </div>
                     {claimsBadge?.shouldPulse && (
                       <span
                         aria-hidden="true"
-                        className="absolute inset-0 rounded-full ring-2 ring-red-400/70 animate-ping-slow pointer-events-none"
+                        className="absolute -top-1 -right-1 min-w-[18px] h-[18px] rounded-full ring-2 ring-lex-urgent/70 animate-ping-slow pointer-events-none"
                       />
                     )}
-                    <FileTextAlert className="w-3.5 h-3.5" />
-                    <span className="whitespace-nowrap">
-                      {claimsBadge.count} new claim{claimsBadge.count === 1 ? '' : 's'}
-                    </span>
                   </Link>
                 )}
 
@@ -581,29 +585,30 @@ const Navbar = () => {
 
           {/* Mobile Actions — Wave J: dark-surface treatment */}
           <div className="flex items-center space-x-2">
-            {/* Wave XXX-AH: New Claims pill on mobile — same real-time signal
-                coordinators get on desktop, compact for narrow screens. */}
+            {/* Wave XXX-AH hotfix-2: mobile pill — same icon-with-count-badge
+                pattern as desktop, matches Bell's existing visual. */}
             {claimsBadge?.count > 0 && (
               <Link
                 to="/claims-management-center?status=submitted"
                 onClick={() => claimsBadge?.markAsSeen?.()}
-                className={`relative inline-flex items-center gap-1 px-2 py-1.5 rounded-full text-[11px] font-semibold ring-1 transition-all
-                  ${
-                    claimsBadge?.shouldPulse
-                      ? 'bg-red-500/15 text-red-100 ring-red-400/60 animate-pulse-slow'
-                      : 'bg-white/[0.08] text-lex-ink-inv ring-white/15'
-                  }`}
-                aria-label={`${claimsBadge.count} new claim${claimsBadge.count === 1 ? '' : 's'} waiting`}
+                className="relative p-2 text-lex-ink-inv-muted hover:text-lex-ink-inv rounded-md hover:bg-white/[0.06] transition-colors"
+                aria-label={`${claimsBadge.count} new claim${claimsBadge.count === 1 ? '' : 's'}`}
                 title="New claims"
               >
+                <FileTextAlert className="w-5 h-5" />
+                <div
+                  className={`absolute -top-1 -right-1 min-w-[16px] h-[16px] bg-lex-urgent rounded-full text-[10px] text-white flex items-center justify-center font-bold px-1 ring-2 ring-lex-brand ${
+                    claimsBadge?.shouldPulse ? 'animate-pulse-slow' : ''
+                  }`}
+                >
+                  {claimsBadge.count > 99 ? '99+' : claimsBadge.count}
+                </div>
                 {claimsBadge?.shouldPulse && (
                   <span
                     aria-hidden="true"
-                    className="absolute inset-0 rounded-full ring-2 ring-red-400/70 animate-ping-slow pointer-events-none"
+                    className="absolute -top-1 -right-1 min-w-[16px] h-[16px] rounded-full ring-2 ring-lex-urgent/70 animate-ping-slow pointer-events-none"
                   />
                 )}
-                <FileTextAlert className="w-3 h-3" />
-                <span>{claimsBadge.count}</span>
               </Link>
             )}
 
