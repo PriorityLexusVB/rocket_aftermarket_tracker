@@ -31,8 +31,10 @@ const FilterControls = ({
             <option value="active">Active Only</option>
             <option value="scheduled">Scheduled</option>
             <option value="in_progress">In Progress</option>
-            {/* Wave XXX-V: quality_check removed, reversed added */}
-            <option value="reversed">Reversed</option>
+            {/* Wave XXX-V removed quality_check. 'reversed' is a TERMINAL state
+                excluded from this page's active query (appointmentsService only
+                fetches pending/in_progress/scheduled) — offering it here always
+                rendered an empty list. Reversed deals live in Deals → Reversed. */}
             <option value="pending">Needs Work (time TBD)</option>
             <option value="overdue">Overdue Items</option>
           </select>

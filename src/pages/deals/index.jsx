@@ -32,7 +32,6 @@ import {
   Pill,
   CustomerDisplay,
   ServiceLocationTag,
-  DraftReminderBanner,
   ErrorAlert,
   DealCoreSnapshot,
   SheetSummaryRow,
@@ -1123,11 +1122,10 @@ export default function DealsPage() {
           </div>
         </div>
 
-        {/* ✅ UPDATED: Draft reminder banner */}
-        <DraftReminderBanner
-          draftsCount={kpis?.drafts}
-          onViewDrafts={() => updateFilter('status', 'Draft')}
-        />
+        {/* Draft reminder banner removed 2026-06-07: the 9->5 enum collapse
+            (Wave XXX-V) mapped 'draft' -> 'pending', so kpis.drafts is always 0
+            and this banner could never render; its onViewDrafts also filtered to
+            the now-invalid 'Draft' status. Codex enum-orphan audit. */}
 
         {/* ✅ UPDATED: KPI Row */}
         <DealsKpiRow kpis={kpis} />

@@ -50,7 +50,6 @@ export const calculateDealKPIs = (dealsData) => {
 
   const activeJobs = safeDeals.filter((d) => d?.job_status === 'in_progress').length
   const pendingJobs = safeDeals.filter((d) => d?.job_status === 'pending').length
-  const totalDrafts = safeDeals.filter((d) => d?.job_status === 'draft').length
 
   const totalRevenue = safeDeals.reduce((sum, deal) => {
     const revenue = toFiniteNumberOrNull(deal?.total_amount) ?? 0
@@ -92,7 +91,6 @@ export const calculateDealKPIs = (dealsData) => {
     margin:
       hasUnknownProfit || margin == null ? '' : Number.isFinite(margin) ? margin.toFixed(1) : '0.0',
     pending: pendingJobs,
-    drafts: totalDrafts,
     productsSold: Number.isFinite(productsSold) ? Math.round(productsSold) : 0,
   }
 }
