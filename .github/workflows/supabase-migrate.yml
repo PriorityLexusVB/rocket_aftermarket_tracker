@@ -7,12 +7,6 @@ on:
       - 'supabase/migrations/**'
       - 'supabase/config.toml'
   workflow_dispatch:
-    inputs:
-      repair_known_live_history:
-        description: 'One-time history-only repair for the verified June 2026 live migrations'
-        required: false
-        default: false
-        type: boolean
 
 concurrency:
   group: supabase-migrate-prod
@@ -86,23 +80,6 @@ jobs:
           supabase --debug link --project-ref "$SUPABASE_PROJECT_REF" --password "$SUPABASE_DB_PASSWORD"
           echo "✓ Successfully linked to project"
 
-      - name: Repair verified June 2026 live migration history
-        if: steps.secrets_check.outputs.missing_secrets == 'false' && github.event_name == 'workflow_dispatch' && inputs.repair_known_live_history
-        run: |
-          set -euo pipefail
-          echo "=== Recording independently verified live migrations ==="
-          supabase migration repair \
-            20260605120000 \
-            20260605130000 \
-            20260606140000 \
-            --status applied \
-            --linked \
-            --password "$SUPABASE_DB_PASSWORD"
-          echo "=== History after repair ==="
-          supabase migration list --linked --password "$SUPABASE_DB_PASSWORD"
-          echo "=== History-only dry run (no migration SQL will execute) ==="
-          supabase db push --dry-run --linked --password "$SUPABASE_DB_PASSWORD"
-
       - name: List pending migrations
         if: steps.secrets_check.outputs.missing_secrets == 'false'
         run: |
@@ -112,7 +89,7 @@ jobs:
           supabase migration list || echo "Warning: Could not list migrations"
 
       - name: Apply migrations to production
-        if: steps.secrets_check.outputs.missing_secrets == 'false' && !(github.event_name == 'workflow_dispatch' && inputs.repair_known_live_history)
+        if: steps.secrets_check.outputs.missing_secrets == 'false'
         run: |
           set -euo pipefail
           echo "=== Applying Migrations to Production ==="

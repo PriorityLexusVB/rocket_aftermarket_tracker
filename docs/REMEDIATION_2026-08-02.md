@@ -73,12 +73,12 @@ It is a closeout checklist, not a source of secrets or customer data.
       it requires unifying the Deals and Calendar creation contracts and must not be
       improvised inside the personnel/offboarding patch.
 - [ ] Reconcile committed migrations/types with live schema replayability.
-- [ ] Complete the production migration workflow/history repair from the reviewed
-      live receipt: ten unchanged local SQL files are aligned to hosted versions,
-      the omitted `20260523170102` artifact is restored from the hosted ledger, and
-      the three independently verified already-live June migrations must be marked
-      applied through the one-time history-only gate. Never replay Wave XXX-V or
-      mark a real hosted migration reverted merely to silence drift.
+- [x] Repair production migration workflow/history from the reviewed live receipt:
+      ten unchanged local SQL files now use hosted versions, the omitted
+      `20260523170102` artifact is restored from the hosted ledger, and run
+      `30788055904` recorded the three independently verified already-live June
+      migrations as applied. Its dry-run reported the remote database up to date,
+      the real push step was skipped, and local/remote parity is `153 / 153`.
 - [x] Revalidate TODO/FIXME/backlog entries with an already-built check; do not
       promote stale historical queue items.
 - [ ] Plan and verify a separate transition from the legacy JWT `anon` /
@@ -90,6 +90,10 @@ It is a closeout checklist, not a source of secrets or customer data.
       the React Router 7 and Babel/toolchain changes against the full app, and
       refresh or retire the `.vscode-snapshot` manifest rather than dismissing its
       four development-only alerts as fixed.
+- [ ] Refresh the production migration connection lane from current official docs:
+      replace the pinned Supabase CLI `2.65.5` and deprecated Node 20 action runtime,
+      prove the current `config.toml` parses in CI, and remove the temporary rename
+      workaround only after an empty production dry-run and rollback receipt.
 - [x] Update `STATE.md` and current repo docs after production proof. Archives
       and applied historical migrations remain immutable evidence.
 - [ ] Reconcile shared `HANDOFF.md` / `WHAT'S-LEFT.md` only after the other active
@@ -152,3 +156,7 @@ It is a closeout checklist, not a source of secrets or customer data.
 - Browser receipt: desktop plus 375x667 verified Samantha support, reset route,
   protected redirect, six guest products, truthful photo copy, no horizontal
   overflow, zero console errors, and all observed API requests at HTTP 200.
+- Migration-history receipt: workflow run `30788055904` recorded only versions
+  `20260605120000`, `20260605130000`, and `20260606140000` as already applied;
+  `db push --dry-run` reported "Remote database is up to date", the real push step
+  was skipped, and MCP confirmed `153 / 153` version/name parity.
