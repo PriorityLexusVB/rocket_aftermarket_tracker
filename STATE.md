@@ -90,26 +90,34 @@
    admins out. Never store replacement credentials in Git or continuity notes.
 2. **Atomic aggregate writes:** deal create/update still spans multiple writes.
    Unify the Deals and Calendar contracts before replacing it with one RPC.
-3. **Schema replayability:** reconcile committed migrations/types with the live
-   schema and repair historical migration-workflow drift from a reviewed receipt.
+3. **Schema replayability:** reconcile the broader committed migration/type chain
+   with the live schema. Ten MCP-applied files are being aligned to their exact
+   hosted versions and one omitted hosted artifact is restored. Before the
+   production push workflow is green, record the three independently verified
+   already-live June migrations as applied through the one-time history-only gate;
+   never replay Wave XXX-V against production.
 4. **Security-advisor backlog:** classify the remaining four always-true policy,
    38 mutable-search-path, 8 anonymous definer, 19 authenticated definer, and
    leaked-password-protection warnings as a separate bounded wave. The three
    errors belong to shared non-Rocket tables `brand_rules`, `size_rules`, and
    `found_items`; do not mutate them from Rocket work.
-5. **Supabase key transition:** replace legacy JWT anon/service-role variables
+5. **Dependency security:** nine Dependabot alerts remain: five active-graph
+   runtime/tooling alerts require a separately tested React Router 7 and Babel
+   toolchain upgrade; four high/medium alerts are confined to the historical
+   `.vscode-snapshot` development manifest. Do not dismiss either set as fixed.
+6. **Supabase key transition:** replace legacy JWT anon/service-role variables
    with the already-provisioned publishable/secret keys only through a tested,
    rollback-ready Auth-secret release before legacy retirement.
-6. **External personnel surfaces:** separately audit Ashley in the legacy F&I
+7. **External personnel surfaces:** separately audit Ashley in the legacy F&I
    Sheet/Apps Script and other vendor systems; Rocket cannot prove those systems.
-7. **Shared continuity:** reconcile `HANDOFF.md` / `WHAT'S-LEFT.md` and promote
+8. **Shared continuity:** reconcile `HANDOFF.md` / `WHAT'S-LEFT.md` and promote
    the MCP/CLI-first rule into canonical shared rules after the active Sales
    Tracker lane releases the OneDrive scope.
-8. **Public-form polish:** replace placeholder Privacy/Terms links and improve
+9. **Public-form polish:** replace placeholder Privacy/Terms links and improve
    inline validation/required-field accessibility without changing claim policy.
-9. **Older operator checks:** reverify Twilio Trust Hub registration status and
-   coordinator-eyeball the ET-aware weekly/monthly Round-Up export; older notes
-   are leads, not proof these remain open.
+10. **Older operator checks:** reverify Twilio Trust Hub registration status and
+    coordinator-eyeball the ET-aware weekly/monthly Round-Up export; older notes
+    are leads, not proof these remain open.
 
 ## Standing execution rule
 

@@ -73,9 +73,12 @@ It is a closeout checklist, not a source of secrets or customer data.
       it requires unifying the Deals and Calendar creation contracts and must not be
       improvised inside the personnel/offboarding patch.
 - [ ] Reconcile committed migrations/types with live schema replayability.
-- [ ] Repair the production migration workflow/history mismatch only from a
-      reviewed live-schema receipt; never mark real live migrations reverted merely
-      to silence version drift.
+- [ ] Complete the production migration workflow/history repair from the reviewed
+      live receipt: ten unchanged local SQL files are aligned to hosted versions,
+      the omitted `20260523170102` artifact is restored from the hosted ledger, and
+      the three independently verified already-live June migrations must be marked
+      applied through the one-time history-only gate. Never replay Wave XXX-V or
+      mark a real hosted migration reverted merely to silence drift.
 - [x] Revalidate TODO/FIXME/backlog entries with an already-built check; do not
       promote stale historical queue items.
 - [ ] Plan and verify a separate transition from the legacy JWT `anon` /
@@ -83,6 +86,10 @@ It is a closeout checklist, not a source of secrets or customer data.
       secret keys before the legacy-key retirement window. Treat this as an
       Auth-secret rollout with representative tests and an explicit rollback;
       do not fold it into the personnel release.
+- [ ] Resolve the nine open Dependabot alerts in a separate dependency wave: test
+      the React Router 7 and Babel/toolchain changes against the full app, and
+      refresh or retire the `.vscode-snapshot` manifest rather than dismissing its
+      four development-only alerts as fixed.
 - [x] Update `STATE.md` and current repo docs after production proof. Archives
       and applied historical migrations remain immutable evidence.
 - [ ] Reconcile shared `HANDOFF.md` / `WHAT'S-LEFT.md` only after the other active
