@@ -2,10 +2,10 @@ import React from 'react'
 import { Navigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 
-const ProtectedRoute = ({ children }) => {
-  const { isAuthed, loading } = useAuth()
+const ProtectedRoute = ({ children, allowedRoles = null }) => {
+  const { isAuthed, loading, profileLoading, role } = useAuth()
 
-  if (loading) {
+  if (loading || profileLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center">
         <div className="text-center">
@@ -19,6 +19,10 @@ const ProtectedRoute = ({ children }) => {
 
   if (!isAuthed) {
     return <Navigate to="/auth" replace />
+  }
+
+  if (Array.isArray(allowedRoles) && !allowedRoles.includes(role)) {
+    return <Navigate to="/" replace />
   }
 
   return children

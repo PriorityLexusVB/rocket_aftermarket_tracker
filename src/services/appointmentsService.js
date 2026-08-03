@@ -34,7 +34,7 @@ export const appointmentsService = {
       return await safeRun(q, 'appointments:listCommunicationsForJob')
     } catch (error) {
       console.error('[appointments] listCommunicationsForJob failed:', error)
-      return { data: [], error: null }
+      return { data: [], error }
     }
   },
 
@@ -59,7 +59,7 @@ export const appointmentsService = {
       return await safeRun(q, 'appointments:listJobPartsWithProductsForJob')
     } catch (error) {
       console.error('[appointments] listJobPartsWithProductsForJob failed:', error)
-      return { data: [], error: null }
+      return { data: [], error }
     }
   },
 
@@ -173,7 +173,7 @@ export const appointmentsService = {
       return { data: enriched, error: null }
     } catch (error) {
       console.error('[appointments] listActiveAppointments failed:', error)
-      return { data: [], error: null }
+      return { data: [], error }
     }
   },
 
@@ -244,7 +244,7 @@ export const appointmentsService = {
       return { data: enriched, error: null }
     } catch (error) {
       console.error('[appointments] listUnscheduledInProgressInHouse failed:', error)
-      return { data: [], error: null }
+      return { data: [], error }
     }
   },
 
@@ -275,7 +275,7 @@ export const appointmentsService = {
       return { data: data || [], error: null }
     } catch (error) {
       console.error('[appointments] listUnassignedJobs failed:', error)
-      return { data: [], error: null }
+      return { data: [], error }
     }
   },
 

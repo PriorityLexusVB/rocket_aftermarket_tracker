@@ -204,6 +204,8 @@ const StaffRecordsTab = ({
                         </button>
                       )}
                     <button
+                      title="Deactivate staff profile"
+                      aria-label="Deactivate staff profile"
                       onClick={() => handleDelete('user_profiles', staff?.id, 'staff')}
                       disabled={deletingId === staff?.id}
                       className="text-red-600 hover:text-red-900 disabled:opacity-50"

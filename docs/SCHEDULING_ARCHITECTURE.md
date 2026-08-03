@@ -99,9 +99,13 @@ CREATE TABLE public.job_parts (
 
 **Status**: A job is "scheduled" when:
 
-1. It has a valid `vendor_id`
-2. One or more line items have `scheduled_start_time` and `scheduled_end_time`
+1. One or more line items have a `promised_date` or a scheduled time window
+2. A vendor/location is present when the selected work requires one
 3. Job status is `'scheduled'`
+
+The date is required for calendar placement; a start/end time is optional. A
+date-only item remains visible in the needs-time/calendar flow until a time is
+assigned.
 
 ### Assignment (Optional Metadata)
 
@@ -120,18 +124,17 @@ CREATE TABLE public.job_parts (
 
 ### Status Semantics
 
-| Status          | Meaning                       | Requires                 |
-| --------------- | ----------------------------- | ------------------------ |
-| `draft`         | Initial creation              | Nothing                  |
-| `pending`       | Created, optionally assigned  | Job data                 |
-| `scheduled`     | On calendar with time windows | vendor_id + time windows |
-| `in_progress`   | Work started                  | vendor_id + time windows |
-| `quality_check` | Work complete, being reviewed | vendor_id + time windows |
-| `delivered`     | Delivered to customer         | vendor_id + time windows |
-| `completed`     | Fully complete                | vendor_id + time windows |
-| `cancelled`     | Cancelled                     | Nothing                  |
+| Status        | Meaning                                 | Requires                     |
+| ------------- | --------------------------------------- | ---------------------------- |
+| `pending`     | Sold/created; scheduling may be pending | Core deal data               |
+| `scheduled`   | Placed on calendar                      | Promise/scheduled date       |
+| `in_progress` | Work is underway                        | Work-start transition        |
+| `completed`   | Work completed; may be reopened         | Completion transition        |
+| `reversed`    | Sale reversed; terminal                 | Reversal reason/audit fields |
 
-**Important**: Setting status to `'scheduled'` without actual scheduling data (vendor + time) creates confusion. Always ensure vendor and time windows exist before using `'scheduled'` status.
+**Important**: `scheduled` requires a calendar date, but not necessarily a
+clock time. `reversed` is terminal; `completed` can be reopened by an
+authorized workflow.
 
 ---
 

@@ -18,6 +18,7 @@ import staffService from '../../../services/staffService'
 import { vehicleService } from '../../../services/vehicleService'
 import { jobService } from '../../../services/jobService'
 import Checkbox from '../../../components/ui/Checkbox'
+import { isDeliveryCoordinator } from '@/utils/deliveryCoordinator'
 
 const CreateModal = ({ initialData, onClose, onSuccess, vendors, onSMSEnqueue }) => {
   // Omnibox search state
@@ -218,7 +219,7 @@ const CreateModal = ({ initialData, onClose, onSuccess, vendors, onSMSEnqueue })
       const staff = (await staffService.listStaffByOrg(null, { activeOnly: true })) || []
       setStaffMembers({
         sales_people: staff?.filter((s) => s?.department === 'Sales'),
-        delivery_coordinators: staff?.filter((s) => s?.department === 'Delivery Coordinator'),
+        delivery_coordinators: staff?.filter(isDeliveryCoordinator),
         finance_managers: staff?.filter((s) => s?.department === 'Finance Manager'),
         managers: staff?.filter((s) => s?.department === 'General Manager'),
       })

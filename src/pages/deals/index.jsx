@@ -153,8 +153,8 @@ export default function DealsPage() {
     try {
       return (
         getUserOptions({
-          roles: ['admin', 'manager'],
-          departments: ['Delivery Coordinator'],
+          roles: ['staff', 'admin', 'manager'],
+          departments: ['Delivery', 'Delivery Coordinator', 'Delivery Coordinators'],
           activeOnly: true,
         }) || []
       )

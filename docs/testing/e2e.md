@@ -4,7 +4,7 @@ This document describes how to run end-to-end (E2E) tests locally and in CI for 
 
 ## Prerequisites
 
-- **Node.js 20** (pinned via `.nvmrc`)
+- **Node.js 22** (pinned via `.nvmrc`)
 - **pnpm** (version specified in `package.json` via `packageManager` field)
 - Supabase credentials (for auth and API access)
 - E2E test user credentials

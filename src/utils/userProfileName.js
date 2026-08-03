@@ -15,7 +15,7 @@ let CAPS_LOADED = false
 
 // Bump this when the client-side capability caching logic changes or when we need
 // to force a re-probe after schema changes.
-const CAPS_CACHE_VERSION = 2
+const CAPS_CACHE_VERSION = 3
 
 const SS_KEYS = {
   name: 'cap_userProfilesName',
@@ -123,7 +123,11 @@ export async function ensureUserProfileCapsLoaded() {
       const resp = await fetch('/api/health-user-profiles', { method: 'GET' })
       if (resp.ok) {
         const json = await resp.json()
-        if (json && json.columns) {
+        if (
+          json?.ok === true &&
+          json.columns &&
+          Object.values(json.columns).every((value) => typeof value === 'boolean')
+        ) {
           setProfileCaps({
             name: !!json.columns.name,
             full_name: !!json.columns.full_name,

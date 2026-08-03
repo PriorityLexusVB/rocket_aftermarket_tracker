@@ -37,7 +37,7 @@ const AdminModal = ({
   const getModalTitle = () => {
     switch (modalType) {
       case 'userAccount':
-        return editingItem ? 'Edit User Account' : 'Add User Account'
+        return editingItem ? 'Edit User Account' : 'Invite User Account'
       case 'staff':
         return editingItem ? 'Edit Staff Member' : 'Add Staff Member'
       case 'vendor':
@@ -85,17 +85,7 @@ const AdminModal = ({
                 }
                 required
               />
-              {!editingItem && (
-                <Input
-                  label="Password"
-                  type="password"
-                  value={userAccountForm?.password}
-                  onChange={(e) =>
-                    setUserAccountForm({ ...userAccountForm, password: e?.target?.value })
-                  }
-                  required
-                />
-              )}
+              {!editingItem && <p className="text-sm text-muted-foreground">An invitation email lets this user set their own password.</p>}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
                 <select
@@ -430,7 +420,7 @@ const AdminModal = ({
                         : modalType === 'template'
                           ? 'Add Template'
                           : modalType === 'userAccount'
-                            ? 'Add User'
+                            ? 'Send Invitation'
                             : 'Create'}
             </UIButton>
           </div>

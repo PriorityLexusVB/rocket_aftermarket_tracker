@@ -30,17 +30,19 @@ export async function preflightCapabilities() {
       const json = await resp.json().catch(() => null)
       const classification = json?.classification || ''
       const hasFk = json?.hasFk
-      const cacheRecognized = json?.restQueryOk
-      // If FK missing or REST cannot expand, disable capability upfront
+      // Only a definitive schema result may disable the feature. A failed
+      // serverless probe is not evidence that the client relationship is gone.
       if (
         classification === 'missing_fk' ||
         classification === 'missing_column' ||
-        hasFk === false ||
-        cacheRecognized === false ||
-        json?.ok === false
+        hasFk === false
       ) {
         try {
           sessionStorage?.setItem('cap_jobPartsVendorRel', 'false')
+        } catch {}
+      } else if (json?.ok === true && json?.restQueryOk === true) {
+        try {
+          sessionStorage?.removeItem('cap_jobPartsVendorRel')
         } catch {}
       }
     }
@@ -53,7 +55,12 @@ export async function preflightCapabilities() {
     const resp = await fetch('/api/health-user-profiles', { method: 'GET' })
     if (resp?.ok) {
       const json = await resp.json().catch(() => null)
-      if (json?.columns && typeof setProfileCaps === 'function') {
+      if (
+        json?.ok === true &&
+        json?.columns &&
+        typeof setProfileCaps === 'function' &&
+        Object.values(json.columns).every((value) => typeof value === 'boolean')
+      ) {
         setProfileCaps({
           name: !!json.columns.name,
           full_name: !!json.columns.full_name,

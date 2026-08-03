@@ -496,7 +496,7 @@ export async function getSalesConsultants() {
 export async function getDeliveryCoordinators() {
   return getStaff({
     departments: ['Delivery', 'Delivery Coordinator', 'Delivery Coordinators'],
-    roles: ['staff'],
+    roles: ['staff', 'manager', 'admin'],
   })
 }
 export async function getFinanceManagers() {

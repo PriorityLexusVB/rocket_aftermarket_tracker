@@ -48,14 +48,13 @@ const UserAccountsTab = ({
           className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
         >
           <Plus className="w-4 h-4" />
-          Add User Account
+          Invite User Account
         </UIButton>
       </div>
     </div>
 
     <div className="mb-3 text-sm text-gray-600">
-      Tip: You can edit any account. If it belongs to another org, you'll be prompted to reassign
-      it to your org on save. Or click the building icon to attach immediately.
+      Invite users into your organization. Account edits and access changes stay within the same organization.
     </div>
 
     {/* Filters */}
@@ -203,6 +202,8 @@ const UserAccountsTab = ({
                         </button>
                       )}
                     <button
+                      title="Deactivate user account"
+                      aria-label="Deactivate user account"
                       onClick={() => handleDelete('user_profiles', account?.id, 'userAccount')}
                       disabled={deletingId === account?.id}
                       className="text-red-600 hover:text-red-900 disabled:opacity-50"
@@ -219,7 +220,7 @@ const UserAccountsTab = ({
 
     {userAccounts?.length === 0 && (
       <div className="text-center py-8 text-gray-500">
-        No user accounts found. Click "Add User Account" to create one.
+        No user accounts found. Click "Invite User Account" to send an invitation.
       </div>
     )}
     {accountsActionMsg ? (

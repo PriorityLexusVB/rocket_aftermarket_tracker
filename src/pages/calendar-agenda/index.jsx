@@ -22,6 +22,7 @@ import EventDetailPopover from '@/components/calendar/EventDetailPopover'
 import { isCalendarDealDrawerEnabled, isCalendarUnifiedShellEnabled } from '@/config/featureFlags'
 import { getJobLocationType } from '@/utils/locationType'
 import { calendarQueryMatches } from '@/utils/calendarQueryMatch'
+import { isDeliveryCoordinator as isDeliveryCoordinatorProfile } from '@/utils/deliveryCoordinator'
 
 const TZ = 'America/New_York'
 const LOAD_TIMEOUT_MS = 15000
@@ -270,12 +271,10 @@ export default function CalendarAgenda({ embedded = false, shellState, onOpenDea
   const [jobs, setJobs] = useState([])
   const [conflicts, setConflicts] = useState(new Map())
 
-  const isDeliveryCoordinator = useMemo(() => {
-    const dept = String(userProfile?.department || '')
-      .trim()
-      .toLowerCase()
-    return dept === 'delivery coordinator'
-  }, [userProfile?.department])
+  const isDeliveryCoordinator = useMemo(
+    () => isDeliveryCoordinatorProfile(userProfile),
+    [userProfile]
+  )
 
   const authIsLoading = authLoading || profileLoading
 

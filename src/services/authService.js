@@ -74,36 +74,21 @@ export const authService = {
     }
   },
 
-  // Sign up with email and password
-  async signUp(email, password, metadata = {}) {
+  // The request carries desired role data, but the server validates and enforces every authorization decision.
+  async manageUserAccess(payload) {
     try {
-      const { data, error } = await supabase?.auth?.signUp({
-        email,
-        password,
-        options: {
-          data: metadata,
-        },
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+      if (sessionError || !session?.access_token) return { data: null, error: { message: 'Please sign in again.' } }
+      const response = await fetch('/api/admin/user-access', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify(payload),
       })
-
-      if (error) {
-        return { data: null, error: { message: error?.message } }
-      }
-
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) return { data: null, error: { message: data?.error || 'Unable to complete that access change.' } }
       return { data, error: null }
     } catch (error) {
-      if (
-        error?.message?.includes('Failed to fetch') ||
-        error?.message?.includes('AuthRetryableFetchError')
-      ) {
-        return {
-          data: null,
-          error: {
-            message:
-              'Cannot connect to authentication service. Your Supabase project may be paused or inactive. Please check your Supabase dashboard and resume your project if needed.',
-          },
-        }
-      }
-      return { data: null, error: { message: 'Network error. Please try again.' } }
+      return { data: null, error: { message: error?.message || 'Network error. Please try again.' } }
     }
   },
 

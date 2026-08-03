@@ -489,7 +489,7 @@ class AnalyticsService {
       )
     } catch (error) {
       console.error('Service error fetching sales trends:', error)
-      return []
+      throw error
     }
   }
 
@@ -541,21 +541,7 @@ class AnalyticsService {
       }
     } catch (error) {
       console.error('Service error fetching dashboard summary:', error)
-      return {
-        vehicle_type_analysis: { new: [], used: [] },
-        products_per_deal: { averages: {}, deals: [] },
-        vendor_performance: [],
-        category_analysis: [],
-        sales_trends: [],
-        deal_kpis: calculateDealKPIs([]),
-        summary_stats: {
-          total_deals: 0,
-          total_products_sold: 0,
-          total_revenue: '0.00',
-          active_vendors: 0,
-          product_categories: 0,
-        },
-      }
+      throw error
     }
   }
 }

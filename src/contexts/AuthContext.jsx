@@ -1,6 +1,6 @@
 import React, { createContext, useState, useEffect, useCallback, useContext, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
-import { persistOrgId, readOrgId } from '../utils/orgStorage'
+import { persistOrgId } from '../utils/orgStorage'
 
 export const AuthContext = createContext()
 
@@ -16,57 +16,40 @@ export const AuthProvider = ({ children }) => {
   const vendorId = userProfile?.vendor_id ?? null
   const isVendor = role === 'vendor'
   const isManager = role === 'manager' || role === 'admin'
-  // Treat managers as admin-equivalent for now (single-org, manager-only rollout).
-  const isAdmin = isManager
+  const isAdmin = role === 'admin'
 
   const profileOperations = useMemo(
     () => ({
       async load(userId) {
-        if (!userId) return
+        if (!userId) return { ok: false, error: 'No authenticated user.' }
         setProfileLoading(true)
         try {
           const { data, error } = await supabase
             ?.from('user_profiles')
             ?.select('*')
-            ?.eq('id', userId)
-            ?.single()
-          if (!error && data) {
+            ?.or(`id.eq.${userId},auth_user_id.eq.${userId}`)
+            ?.limit(1)
+            ?.maybeSingle()
+          if (!error && data?.is_active) {
             setUserProfile(data)
             if (typeof localStorage !== 'undefined') {
               localStorage.setItem('userRole', data?.role)
             }
             persistOrgId(data?.org_id ?? null, userId)
-          } else {
-            // Create basic profile for auth.users with admin role by default
-            const {
-              data: { user },
-            } = await supabase?.auth?.getUser()
-            if (user) {
-              const inferredOrgId = readOrgId() || null
-              const basicProfile = {
-                id: user?.id,
-                email: user?.email,
-                full_name: user?.email?.split('@')?.[0] || 'User',
-                role: 'manager',
-                is_active: true,
-                org_id: inferredOrgId,
-              }
-
-              const { data: newProfile } = await supabase
-                ?.from('user_profiles')
-                ?.insert(basicProfile)
-                ?.select()
-                ?.single()
-
-              if (newProfile) {
-                setUserProfile(newProfile)
-                if (typeof localStorage !== 'undefined') {
-                  localStorage.setItem('userRole', newProfile?.role)
-                }
-                persistOrgId(newProfile?.org_id ?? null, user?.id || userId)
-              }
-            }
+            return { ok: true, profile: data }
           }
+          // Profiles are provisioned by controlled server/admin flows only.
+          // Browser sessions must never create roles or restore access.
+          const message = data?.is_active === false
+            ? 'Your Rocket access has been deactivated. Contact Samantha Morgan for help.'
+            : 'Your account is not provisioned for Rocket. Contact Samantha Morgan for help.'
+          setUserProfile(null)
+          if (typeof localStorage !== 'undefined') localStorage.removeItem('userRole')
+          persistOrgId(null)
+          await supabase?.auth?.signOut({ scope: 'local' })
+          setSession(null)
+          setUser(null)
+          return { ok: false, error: message, cause: error || null }
         } catch (error) {
           // Show user-friendly error but don't block loading
           const errorMessage = error?.message || 'Authentication service error'
@@ -77,6 +60,17 @@ export const AuthProvider = ({ children }) => {
           } else {
             console.error('Error loading user profile:', error)
           }
+          setUserProfile(null)
+          if (typeof localStorage !== 'undefined') localStorage.removeItem('userRole')
+          persistOrgId(null)
+          try {
+            await supabase?.auth?.signOut({ scope: 'local' })
+          } catch {
+            // Local state below still closes the route if Auth cleanup itself fails.
+          }
+          setSession(null)
+          setUser(null)
+          return { ok: false, error: 'Unable to verify your Rocket access.' }
         } finally {
           setProfileLoading(false)
         }
@@ -156,7 +150,10 @@ export const AuthProvider = ({ children }) => {
       if (sessionUser) {
         setSession(nextSession)
         setUser(sessionUser)
-        await profileOperations?.load(sessionUser?.id)
+        const profileResult = await profileOperations?.load(sessionUser?.id)
+        if (!profileResult?.ok) {
+          return { success: false, error: profileResult?.error || 'Your Rocket access is unavailable.' }
+        }
         return { success: true, data: { ...data, session: nextSession } }
       }
 
@@ -195,7 +192,7 @@ export const AuthProvider = ({ children }) => {
         isVendor,
         isManager,
         isAdmin,
-        isAuthed: !!session?.user,
+        isAuthed: !!session?.user && !!userProfile?.is_active,
         signIn,
         signOut,
       }}

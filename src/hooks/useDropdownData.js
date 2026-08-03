@@ -19,6 +19,7 @@ import {
   peekStaff,
   globalSearch,
 } from '../services/dropdownService'
+import { deliveryCoordinatorDepartments } from '../utils/deliveryCoordinator'
 
 export function useDropdownData(options = {}) {
   const {
@@ -186,7 +187,7 @@ export function useDropdownData(options = {}) {
         departments: ['Sales', 'Sales Consultant', 'Sales Consultants'],
       })
       const cachedDC = peekStaff({
-        departments: ['Delivery', 'Delivery Coordinator', 'Delivery Coordinators'],
+        departments: deliveryCoordinatorDepartments,
       })
       const cachedFinance = peekStaff({
         departments: ['Finance', 'Finance Manager', 'Finance Managers'],

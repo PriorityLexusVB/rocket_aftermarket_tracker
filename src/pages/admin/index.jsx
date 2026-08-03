@@ -29,6 +29,7 @@ import ProductsTab from './components/ProductsTab'
 import SmsTemplatesTab from './components/SmsTemplatesTab'
 import QRCodeTab from './components/QRCodeTab'
 import AdminModal from './components/AdminModal'
+import { buildUserAccountInvitePayload } from './userAccessPayloads'
 import { useToast } from '@/components/ui/ToastProvider'
 
 const AdminPage = () => {
@@ -84,7 +85,6 @@ const AdminPage = () => {
   const [userAccountForm, setUserAccountForm] = useState({
     full_name: '',
     email: '',
-    password: '',
     role: 'manager',
     department: '',
     phone: '',
@@ -380,7 +380,9 @@ const AdminPage = () => {
   // Attach/assign a single profile to current org
   const attachProfileToMyOrg = async (profileId) => {
     if (!orgId) {
-      toast?.error?.('No organization found — please log out and log back in, or contact your manager.')
+      toast?.error?.(
+        'No organization found — please log out and log back in, or contact your manager.'
+      )
       return
     }
     try {
@@ -398,7 +400,9 @@ const AdminPage = () => {
       } catch {}
     } catch (e) {
       console.error('attachProfileToMyOrg error:', e)
-      toast?.error?.(`Couldn't add user to your organization. Try again or contact support if the problem continues.`)
+      toast?.error?.(
+        `Couldn't add user to your organization. Try again or contact support if the problem continues.`
+      )
       try {
         await logErr?.(e, { where: 'attachProfileToMyOrg', orgId, profileId })
       } catch {}
@@ -543,7 +547,6 @@ const AdminPage = () => {
         item || {
           full_name: '',
           email: '',
-          password: '',
           role: 'manager',
           department: '',
           phone: '',
@@ -647,39 +650,8 @@ const AdminPage = () => {
     }
   }
 
-  // Generate a decent random password when auto-provisioning staff accounts
-  const generateStrongPassword = (length = 16) => {
-    const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+-='
-    const cryptoSource = globalThis?.crypto
-    if (!cryptoSource?.getRandomValues) {
-      throw new Error(
-        'Secure random generator (crypto.getRandomValues) unavailable. Password generation requires a modern browser or secure execution environment.'
-      )
-    }
-    const array = new Uint32Array(length)
-    cryptoSource.getRandomValues(array)
-
-    let pwd = ''
-    for (let i = 0; i < length; i++) {
-      pwd += chars[array[i] % chars.length]
-    }
-    return pwd
-  }
-
   const handleUserAccountSubmit = async () => {
     if (editingItem) {
-      // If editing a user in another org, optionally reassign to current org before updating
-      const editingTenantId = editingItem?.dealer_id ?? editingItem?.org_id
-      if (orgId && editingTenantId && editingTenantId !== orgId) {
-        const doReassign = window.confirm(
-          'This user belongs to another organization. Reassign to your org and continue editing?'
-        )
-        if (!doReassign) {
-          throw new Error('Edit cancelled. User belongs to another organization.')
-        }
-        await adminService.attachProfileToOrg({ profileId: editingItem?.id, orgId })
-      }
-      // Update existing user
       await adminService.updateUserProfile(editingItem?.id, {
         full_name: userAccountForm?.full_name,
         email: userAccountForm?.email,
@@ -688,25 +660,17 @@ const AdminPage = () => {
         phone: userAccountForm?.phone,
       })
     } else {
-      // Create new user with auth account
-      if (!userAccountForm?.password) {
-        throw new Error('Password is required for new users')
-      }
-
-      await adminService.createUserAccountWithLogin({
-        email: userAccountForm?.email,
-        password: userAccountForm?.password,
-        metadata: {
-          full_name: userAccountForm?.full_name,
-          role: userAccountForm?.role,
-          department: userAccountForm?.department,
-          phone: userAccountForm?.phone,
-        },
-      })
+      await adminService.createUserAccountWithLogin(
+        buildUserAccountInvitePayload(userAccountForm, orgId)
+      )
     }
 
     await loadUserAccounts()
-    setAccountsActionMsg('User account saved.')
+    setAccountsActionMsg(
+      editingItem
+        ? 'User account updated.'
+        : 'Invitation sent. The user chooses their password from the email.'
+    )
     setTimeout(() => setAccountsActionMsg(''), 3000)
   }
 
@@ -723,28 +687,23 @@ const AdminPage = () => {
     }
 
     if (editingItem) {
-      // If editing a staff in another org, optionally reassign to current org before updating
+      // Cross-tenant reassignment is intentionally not available from the browser.
       const editingTenantId = editingItem?.dealer_id ?? editingItem?.org_id
       if (orgId && editingTenantId && editingTenantId !== orgId) {
-        const doReassign = window.confirm(
-          'This staff profile belongs to another organization. Reassign to your org and continue editing?'
-        )
-        if (!doReassign) {
-          throw new Error('Edit cancelled. Staff belongs to another organization.')
-        }
-        await adminService.attachProfileToOrg({ profileId: editingItem?.id, orgId })
+        throw new Error('This staff profile belongs to another organization and cannot be edited.')
       }
 
-      await adminService.updateUserProfile(editingItem?.id, staffData)
+      await adminService.updateUserProfile(editingItem?.id, {
+        full_name: staffData.full_name,
+        phone: staffData.phone,
+        email: staffData.email,
+        department: staffData.department,
+        role: staffData.role,
+      })
     } else {
-      // If an email is provided, provision an auth account so the trigger creates the profile
+      // Email-addressed staff receive an invitation; no password is generated or shared.
       if (staffData.email) {
-        const autoPassword = generateStrongPassword()
-
-        await adminService.createStaffWithOptionalLogin({
-          ...staffData,
-          autoPassword,
-        })
+        await adminService.createStaffWithOptionalLogin(staffData)
       } else {
         // No email: create a directory-only staff profile (no login) — allowed by relaxed schema
         await adminService.createStaffWithOptionalLogin(staffData)
@@ -831,8 +790,11 @@ const AdminPage = () => {
       if (table === 'sms_templates') return 'this template'
       return 'this item'
     })()
-    if (!confirm(`Are you sure you want to delete ${context}? This action cannot be undone.`))
-      return
+    const confirmation =
+      table === 'user_profiles'
+        ? `Deactivate ${context}? Historical records will be preserved and any linked login will be locked.`
+        : `Are you sure you want to delete ${context}? This action cannot be undone.`
+    if (!confirm(confirmation)) return
 
     setDeletingId(id)
     setSubmitting(true)
@@ -851,13 +813,17 @@ const AdminPage = () => {
             const filtered = prev?.filter((item) => item?.id !== id)
             return filtered || []
           })
-          setAccountsActionMsg('User account deleted.')
+          setAccountsActionMsg(
+            'User profile access was deactivated. Historical records were preserved.'
+          )
         } else {
           setStaffRecords((prev) => {
             const filtered = prev?.filter((item) => item?.id !== id)
             return filtered || []
           })
-          setStaffActionMsg('Staff profile deleted.')
+          setStaffActionMsg(
+            'Staff profile access was deactivated. Historical records were preserved.'
+          )
         }
 
         // Force a complete refresh after successful deletion with proper delay
@@ -1127,9 +1093,7 @@ const AdminPage = () => {
                     {count !== null && count > 0 && (
                       <span
                         className={`ml-0.5 px-1.5 py-0.5 text-xs rounded-full ${
-                          active
-                            ? 'bg-white/20 text-white'
-                            : 'bg-slate-200 text-slate-700'
+                          active ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
                         }`}
                       >
                         {count}

@@ -18,6 +18,18 @@ function isMissingSmsTemplatesTableError(e) {
   )
 }
 
+export function buildUserProfileUpdateRequest(profileId, patch = {}) {
+  return {
+    action: 'update',
+    profileId,
+    full_name: patch.full_name,
+    role: patch.role,
+    department: patch.department,
+    phone: patch.phone,
+    email: patch.email,
+  }
+}
+
 export const adminService = {
   async checkConnection() {
     try {
@@ -221,47 +233,31 @@ export const adminService = {
   },
 
   async updateUserProfile(profileId, patch) {
-    await supabase.from('user_profiles').update(patch).eq('id', profileId).throwOnError()
+    const { data, error } = await authService.manageUserAccess(
+      buildUserProfileUpdateRequest(profileId, patch)
+    )
+    if (error) throw new Error(error.message)
+    return data
   },
 
-  async createUserAccountWithLogin({ email, password, metadata }) {
-    const { data, error } = await authService.signUp(email, password, metadata)
-    if (error) throw new Error(error?.message || 'Failed to create auth user')
+  async createUserAccountWithLogin({ email, full_name, role, department, dealer_id, phone }) {
+    const { data, error } = await authService.manageUserAccess({
+      action: 'invite',
+      email,
+      full_name,
+      role,
+      department,
+      dealer_id,
+      phone,
+    })
+    if (error) throw new Error(error.message)
     return data
   },
 
   async createStaffWithOptionalLogin(staffData) {
-    // If an email is provided, provision an auth account so the trigger creates the profile
+    // Email-addressed staff receive a server-controlled invitation; directory-only staff stay local.
     if (staffData?.email) {
-      const autoPassword = staffData?.autoPassword
-      if (!autoPassword) throw new Error('autoPassword is required when provisioning login')
-
-      const { data: authData, error: authError } = await authService.signUp(
-        staffData.email,
-        autoPassword,
-        {
-          full_name: staffData.full_name,
-          role: 'staff',
-          department: staffData.department,
-        }
-      )
-      if (authError) throw new Error(authError?.message || 'Failed to sign up staff user')
-
-      // Best-effort: update org/phone on the newly created profile row
-      const createdUserId = authData?.user?.id
-      if (createdUserId) {
-        try {
-          await supabase
-            .from('user_profiles')
-            .update({ dealer_id: staffData.dealer_id, phone: staffData.phone, is_active: true })
-            .or(`id.eq.${createdUserId},auth_user_id.eq.${createdUserId}`)
-            .throwOnError()
-        } catch (e) {
-          console.warn('Post-signUp profile update failed:', asErrorMessage(e))
-        }
-      }
-
-      return { authData }
+      return this.createUserAccountWithLogin(staffData)
     }
 
     // No email: create a directory-only staff profile (no login)
@@ -344,13 +340,12 @@ export const adminService = {
     // For the rare case where a HARD delete is truly required (e.g., GDPR
     // erasure), use Supabase admin panel directly — that's the rare,
     // deliberate path, not the default UI action.
-    const { error } = await supabase
-      .from('user_profiles')
-      .update({ is_active: false, updated_at: new Date().toISOString() })
-      .eq('id', userId)
-    if (error) {
-      throw new Error(error?.message || 'Failed to remove user from directory')
-    }
+    const { data, error } = await authService.manageUserAccess({
+      action: 'deactivate',
+      profileId: userId,
+    })
+    if (error) throw new Error(error.message)
+    return data
   },
 }
 

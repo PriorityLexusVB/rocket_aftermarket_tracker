@@ -1,6 +1,6 @@
 // Wave XXX-AE: "How It Works" — coordinator-facing visual guide.
-// Designed for Ashley + Samantha at Priority Lexus (45yo aftermarket coordinators
-// who live in /deals every day). Plain English, lots of color, scannable at a glance.
+// Designed for Samantha and the Priority Lexus aftermarket coordinators who live
+// in /deals every day. Plain English, lots of color, scannable at a glance.
 import React from 'react'
 import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
@@ -43,7 +43,7 @@ const LIFECYCLE = [
     border: 'border-blue-300',
     text: 'text-blue-700',
     accent: 'bg-blue-500',
-    desc: 'A start time is booked. The vendor or shop is locked in.',
+    desc: 'A work date is booked. Add a start time when the exact time is known.',
   },
   {
     name: 'In Progress',
@@ -108,7 +108,7 @@ const TASKS = [
     icon: Calendar,
     color: 'blue',
     title: 'Schedule a deal',
-    steps: ['Open a Pending Work deal', 'Click "Schedule"', 'Pick a date + time'],
+    steps: ['Open a Pending Work deal', 'Click "Schedule"', 'Pick a date; time is optional'],
   },
   {
     icon: Undo2,
@@ -311,9 +311,9 @@ const HowItWorks = () => {
         >
           <Sparkles className="flex-shrink-0 w-5 h-5 text-blue-600 mt-0.5" />
           <div className="text-sm text-blue-900">
-            <strong>The frozen rule:</strong> once a deal hits <em>Completed</em> or{' '}
-            <em>Reversed</em>, it stays there forever. That's how the month's totals stay honest —
-            no one can quietly undo history.
+            <strong>The closeout rule:</strong> <em>Reversed</em> is terminal and always keeps its
+            reason. <em>Completed</em> can be reopened when real work resumes; use the Reopen action
+            so the change follows Rocket's audited workflow.
           </div>
         </motion.div>
       </section>

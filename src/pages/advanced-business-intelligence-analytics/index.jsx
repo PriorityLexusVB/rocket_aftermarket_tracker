@@ -257,32 +257,24 @@ const AdvancedBusinessIntelligenceAnalytics = () => {
               icon={<ShoppingCart className="w-5 h-5" />}
               title="Total Deals"
               value={dashboardData?.summary_stats?.total_deals?.toString() || '0'}
-              trend="+12%"
-              trendUp={true}
               description="Total deals processed"
             />
             <MetricCard
               icon={<Package className="w-5 h-5" />}
               title="Units Sold"
               value={dashboardData?.summary_stats?.total_products_sold?.toString() || '0'}
-              trend="+8%"
-              trendUp={true}
               description="Total units sold"
             />
             <MetricCard
               icon={<DollarSign className="w-5 h-5" />}
               title="Total Revenue"
               value={`$${parseFloat(dashboardData?.deal_kpis?.revenue || dashboardData?.summary_stats?.total_revenue || 0)?.toLocaleString()}`}
-              trend="+15%"
-              trendUp={true}
               description="Total sales revenue"
             />
             <MetricCard
               icon={<Users className="w-5 h-5" />}
               title="Active Vendors"
               value={dashboardData?.summary_stats?.active_vendors?.toString() || '0'}
-              trend="+3%"
-              trendUp={true}
               description="Active vendor partners"
             />
           </div>

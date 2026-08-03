@@ -7,7 +7,7 @@
 ## Setup (First Time)
 
 ```bash
-# 1. Install Node 20 (see .nvmrc)
+# 1. Install Node 22 (see .nvmrc)
 nvm use
 
 # 2. Install pnpm

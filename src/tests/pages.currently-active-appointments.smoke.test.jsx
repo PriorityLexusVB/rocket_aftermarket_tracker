@@ -1,7 +1,8 @@
 import React from 'react'
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
+import { appointmentsService } from '@/services/appointmentsService'
 
 vi.mock('@/hooks/useTenant', () => ({
   default: () => ({ orgId: 'test-org-id', loading: false }),
@@ -17,6 +18,10 @@ vi.mock('@/services/appointmentsService', () => ({
 }))
 
 describe('CurrentlyActiveAppointments smoke', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(appointmentsService.listActiveAppointments).mockResolvedValue({ data: [], error: null })
+  })
   it('renders without crashing', async () => {
     const mod = await import('@/pages/currently-active-appointments')
     const CurrentlyActiveAppointments = mod.default
@@ -49,4 +54,16 @@ describe('CurrentlyActiveAppointments smoke', () => {
     expect(screen.queryByText(legacyBanner)).not.toBeInTheDocument()
     expect(screen.queryByText(legacyCta)).not.toBeInTheDocument()
   }, 20_000)
+
+  it('shows a retryable error instead of a false empty state when loading fails', async () => {
+    appointmentsService.listActiveAppointments.mockResolvedValueOnce({
+      data: [],
+      error: new Error('database unavailable'),
+    })
+    const { default: CurrentlyActiveAppointments } = await import('@/pages/currently-active-appointments')
+    render(<MemoryRouter><CurrentlyActiveAppointments /></MemoryRouter>)
+    expect(await screen.findByRole('alert')).toHaveTextContent('Appointments could not be loaded')
+    expect(screen.getByRole('button', { name: /retry loading appointments/i })).toBeInTheDocument()
+    expect(screen.queryByText('No Active Appointments')).not.toBeInTheDocument()
+  })
 })

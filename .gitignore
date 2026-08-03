@@ -90,3 +90,5 @@ test-output*.log
 .claude/
 build-result.log
 vite-build-out.log
+
+.vercel

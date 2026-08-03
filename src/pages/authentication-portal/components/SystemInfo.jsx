@@ -19,10 +19,10 @@ const SystemInfo = () => {
             </p>
             <div className="flex items-center space-x-4 text-xs">
               <a
-                href="mailto:ashley.terminello@priorityautomotive.com"
+                href="mailto:samantha.morgan@priorityautomotive.com"
                 className="text-primary hover:text-primary/80 transition-colors"
               >
-                ashley.terminello@priorityautomotive.com
+                samantha.morgan@priorityautomotive.com
               </a>
               <span className="text-muted-foreground">•</span>
               <span className="text-muted-foreground">Support</span>

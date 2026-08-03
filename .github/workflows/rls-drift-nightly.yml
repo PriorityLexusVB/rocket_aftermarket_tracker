@@ -54,7 +54,7 @@ jobs:
         if: steps.secrets_check.outputs.missing_secrets == 'false'
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
 
       - name: Setup pnpm via corepack (use packageManager version) + retry
         if: steps.secrets_check.outputs.missing_secrets == 'false'

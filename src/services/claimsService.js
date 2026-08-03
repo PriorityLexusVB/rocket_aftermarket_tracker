@@ -3,6 +3,67 @@ import { supabase } from '@/lib/supabase'
 import { buildUserProfileSelectFragment, resolveUserProfileName } from '@/utils/userProfileName'
 
 export const claimsService = {
+  // Public guest-claim product catalog. The database RPC owns tenant scoping so
+  // the browser never selects from products without an authenticated context.
+  async getPublicClaimProducts() {
+    try {
+      const { data, error } = await supabase?.rpc('get_public_claim_products')
+
+      if (error) throw error
+      return Array.isArray(data)
+        ? data.map((product) => ({
+            id: product?.id,
+            name: product?.name,
+            brand: product?.brand,
+            category: product?.category,
+            unit_price: product?.unit_price,
+          }))
+        : []
+    } catch {
+      throw new Error('Failed to load product options. Please try again.')
+    }
+  },
+
+  // Public guest-claim submission. Keep the browser on one database boundary:
+  // the RPC validates input, scopes the dealer, creates the number, and returns
+  // only the receipt fields that the public confirmation screen may display.
+  async createPublicClaim(claimData) {
+    try {
+      const { data, error } = await supabase?.rpc('submit_guest_claim', {
+        p_customer_name: claimData?.customer_name,
+        p_customer_email: claimData?.customer_email,
+        p_customer_phone: claimData?.customer_phone,
+        p_product_id: claimData?.product_id ?? null,
+        p_issue_description: claimData?.issue_description,
+        p_preferred_resolution: claimData?.preferred_resolution,
+        p_priority: claimData?.priority,
+      })
+
+      if (error) throw error
+
+      const receipt = Array.isArray(data) ? data[0] : data
+      if (
+        !receipt?.id ||
+        !receipt?.claim_number ||
+        !receipt?.customer_name ||
+        !receipt?.status ||
+        !receipt?.created_at
+      ) {
+        throw new Error('Invalid claim receipt')
+      }
+
+      return {
+        id: receipt.id,
+        claim_number: receipt.claim_number,
+        customer_name: receipt.customer_name,
+        status: receipt.status,
+        created_at: receipt.created_at,
+      }
+    } catch {
+      throw new Error('Failed to submit claim. Please try again.')
+    }
+  },
+
   // Get all claims with vehicle and product details
   async getAllClaims(orgId = null) {
     try {

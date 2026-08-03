@@ -18,7 +18,6 @@ export default function LoanerManagementDrawer() {
   // Tracks whether the loaner query failed due to an access/permissions error
   const [loanerAccessDenied, setLoanerAccessDenied] = useState(false)
   const [inventory, setInventory] = useState({
-    available: 0,
     assigned: 0,
     overdue: 0,
   })
@@ -55,7 +54,6 @@ export default function LoanerManagementDrawer() {
 
       setLoaners(assignments || [])
       setInventory({
-        available: Math.max(0, 10 - assigned), // Assuming 10 total loaners
         assigned,
         overdue,
       })
@@ -209,23 +207,7 @@ export default function LoanerManagementDrawer() {
 
         {/* Inventory Overview */}
         <div className="mb-8">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            {/* Available Loaners */}
-            <div className="bg-card p-6 rounded-lg border border-border shadow-sm">
-              <div className="flex items-center">
-                <div className="p-3 rounded-lg bg-green-100 mr-4">
-                  <Icon name="Car" size={24} className="text-green-700" />
-                </div>
-                <div>
-                  <h3 className="text-muted-foreground text-sm font-medium uppercase tracking-wide">
-                    Available
-                  </h3>
-                  <p className="text-foreground text-2xl font-bold">{inventory?.available}</p>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">Ready for the next customer</p>
-                </div>
-              </div>
-            </div>
-
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Assigned Loaners */}
             <div className="bg-card p-6 rounded-lg border border-border shadow-sm">
               <div className="flex items-center">

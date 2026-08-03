@@ -42,7 +42,7 @@ const Navbar = () => {
   const buildTimeIso = typeof __BUILD_TIME__ === 'string' ? __BUILD_TIME__ : ''
   const buildLabel = buildSha ? buildSha.slice(0, 7) : ''
 
-  const { user, userProfile, signOut } = useAuth()
+  const { user, userProfile, signOut, isManager } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -134,7 +134,7 @@ const Navbar = () => {
     { name: 'Claims', href: '/claims-management-center', icon: FileText },
     { name: 'Loaners', href: '/loaner-management-drawer', icon: Car, shortName: 'Loaners' },
     { name: 'Analytics', href: '/advanced-business-intelligence-analytics', icon: BarChart3 },
-    { name: 'Admin', href: '/admin', icon: Settings },
+    ...(isManager ? [{ name: 'Admin', href: '/admin', icon: Settings }] : []),
   ]
 
   // Load notifications on component mount and when user changes

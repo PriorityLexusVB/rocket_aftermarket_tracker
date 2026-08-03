@@ -7,11 +7,8 @@ import User from 'lucide-react/dist/esm/icons/user.js'
 import Car from 'lucide-react/dist/esm/icons/car.js'
 import Package from 'lucide-react/dist/esm/icons/package.js'
 import MessageSquare from 'lucide-react/dist/esm/icons/message-square.js'
-import Upload from 'lucide-react/dist/esm/icons/upload.js'
-import Camera from 'lucide-react/dist/esm/icons/camera.js'
 import Send from 'lucide-react/dist/esm/icons/send.js'
 import Printer from 'lucide-react/dist/esm/icons/printer.js'
-import X from 'lucide-react/dist/esm/icons/x.js'
 import Rocket from 'lucide-react/dist/esm/icons/rocket.js'
 // Import centralized schema for validating guest warranty claims
 import { guestClaimSchema } from '../../utils/claimSchemas'
@@ -82,7 +79,6 @@ const GuestClaimsSubmissionForm = () => {
 
   // Data state
   const [products, setProducts] = useState([])
-  const [uploadedFiles, setUploadedFiles] = useState([])
 
   // Load products on component mount
   useEffect(() => {
@@ -92,7 +88,7 @@ const GuestClaimsSubmissionForm = () => {
   const loadProducts = async () => {
     try {
       setLoading(true)
-      const productsData = await claimsService?.getProducts()
+      const productsData = await claimsService?.getPublicClaimProducts()
       setProducts(productsData || [])
     } catch (error) {
       console.error('Error loading products:', error)
@@ -129,54 +125,6 @@ const GuestClaimsSubmissionForm = () => {
     }
     setErrors({})
     return true
-  }
-
-  const handleFileUpload = async (event) => {
-    const files = Array.from(event?.target?.files || [])
-    const MAX_FILES = 5
-
-    if (uploadedFiles.length >= MAX_FILES) {
-      setErrors((prev) => ({ ...prev, files: `You can upload up to ${MAX_FILES} files.` }))
-      if (event?.target) event.target.value = ''
-      return
-    }
-
-    for (const file of files) {
-      if (uploadedFiles.length >= MAX_FILES) {
-        setErrors((prev) => ({ ...prev, files: `You can upload up to ${MAX_FILES} files.` }))
-        break
-      }
-      if (file?.size > 10 * 1024 * 1024) {
-        setErrors((prev) => ({ ...prev, files: 'File size must be less than 10MB' }))
-        continue
-      }
-      if (!file?.type?.startsWith('image/')) {
-        setErrors((prev) => ({ ...prev, files: 'Only image files are allowed' }))
-        continue
-      }
-      const fileId = `${Date.now()}-${Math.random().toString(16).slice(2)}-${file?.name}`
-      setUploadedFiles((prev) => [
-        ...prev,
-        {
-          id: fileId,
-          file,
-          name: file?.name,
-          size: file?.size,
-          type: file?.type,
-          preview: URL.createObjectURL(file),
-        },
-      ])
-    }
-
-    if (event?.target) event.target.value = ''
-  }
-
-  const removeFile = (fileId) => {
-    setUploadedFiles((prev) => {
-      const fileToRemove = prev?.find((f) => f?.id === fileId)
-      if (fileToRemove?.preview) URL.revokeObjectURL(fileToRemove?.preview)
-      return prev?.filter((f) => f?.id !== fileId)
-    })
   }
 
   const submitClaim = async () => {
@@ -220,20 +168,8 @@ const GuestClaimsSubmissionForm = () => {
         status: 'submitted',
       }
 
-      const newClaim = await claimsService?.createClaim(claimData)
+      const newClaim = await claimsService?.createPublicClaim(claimData)
       if (!newClaim) throw new Error('Failed to submit claim')
-
-      for (const file of uploadedFiles) {
-        try {
-          await claimsService?.uploadClaimPhoto(
-            newClaim?.id,
-            file?.file,
-            `Photo uploaded with guest claim by ${formData?.customer_name}`
-          )
-        } catch (fileError) {
-          console.error(`Error uploading file ${file?.name}:`, fileError)
-        }
-      }
 
       setSubmittedClaim(newClaim)
       setSubmitted(true)
@@ -248,9 +184,6 @@ const GuestClaimsSubmissionForm = () => {
   }
 
   const resetForm = () => {
-    for (const f of uploadedFiles) {
-      if (f?.preview) URL.revokeObjectURL(f.preview)
-    }
     setFormData({
       customer_name: '',
       customer_email: '',
@@ -269,7 +202,6 @@ const GuestClaimsSubmissionForm = () => {
     })
     setSubmitted(false)
     setSubmittedClaim(null)
-    setUploadedFiles([])
     setErrors({})
   }
 
@@ -644,71 +576,11 @@ const GuestClaimsSubmissionForm = () => {
           </div>
 
           {/* ── PHOTOS & IMAGES ── */}
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 sm:p-8">
-            <SectionHeader icon={Camera} color="amber" title="Photos & Images (Optional)" />
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-6 sm:p-8">
+            <p className="text-sm font-semibold text-amber-900">Photos are not accepted on this public form.</p>
+            <p className="mt-1 text-sm text-amber-800">Submit the claim details here. A team member will contact you for photos if they are needed.</p>
+            {/* Public storage is authenticated-only. A staff member can collect photos after triage. */}
 
-            {/* Drop zone */}
-            <label
-              htmlFor="file-upload"
-              className="flex flex-col items-center gap-3 border-2 border-dashed border-slate-300 rounded-xl p-8 text-center hover:border-blue-400 hover:bg-blue-50/50 transition-colors cursor-pointer"
-            >
-              <Upload className="w-8 h-8 text-slate-400" />
-              <div>
-                <p className="text-sm font-medium text-slate-700">
-                  Drag photos here, or click to browse
-                </p>
-                <p className="text-xs text-slate-500 mt-1">
-                  Up to 5 photos · JPG, PNG, WebP · 10 MB each
-                </p>
-              </div>
-              <input
-                type="file"
-                multiple
-                accept="image/*"
-                onChange={handleFileUpload}
-                className="hidden"
-                id="file-upload"
-              />
-            </label>
-
-            <FieldError msg={errors?.files} />
-
-            {/* Uploaded files list */}
-            {uploadedFiles?.length > 0 && (
-              <div className="mt-4 space-y-2">
-                <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">
-                  Uploaded ({uploadedFiles.length} / 5)
-                </p>
-                {uploadedFiles?.map((file) => (
-                  <div
-                    key={file?.id}
-                    className="flex items-center gap-3 border border-slate-200 rounded-lg p-3"
-                  >
-                    {file?.preview && (
-                      <img
-                        src={file?.preview}
-                        alt={file?.name}
-                        className="w-10 h-10 rounded object-cover flex-shrink-0"
-                      />
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-slate-800 truncate">{file?.name}</p>
-                      <p className="text-xs text-slate-500">
-                        {(file?.size / 1024 / 1024)?.toFixed(2)} MB
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => removeFile(file?.id)}
-                      className="flex-shrink-0 text-slate-400 hover:text-red-600 transition-colors"
-                      type="button"
-                      aria-label="Remove file"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
 
           {/* ── SUBMIT ── */}

@@ -43,32 +43,12 @@ export const userManagementService = {
     }
   },
 
-  async createUserWithLogin({ email, password, profile }) {
-    const { data: authData, error: authError } = await authService.signUp(email, password)
-    if (authError) throw new Error(authError?.message || 'Failed to create auth user')
-
-    const userId = authData?.user?.id
-    if (!userId) throw new Error('Auth user id missing after sign up')
-
-    const { data, error } = await supabase
-      ?.from('user_profiles')
-      ?.insert([
-        {
-          id: userId,
-          email,
-          full_name: profile?.full_name,
-          role: profile?.role,
-          vendor_id: profile?.role === 'vendor' ? profile?.vendor_id : null,
-          phone: profile?.phone,
-          department: profile?.department,
-          is_active: true,
-          org_id: profile?.org_id || null,
-        },
-      ])
-      ?.select()
-      ?.single()
-
-    if (error) throw error
+  async createUserWithLogin({ email, profile }) {
+    const { data, error } = await authService.manageUserAccess({
+      action: 'invite', email, full_name: profile?.full_name, role: profile?.role,
+      department: profile?.department, dealer_id: profile?.dealer_id || profile?.org_id,
+    })
+    if (error) throw new Error(error.message)
     return data
   },
 
@@ -96,6 +76,11 @@ export const userManagementService = {
   },
 
   async setUserActive({ userId, isActive }) {
+    if (!isActive) {
+      const { data, error } = await authService.manageUserAccess({ action: 'deactivate', profileId: userId })
+      if (error) throw new Error(error.message)
+      return data
+    }
     const { error } = await supabase
       ?.from('user_profiles')
       ?.update({ is_active: isActive })

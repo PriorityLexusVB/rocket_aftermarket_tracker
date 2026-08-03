@@ -60,6 +60,7 @@ const CurrentlyActiveAppointmentsLegacy = () => {
   const [appointments, setAppointments] = useState([])
   const [originalAppointments, setOriginalAppointments] = useState([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState('')
   const [selectedAppointment, setSelectedAppointment] = useState(null)
   const [showDetailPanel, setShowDetailPanel] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
@@ -116,6 +117,7 @@ const CurrentlyActiveAppointmentsLegacy = () => {
         return
       }
       setLoading(true)
+      setLoadError('')
 
       const { data, error } = await appointmentsService.listActiveAppointments({ orgId })
       if (error) throw error
@@ -135,6 +137,9 @@ const CurrentlyActiveAppointmentsLegacy = () => {
       setAppointments(processedData)
     } catch (error) {
       console.error('Error loading appointments:', error)
+      setOriginalAppointments([])
+      setAppointments([])
+      setLoadError('Appointments could not be loaded. Please retry.')
     } finally {
       setLoading(false)
     }
@@ -530,8 +535,12 @@ const CurrentlyActiveAppointmentsLegacy = () => {
               vendors={vendors}
             />
 
-            {/* Appointments Grid */}
-            {appointments?.length > 0 ? (
+            {loadError ? (
+              <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-5 text-red-800">
+                <p className="font-semibold">{loadError}</p>
+                <button type="button" onClick={loadAppointments} className="mt-3 rounded bg-red-700 px-3 py-2 text-sm font-medium text-white hover:bg-red-800">Retry loading appointments</button>
+              </div>
+            ) : appointments?.length > 0 ? (
               <div className="space-y-4">
                 {appointments?.map((appointment) => (
                   <AppointmentCard

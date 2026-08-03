@@ -32,11 +32,11 @@ Canonical / start-here docs:
 
 Historical one-off reports and fix summaries live under [docs/archive/](docs/archive/).
 
-## Development Environment Setup (WSL + Node 20 + pnpm)
+## Development Environment Setup (WSL + Node 22 + pnpm)
 
-Canonical local setup is WSL/Linux/macOS with Node 20 and pnpm via corepack.
+Canonical local setup is WSL/Linux/macOS with Node 22 and pnpm via corepack.
 
-1. Ensure Node 20 is active (`node -v` should be `v20.x`)
+1. Ensure Node 22 is active (`node -v` should be `v22.x`)
    - If using nvm: `nvm use` (reads `.nvmrc`)
 2. Enable corepack + pinned pnpm:
    - `corepack enable`

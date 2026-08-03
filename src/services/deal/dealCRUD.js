@@ -1732,154 +1732,27 @@ export async function updateDeal(id, formState) {
   return await getDeal(id)
 }
 
-// ✅ UPDATED: Use safe cascade delete function with improved error handling
+// Delete through the server-owned atomic cascade.
 export async function deleteDeal(id) {
   if (!id) throw new Error('Failed to delete deal: missing deal id')
+  const { data, error } = await supabase.rpc('delete_deal_atomic', { p_job_id: id })
+  const message = String(error?.message || '')
 
-  const isPermissionDenied = (err) => {
-    const msg = String(err?.message || err || '')
-    const code = err?.code
-    return code === '42501' || /permission denied|insufficient privilege/i.test(msg)
-  }
-
-  const isMissingTable = (err) => {
-    const msg = String(err?.message || err || '')
-    const code = err?.code
-    // 42P01: undefined_table (PostgreSQL)
-    return code === '42P01' || /relation .* does not exist/i.test(msg)
-  }
-
-  const throwDeletePermission = () => {
-    throw new Error('You do not have permission to delete deals.')
-  }
-
-  const getCurrentUserOrgId = async () => {
-    try {
-      const { data: userData, error: userErr } = await supabase.auth.getUser()
-      if (userErr) return null
-      const userId = userData?.user?.id
-      if (!userId) return null
-
-      const { data: profile, error: profileErr } = await supabase
-        .from('user_profiles')
-        .select('dealer_id')
-        .eq('id', userId)
-        .maybeSingle()
-
-      if (profileErr) return null
-      return profile?.dealer_id ?? null
-    } catch {
-      return null
-    }
-  }
-
-  const tryDelete = async (table, whereCol, whereVal, opts = {}) => {
-    const { data: deletedRows, error } = await supabase
-      .from(table)
-      .delete()
-      .eq(whereCol, whereVal)
-      .select(whereCol)
-
-    if (error) {
-      if (isPermissionDenied(error)) throwDeletePermission()
-      if (opts?.ignoreMissingTable && isMissingTable(error)) return
-      throw new Error(`Failed to delete deal: ${error.message}`)
+  if (error) {
+    if (error.code === '42501' || /permission denied|insufficient privilege/i.test(message)) {
+      throw new Error('You do not have permission to delete deals.')
     }
 
-    // PostgREST + RLS can return 200 with 0 deleted rows (no error) when DELETE is blocked.
-    // Verify whether rows still exist so we can surface a useful error.
-    if (Array.isArray(deletedRows) && deletedRows.length === 0) {
-      const { data: remainingRows, error: remainingErr } = await supabase
-        .from(table)
-        .select(whereCol)
-        .eq(whereCol, whereVal)
-        .limit(1)
-
-      if (remainingErr) {
-        if (isPermissionDenied(remainingErr)) {
-          throw new Error(`You do not have permission to delete related records (${table}).`)
-        }
-        if (opts?.ignoreMissingTable && isMissingTable(remainingErr)) return
-        throw new Error(`Failed to verify delete on ${table}: ${remainingErr.message}`)
-      }
-
-      if (Array.isArray(remainingRows) && remainingRows.length > 0) {
-        throw new Error(`You do not have permission to delete related records (${table}).`)
-      }
-    }
-  }
-
-  // IMPORTANT:
-  // `delete_job_cascade` execution is intentionally revoked in
-  // supabase/migrations/20251210173000_harden_security_definer_permissions.sql.
-  // Application must delete via RLS-protected endpoints instead.
-
-  // First, verify the deal exists and user has access to it
-  const { data: existingDeal, error: readErr } = await supabase
-    .from('jobs')
-    .select('id, dealer_id')
-    .eq('id', id)
-    .maybeSingle()
-
-  if (readErr) {
-    throw new Error(`Failed to verify deal: ${readErr.message}`)
-  }
-
-  if (!existingDeal) {
-    throw new Error('Deal not found or you do not have access to it.')
-  }
-
-  // Capture org context for diagnostics, but do not pre-block the delete.
-  // Some roles/policies may legitimately allow deleting legacy NULL-org rows or cross-org rows.
-  // We'll surface these conditions only if the delete is actually blocked (0 rows affected).
-  const currentUserOrgId = await getCurrentUserOrgId()
-
-  // Best-effort cascade in dependency order.
-  // Some installs may not have certain child tables; ignore missing-table errors.
-  await tryDelete('loaner_assignments', 'job_id', id, { ignoreMissingTable: true })
-  await tryDelete('job_parts', 'job_id', id)
-  await tryDelete('transactions', 'job_id', id)
-  await tryDelete('communications', 'job_id', id, { ignoreMissingTable: true })
-
-  const { data: deletedJobs, error: jobErr } = await supabase
-    .from('jobs')
-    .delete()
-    .eq('id', id)
-    .select('id')
-
-  if (jobErr) {
-    if (isPermissionDenied(jobErr)) throwDeletePermission()
-    throw new Error(`Failed to delete deal: ${jobErr.message}`)
-  }
-
-  if (!Array.isArray(deletedJobs) || deletedJobs.length === 0) {
-    // PostgREST + RLS can return 200 with 0 deleted rows (no error) when DELETE is blocked.
-    // Verify whether the job still exists so we don't mis-report successful deletes.
-    const { data: remainingJob, error: remainingErr } = await supabase
-      .from('jobs')
-      .select('id, dealer_id')
-      .eq('id', id)
-      .maybeSingle()
-
-    if (remainingErr) {
-      if (isPermissionDenied(remainingErr)) throwDeletePermission()
-      throw new Error(`Failed to verify deal deletion: ${remainingErr.message}`)
+    if (error.code === 'P0002' || /not found/i.test(message)) {
+      throw new Error('Deal not found or you do not have access to it.')
     }
 
-    if (remainingJob) {
-      const userOrgId = currentUserOrgId ?? (await getCurrentUserOrgId())
-      if (remainingJob?.dealer_id == null) {
-        throw new Error(
-          'Delete was blocked because this deal is missing dealer_id. Ask an admin to assign it to your organization (or delete as a manager).'
-        )
-      }
-      if (userOrgId && remainingJob.dealer_id && remainingJob.dealer_id !== userOrgId) {
-        throw new Error(
-          `Delete was blocked because this deal belongs to a different organization (${remainingJob.dealer_id}). Your org is ${userOrgId}.`
-        )
-      }
-      throwDeletePermission()
-    }
+    // The RPC owns tenant-aware details; do not expose its internals to the client.
+    throw new Error('Failed to delete deal. Please try again.')
+  }
+
+  if (data !== true) {
+    throw new Error('Failed to delete deal. Please try again.')
   }
 
   return true

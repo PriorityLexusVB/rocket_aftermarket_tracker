@@ -32,6 +32,7 @@ import { getCalendarDestination } from './lib/navigation/calendarNavigation'
 // Import only the 4 consolidated pages
 import NotFound from './pages/NotFound'
 import AuthenticationPortal from './pages/authentication-portal'
+const ResetPassword = lazy(() => import('./pages/reset-password'))
 
 // 4 Main Pages - Updated with Currently Active Appointments
 const DealsPage = lazy(() => import('./pages/deals'))
@@ -123,6 +124,7 @@ const Routes = () => {
 
               {/* Authentication Portal */}
               <Route path="/auth" element={<AuthenticationPortal />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
 
               {/* 🔒 PROTECTED ROUTES - Authentication required */}
 
@@ -239,7 +241,7 @@ const Routes = () => {
               <Route
                 path="/admin"
                 element={
-                  <ProtectedRoute>
+                  <ProtectedRoute allowedRoles={['admin', 'manager']}>
                     <AdminPage />
                   </ProtectedRoute>
                 }
