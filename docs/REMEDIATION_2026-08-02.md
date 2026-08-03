@@ -25,49 +25,49 @@ It is a closeout checklist, not a source of secrets or customer data.
 
 ## P0 — Auth and personnel
 
-- [ ] Close public self-signup until a server-controlled invite flow exists.
-- [ ] Make new-user profile role server-controlled; never trust
+- [x] Close public self-signup until a server-controlled invite flow exists.
+- [x] Make new-user profile role server-controlled; never trust
       `raw_user_meta_data.role`.
-- [ ] Remove client fallback that recreates a missing profile as `manager`.
-- [ ] Deny inactive or missing-profile sessions in both client routing and live
+- [x] Remove client fallback that recreates a missing profile as `manager`.
+- [x] Deny inactive or missing-profile sessions in both client routing and live
       RLS/helper functions.
-- [ ] Make Admin login-user deactivation honest, authorized, and verified by
+- [x] Make Admin login-user deactivation honest, authorized, and verified by
       returned row count.
-- [ ] Rewrite or drop legacy cleanup functions that can delete Rob or historical
+- [x] Rewrite or drop legacy cleanup functions that can delete Rob or historical
       attribution.
-- [ ] Revoke or harden obsolete externally executable `SECURITY DEFINER` RPCs;
+- [x] Revoke or harden obsolete externally executable `SECURITY DEFINER` RPCs;
       retain RLS helpers only with fixed search paths and least-privilege grants.
-- [ ] Globally revoke Ashley sessions and ban her Auth identity without deleting
+- [x] Globally revoke Ashley sessions and ban her Auth identity without deleting
       her historical public profile.
-- [ ] Mark Ashley's retained profile inactive after cleanup safety is in place.
+- [x] Mark Ashley's retained profile inactive after cleanup safety is in place.
 - [ ] Coordinate credential rotation for Rob and Samantha; never record new
       credentials in this repository or ledger.
-- [ ] Verify exactly Rob + Samantha remain active, Ashley cannot authenticate,
+- [x] Verify exactly Rob + Samantha remain active, Ashley cannot authenticate,
       and historical claim/activity references remain intact.
 
 ## P1 — Personnel-facing product behavior
 
-- [ ] Replace Ashley's public support contact with Samantha's correct email.
-- [ ] Normalize the delivery-coordinator role/department predicate so Samantha's
+- [x] Replace Ashley's public support contact with Samantha's correct email.
+- [x] Normalize the delivery-coordinator role/department predicate so Samantha's
       live `manager / Delivery Coordinators` profile is selectable everywhere.
-- [ ] Correct admin-versus-manager role derivation and privileged-surface gates.
-- [ ] Provide a working password-recovery landing route.
-- [ ] Correct lifecycle help: Reversed is terminal; Completed can reopen.
+- [x] Correct admin-versus-manager role derivation and privileged-surface gates.
+- [x] Provide a working password-recovery landing route.
+- [x] Correct lifecycle help: Reversed is terminal; Completed can reopen.
 
 ## P1 — Runtime and customer truth
 
-- [ ] Move the supported server runtime to Node 22 and restore truthful health
+- [x] Move the supported server runtime to Node 22 and restore truthful health
       probes without persisting false capability flags.
-- [ ] Make guest claim-photo behavior truthful and secure under the live
+- [x] Make guest claim-photo behavior truthful and secure under the live
       authenticated-only storage policy; do not widen anonymous storage access.
-- [ ] Remove fabricated Analytics trend values.
-- [ ] Remove the fixed ten-loaner availability assumption.
-- [ ] Stop converting bounded Appointments/Analytics failures into false empty
+- [x] Remove fabricated Analytics trend values.
+- [x] Remove the fixed ten-loaner availability assumption.
+- [x] Stop converting bounded Appointments/Analytics failures into false empty
       success states.
 
 ## P2 — Reliability and remaining-function review
 
-- [ ] Replace multi-request deal deletion with an authorized, tenant-scoped,
+- [x] Replace multi-request deal deletion with an authorized, tenant-scoped,
       atomic database operation and failure-injection coverage.
 - [ ] Keep atomic deal create/update as the next dedicated aggregate-write wave;
       it requires unifying the Deals and Calendar creation contracts and must not be
@@ -76,14 +76,14 @@ It is a closeout checklist, not a source of secrets or customer data.
 - [ ] Repair the production migration workflow/history mismatch only from a
       reviewed live-schema receipt; never mark real live migrations reverted merely
       to silence version drift.
-- [ ] Revalidate TODO/FIXME/backlog entries with an already-built check; do not
+- [x] Revalidate TODO/FIXME/backlog entries with an already-built check; do not
       promote stale historical queue items.
 - [ ] Plan and verify a separate transition from the legacy JWT `anon` /
       `service_role` variables to the already-provisioned Supabase publishable /
       secret keys before the legacy-key retirement window. Treat this as an
       Auth-secret rollout with representative tests and an explicit rollback;
       do not fold it into the personnel release.
-- [ ] Update `STATE.md` and current repo docs after production proof. Archives
+- [x] Update `STATE.md` and current repo docs after production proof. Archives
       and applied historical migrations remain immutable evidence.
 - [ ] Reconcile shared `HANDOFF.md` / `WHAT'S-LEFT.md` only after the other active
       Codex lane releases those files.
@@ -92,17 +92,18 @@ It is a closeout checklist, not a source of secrets or customer data.
 
 ## Release gates
 
-- [ ] Focused tests for every changed behavior.
-- [ ] `pnpm lint` succeeds.
-- [ ] `pnpm run typecheck` succeeds.
-- [ ] `pnpm test` succeeds.
-- [ ] `pnpm build` succeeds.
-- [ ] Supabase security advisors reviewed after migration.
-- [ ] Independent security/code review passes.
-- [ ] Production SQL/Auth postchecks match the expected personnel/policy matrix.
-- [ ] Live deploy SHA matches pushed HEAD.
-- [ ] Thin final desktop/mobile acceptance pass covers login help, password
-      recovery, coordinator selection, protected routes, and guest-claim copy.
+- [x] Focused tests for every changed behavior.
+- [x] `pnpm lint` succeeds.
+- [x] `pnpm run typecheck` succeeds.
+- [x] `pnpm test` succeeds.
+- [x] `pnpm build` succeeds.
+- [x] Supabase security advisors reviewed after migration.
+- [x] Independent security/code review passes.
+- [x] Production SQL/Auth postchecks match the expected personnel/policy matrix.
+- [x] Live deploy SHA matches pushed HEAD.
+- [x] Thin final desktop/mobile acceptance covers login help, password recovery,
+      protected routes, and guest-claim copy. Coordinator selection is covered by
+      the live profile receipt plus focused tests; no production credential was used.
 
 ## Standing process improvement requested by Rob
 
@@ -117,6 +118,30 @@ It is a closeout checklist, not a source of secrets or customer data.
 - [x] At the start of substantive work and when friction appears, check current
       product changelogs, official docs, installed MCP/CLI capabilities, and local
       skills for a newer, safer, or more efficient connection path.
-- [ ] Adopt a newer path only when representative verification proves equal or
+- [x] Adopt a newer path only when representative verification proves equal or
       better quality, the full worker/review/retry cost improves, and rollback is
       explicit. Discovery never bypasses the stack-freeze capability-intake gate.
+
+## Production closeout receipt — 2026-08-03
+
+- Release candidate: `7dd6fdd915959dd5564ac92c5b24fe9e353869c8`.
+- GitHub PR: `#361`; build, test, CI, E2E Smoke, CodeQL, GitGuardian, Copilot
+  review, and Vercel checks all passed for the exact release candidate.
+- Production deployment: `dpl_6Qk66XQi7FMCBcCk3TvEdnhQyiMd`; canonical HTML
+  reported `x-build-sha=7dd6fdd`; main asset `assets/index-Sv4hJDEa.js`.
+- Supabase migrations: `20260803044354 rocket_security_personnel_remediation`
+  and `20260803044800 guest_claim_direct_access_cleanup`.
+- Hosted Auth: `disable_signup=true` in both Management API and public settings.
+- Personnel: Ashley retained for attribution with `is_active=false`, Auth banned,
+  sessions `33 -> 0`, refresh-token rows `133 -> 0`; exactly Rob and Samantha
+  remain active and unbanned. Ashley history remains one assigned claim and four
+  activity rows.
+- Guest claims: direct anonymous `claims`, `claim_attachments`, and `products`
+  access returns 401; the public product RPC returns six products and the claim
+  RPC rejects invalid input without creating a row.
+- Security advisors: `92 -> 73` total findings (`89 -> 70` warnings). The three
+  unchanged errors are on shared non-Rocket tables `brand_rules`, `size_rules`,
+  and `found_items`; this release deliberately did not mutate them.
+- Browser receipt: desktop plus 375x667 verified Samantha support, reset route,
+  protected redirect, six guest products, truthful photo copy, no horizontal
+  overflow, zero console errors, and all observed API requests at HTTP 200.
