@@ -48,6 +48,7 @@ describe('CalendarSchedulingCenter consistency banners', () => {
     expect(
       await screen.findByText(/Calendar items found, but Deals are empty/i)
     ).toBeInTheDocument()
+    expect(screen.getByTestId('calendar-main-grid').children).toHaveLength(1)
   })
 
   it('hides mismatch banner when unified shell is disabled', async () => {

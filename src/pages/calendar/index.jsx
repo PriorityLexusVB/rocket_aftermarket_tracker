@@ -2052,10 +2052,10 @@ const CalendarSchedulingCenter = ({
             </div>
           </div>
 
-          <div className="space-y-4">
-            {!suppressChrome && <CalendarLegend showStatuses />}
+          {!suppressChrome && (
+            <div className="space-y-4">
+              <CalendarLegend showStatuses />
 
-            {!suppressChrome && (
               <div className={cx('p-4 rounded-lg shadow border', darkUi ? surface : 'bg-white')}>
                 <h3 className={cx('font-medium mb-3', darkUi ? 'text-slate-900' : 'text-gray-900')}>
                   View Settings
@@ -2111,8 +2111,8 @@ const CalendarSchedulingCenter = ({
                   </button>
                 </div>
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </div>
     )
