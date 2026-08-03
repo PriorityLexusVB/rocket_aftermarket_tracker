@@ -16,8 +16,8 @@ It is a closeout checklist, not a source of secrets or customer data.
 - Correct replacement email: `samantha.morgan@priorityautomotive.com`.
 - Work transfer: Ashley had zero active job references and zero open claims.
   Preserve her one resolved claim plus historical activity attribution.
-- Auth residue before offboarding: Ashley had 33 session rows and 33 refresh
-  token rows not marked revoked. Token usability was not tested.
+- Auth residue before offboarding: Ashley had 33 session rows and 133 refresh
+  token rows, of which 33 were not marked revoked. Token usability was not tested.
 - Open signup and caller-controlled role assignment were live before this wave.
 - Production health probes falsely reported missing capabilities because the
   deployed Node 20 runtime was no longer supported by the current Supabase JS
@@ -133,9 +133,9 @@ It is a closeout checklist, not a source of secrets or customer data.
   and `20260803044800 guest_claim_direct_access_cleanup`.
 - Hosted Auth: `disable_signup=true` in both Management API and public settings.
 - Personnel: Ashley retained for attribution with `is_active=false`, Auth banned,
-  sessions `33 -> 0`, refresh-token rows `133 -> 0`; exactly Rob and Samantha
-  remain active and unbanned. Ashley history remains one assigned claim and four
-  activity rows.
+  sessions `33 -> 0`, refresh-token rows `133 total / 33 unrevoked -> 0`; exactly
+  Rob and Samantha remain active and unbanned. Ashley history remains one assigned
+  claim and four activity rows.
 - Guest claims: direct anonymous `claims`, `claim_attachments`, and `products`
   access returns 401; the public product RPC returns six products and the claim
   RPC rejects invalid input without creating a row.

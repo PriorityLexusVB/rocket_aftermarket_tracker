@@ -29,8 +29,9 @@
 - Exactly two linked logins are active and unbanned: Rob and Samantha.
 - Ashley had no jobs to transfer. Her one assigned historical claim and four
   activity rows remain unchanged.
-- Hosted public signup is closed: `disable_signup=true`. New login accounts use
-  the trusted Admin server endpoint; browser self-provisioning is removed.
+- Hosted public signup is closed: `disable_signup=true`, and checked-in local
+  Supabase Auth config also disables general and email signup. New login accounts
+  use the trusted Admin server endpoint; browser self-provisioning is removed.
 - Inactive or missing-profile sessions fail closed in client routing and RLS.
 
 ## Current user flow
