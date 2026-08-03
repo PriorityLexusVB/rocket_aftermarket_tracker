@@ -78,6 +78,11 @@ It is a closeout checklist, not a source of secrets or customer data.
       to silence version drift.
 - [ ] Revalidate TODO/FIXME/backlog entries with an already-built check; do not
       promote stale historical queue items.
+- [ ] Plan and verify a separate transition from the legacy JWT `anon` /
+      `service_role` variables to the already-provisioned Supabase publishable /
+      secret keys before the legacy-key retirement window. Treat this as an
+      Auth-secret rollout with representative tests and an explicit rollback;
+      do not fold it into the personnel release.
 - [ ] Update `STATE.md` and current repo docs after production proof. Archives
       and applied historical migrations remain immutable evidence.
 - [ ] Reconcile shared `HANDOFF.md` / `WHAT'S-LEFT.md` only after the other active
@@ -109,7 +114,7 @@ It is a closeout checklist, not a source of secrets or customer data.
       agents early when that prevents drift, repeated exploration, or self-grading.
 - [ ] Promote this into the canonical cross-project operating rules after the
       active unknown-scope Codex session releases the shared rule/config lane.
-- [ ] At the start of substantive work and when friction appears, check current
+- [x] At the start of substantive work and when friction appears, check current
       product changelogs, official docs, installed MCP/CLI capabilities, and local
       skills for a newer, safer, or more efficient connection path.
 - [ ] Adopt a newer path only when representative verification proves equal or

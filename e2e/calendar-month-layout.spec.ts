@@ -36,6 +36,14 @@ test.describe('Calendar month layout guard', () => {
       timeout: 20_000,
     })
 
+    const loadingState = page.getByText('Loading calendar data...', { exact: true })
+    const errorState = page.getByRole('heading', { name: 'Error Loading Data' })
+    await expect(loadingState).toBeHidden({ timeout: 20_000 })
+    await expect(
+      errorState,
+      'Calendar entered Error Loading Data; refusing to evaluate an incomplete layout.'
+    ).not.toBeVisible()
+
     const agendaControlsVisible = await page
       .locator('[aria-label="Agenda controls"]')
       .first()

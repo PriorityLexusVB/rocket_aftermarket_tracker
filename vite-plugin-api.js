@@ -2,6 +2,13 @@
  * Vite plugin to serve /api/* endpoints during development
  * Mimics Vercel's serverless function behavior for local testing
  */
+import path from 'node:path'
+import { fileURLToPath, pathToFileURL } from 'node:url'
+
+// Resolve handlers from this plugin's source directory. Vite evaluates config plugins
+// from node_modules/.vite-temp in CI, where a relative dynamic import would be wrong.
+const apiDirectory = path.resolve(fileURLToPath(new URL('./api/', import.meta.url)))
+
 export function apiPlugin() {
   return {
     name: 'vite-plugin-api',
@@ -21,10 +28,18 @@ export function apiPlugin() {
 
         // Remove /api/ prefix and sanitize path to prevent directory traversal
         let apiPath = pathname.replace('/api/', '')
+        const handlerPath = path.resolve(apiDirectory, `${apiPath}.js`)
+        const relativeHandlerPath = path.relative(apiDirectory, handlerPath)
 
         // Security: Prevent path traversal attacks by blocking '..' segments and multiple slashes
         // Note: Most web servers normalize paths before they reach middleware, but we check as defense-in-depth
-        if (apiPath.includes('..') || apiPath.includes('//') || apiPath.includes('\\')) {
+        if (
+          apiPath.includes('..') ||
+          apiPath.includes('//') ||
+          apiPath.includes('\\') ||
+          relativeHandlerPath.startsWith('..') ||
+          path.isAbsolute(relativeHandlerPath)
+        ) {
           console.warn(`[vite-plugin-api] Blocked suspicious path: ${apiPath}`)
 
           // If the response has already started (unlikely here), do not attempt to write headers/body.
@@ -36,12 +51,9 @@ export function apiPlugin() {
           return
         }
 
-        let handlerPath
-
         try {
           // Try to load the API handler
-          handlerPath = `./api/${apiPath}.js`
-          const module = await import(handlerPath)
+          const module = await import(pathToFileURL(handlerPath).href)
           const handler = module.default
 
           if (typeof handler !== 'function') {
