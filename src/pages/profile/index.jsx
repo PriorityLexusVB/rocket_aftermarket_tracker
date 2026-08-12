@@ -2,6 +2,7 @@ import React from 'react'
 import AppLayout from '../../components/layouts/AppLayout'
 import { useAuth } from '../../contexts/AuthContext'
 import useTenant from '../../hooks/useTenant'
+import ChangePasswordCard from './components/ChangePasswordCard'
 
 export default function ProfileSettings() {
   const { user, userProfile, signOut } = useAuth()
@@ -51,6 +52,8 @@ export default function ProfileSettings() {
             </div>
           )}
         </div>
+
+        <ChangePasswordCard />
 
         <div className="mt-6">
           <button
