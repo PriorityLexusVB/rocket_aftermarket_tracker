@@ -377,6 +377,36 @@ const AdminPage = () => {
     }
   }, [authLoading, loadAllData, user, userProfile])
 
+  // Send a teammate a password-reset email. The admin never sees or sets the
+  // password — the user clicks the emailed link and picks their own.
+  const sendPasswordReset = async (account) => {
+    const label = account?.full_name || account?.email || 'this user'
+    if (!account?.id) return
+    if (!window.confirm(`Send a password reset email to ${label}?`)) return
+    try {
+      setSubmitting(true)
+      await adminService.sendPasswordReset(account.id)
+      toast?.success?.(`Password reset email sent to ${account?.email || label}.`)
+      try {
+        await logBusinessAction?.(
+          'send_password_reset',
+          'admin',
+          account.id,
+          'Sent password reset email to user',
+          { orgId }
+        )
+      } catch {}
+    } catch (e) {
+      console.error('sendPasswordReset error:', e)
+      toast?.error?.(`Couldn't send the reset email. Try again or contact support.`)
+      try {
+        await logErr?.(e, { where: 'sendPasswordReset', orgId, profileId: account.id })
+      } catch {}
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
   // Attach/assign a single profile to current org
   const attachProfileToMyOrg = async (profileId) => {
     if (!orgId) {
@@ -1133,6 +1163,8 @@ const AdminPage = () => {
                 openModal={openModal}
                 attachProfileToMyOrg={attachProfileToMyOrg}
                 handleDelete={handleDelete}
+                onResetPassword={sendPasswordReset}
+                canResetPasswords={userProfile?.role === 'admin'}
               />
             )}
             {activeTab === 'staffRecords' && (

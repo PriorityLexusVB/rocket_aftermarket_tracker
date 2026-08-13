@@ -347,6 +347,19 @@ export const adminService = {
     if (error) throw new Error(error.message)
     return data
   },
+
+  // Send a teammate a password-reset email. The admin never sees or sets the
+  // password — the user clicks the emailed link and chooses their own on
+  // /reset-password. Server-side guards (same org, role hierarchy, active
+  // profile, linked login) live in api/admin/user-access.js.
+  async sendPasswordReset(userId) {
+    const { data, error } = await authService.manageUserAccess({
+      action: 'reset_password',
+      profileId: userId,
+    })
+    if (error) throw new Error(error.message)
+    return data
+  },
 }
 
 export default adminService

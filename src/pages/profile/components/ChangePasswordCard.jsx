@@ -20,14 +20,19 @@ function getProbeClient() {
   const url = import.meta?.env?.VITE_SUPABASE_URL
   const key = import.meta?.env?.VITE_SUPABASE_ANON_KEY
   if (!url || !key) return null
-  probeClient = createClient(url, key, {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-      detectSessionInUrl: false,
-      storageKey: 'rocket-pw-verify',
-    },
-  })
+  try {
+    probeClient = createClient(url, key, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+        detectSessionInUrl: false,
+        storageKey: 'rocket-pw-verify',
+      },
+    })
+  } catch {
+    // Never let client construction throw into the submit handler.
+    return null
+  }
   return probeClient
 }
 
@@ -109,26 +114,35 @@ export default function ChangePasswordCard() {
     }
 
     setSubmitting(true)
+    try {
+      // 1) Prove the person at the keyboard knows the current password.
+      const verified = await verifyCurrentPassword(email, currentPassword)
+      if (!verified.ok) {
+        setMessage({ type: 'error', text: verified.error })
+        return
+      }
 
-    // 1) Prove the person at the keyboard knows the current password.
-    const verified = await verifyCurrentPassword(email, currentPassword)
-    if (!verified.ok) {
-      setMessage({ type: 'error', text: verified.error })
+      // 2) Update the password on the live session.
+      const { error } = await authService.updatePassword(newPassword)
+      if (error) {
+        setMessage({
+          type: 'error',
+          text: error.message || 'Unable to update your password. Try again.',
+        })
+        return
+      }
+
+      resetFields()
+      setMessage({
+        type: 'success',
+        text: 'Password updated. Use your new password next time you sign in.',
+      })
+    } catch {
+      // Any unexpected throw must not leave the form permanently disabled.
+      setMessage({ type: 'error', text: 'Something went wrong. Try again.' })
+    } finally {
       setSubmitting(false)
-      return
     }
-
-    // 2) Update the password on the live session.
-    const { error } = await authService.updatePassword(newPassword)
-    if (error) {
-      setMessage({ type: 'error', text: error.message || 'Unable to update your password. Try again.' })
-      setSubmitting(false)
-      return
-    }
-
-    resetFields()
-    setMessage({ type: 'success', text: 'Password updated. Use your new password next time you sign in.' })
-    setSubmitting(false)
   }
 
   const handleSendResetEmail = async () => {

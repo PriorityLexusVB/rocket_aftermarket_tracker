@@ -39,7 +39,10 @@ function query(result) {
 
 function setup(results) {
   const anon = {
-    auth: { getUser: vi.fn(async () => ({ data: { user: { id: 'actor-auth' } }, error: null })) },
+    auth: {
+      getUser: vi.fn(async () => ({ data: { user: { id: 'actor-auth' } }, error: null })),
+      resetPasswordForEmail: vi.fn(async () => ({ error: null })),
+    },
   }
   const admin = {
     from: vi.fn(() => query(results.shift())),
@@ -54,7 +57,7 @@ function setup(results) {
       },
     },
   }
-  return { admin, create: vi.fn().mockReturnValueOnce(anon).mockReturnValue(admin) }
+  return { admin, anon, create: vi.fn().mockReturnValueOnce(anon).mockReturnValue(admin) }
 }
 
 const actor = { id: 'actor', dealer_id: 'dealer', role: 'admin', is_active: true }
@@ -402,5 +405,81 @@ describe('admin user-access API authorization', () => {
     const res = response()
     await createUserAccessHandler()({ method: 'GET', headers: {} }, res)
     expect(res.statusCode).toBe(405)
+  })
+})
+
+describe('admin user-access API reset_password', () => {
+  const linkedTarget = {
+    id: 'target',
+    dealer_id: 'dealer',
+    role: 'staff',
+    auth_user_id: 'linked',
+    email: 'stale@example.com',
+    is_active: true,
+  }
+  const resetRequest = () => request({ action: 'reset_password', profileId: 'target' })
+
+  it('sends to the CANONICAL auth email, not the stored profile email', async () => {
+    env()
+    const { create, anon } = setup([[actor], [linkedTarget]])
+    const res = response()
+    await createUserAccessHandler({ createSupabaseClient: create })(resetRequest(), res)
+    expect(res.statusCode).toBe(200)
+    expect(anon.auth.resetPasswordForEmail).toHaveBeenCalledTimes(1)
+    // getUserById stub resolves to new@example.com — the stale profile email must NOT be used.
+    expect(anon.auth.resetPasswordForEmail).toHaveBeenCalledWith('new@example.com', {
+      redirectTo: 'https://app.rocket.test/reset-password',
+    })
+  })
+
+  it('ignores a hostile Origin header for the reset redirect', async () => {
+    env()
+    const { create, anon } = setup([[actor], [linkedTarget]])
+    const res = response()
+    await createUserAccessHandler({ createSupabaseClient: create })(resetRequest(), res)
+    expect(anon.auth.resetPasswordForEmail).toHaveBeenCalledWith(
+      'new@example.com',
+      expect.objectContaining({ redirectTo: expect.stringContaining('https://app.rocket.test') })
+    )
+  })
+
+  it('rejects a manager resetting an Auth-linked profile', async () => {
+    env()
+    const manager = { ...actor, role: 'manager' }
+    const { create, anon } = setup([[manager], [linkedTarget]])
+    const res = response()
+    await createUserAccessHandler({ createSupabaseClient: create })(resetRequest(), res)
+    expect(res.statusCode).toBe(403)
+    expect(anon.auth.resetPasswordForEmail).not.toHaveBeenCalled()
+  })
+
+  it('rejects a target in another dealer', async () => {
+    env()
+    const foreign = { ...linkedTarget, dealer_id: 'other-dealer' }
+    const { create, anon } = setup([[actor], [foreign]])
+    const res = response()
+    await createUserAccessHandler({ createSupabaseClient: create })(resetRequest(), res)
+    expect(res.statusCode).toBe(403)
+    expect(anon.auth.resetPasswordForEmail).not.toHaveBeenCalled()
+  })
+
+  it('rejects an inactive target', async () => {
+    env()
+    const inactive = { ...linkedTarget, is_active: false }
+    const { create, anon } = setup([[actor], [inactive]])
+    const res = response()
+    await createUserAccessHandler({ createSupabaseClient: create })(resetRequest(), res)
+    expect(res.statusCode).toBe(403)
+    expect(anon.auth.resetPasswordForEmail).not.toHaveBeenCalled()
+  })
+
+  it('rejects a directory profile with no linked login', async () => {
+    env()
+    const unlinked = { ...linkedTarget, auth_user_id: null }
+    const { create, anon } = setup([[actor], [unlinked]])
+    const res = response()
+    await createUserAccessHandler({ createSupabaseClient: create })(resetRequest(), res)
+    expect(res.statusCode).toBe(400)
+    expect(anon.auth.resetPasswordForEmail).not.toHaveBeenCalled()
   })
 })
