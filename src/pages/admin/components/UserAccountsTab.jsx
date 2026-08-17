@@ -2,6 +2,7 @@ import React from 'react'
 import UIButton from '../../../components/ui/Button'
 import Building from 'lucide-react/dist/esm/icons/building.js'
 import Edit from 'lucide-react/dist/esm/icons/edit.js'
+import KeyRound from 'lucide-react/dist/esm/icons/key-round.js'
 import Plus from 'lucide-react/dist/esm/icons/plus.js'
 import Trash2 from 'lucide-react/dist/esm/icons/trash-2.js'
 const UserAccountsTab = ({
@@ -21,6 +22,8 @@ const UserAccountsTab = ({
   openModal,
   attachProfileToMyOrg,
   handleDelete,
+  onResetPassword,
+  canResetPasswords,
 }) => (
   <div>
     <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-6">
@@ -201,6 +204,17 @@ const UserAccountsTab = ({
                           <Building className="w-4 h-4" />
                         </button>
                       )}
+                    {canResetPasswords && account?.is_active && account?.auth_user_id && (
+                      <button
+                        title="Send password reset email"
+                        aria-label="Send password reset email"
+                        onClick={() => onResetPassword?.(account)}
+                        disabled={submitting}
+                        className="text-amber-600 hover:text-amber-800 disabled:opacity-50"
+                      >
+                        <KeyRound className="w-4 h-4" />
+                      </button>
+                    )}
                     <button
                       title="Deactivate user account"
                       aria-label="Deactivate user account"

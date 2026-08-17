@@ -85,8 +85,11 @@ drizzle/
 !.vscode/tasks.json
 test-output*.log
 
-# Browser-tester screenshots + Claude session artifacts
-*.png
+# Browser-tester screenshots + Claude session artifacts.
+# Root-only: a bare `*.png` also swallowed public/brand/** and public/icons/**,
+# so any NEW app image was silently untracked and never deployed (existing ones
+# only survived because they were committed before the rule was added).
+/*.png
 .claude/
 build-result.log
 vite-build-out.log

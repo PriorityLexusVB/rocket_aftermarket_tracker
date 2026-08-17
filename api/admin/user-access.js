@@ -276,6 +276,38 @@ export function createUserAccessHandler({ createSupabaseClient = createClient } 
         return send(res, 200, { ok: true, profileId: target.id })
       }
 
+      if (action === 'reset_password') {
+        // Send a password-reset email to a teammate's own address. The admin never
+        // sees or sets the password — the user clicks the emailed link and chooses
+        // their own on /reset-password. Mirrors the invite flow's trusted redirect.
+        if (!target.auth_user_id) return send(res, 400, { error: SAFE_MESSAGE })
+        if (!target.is_active) return send(res, 403, { error: SAFE_MESSAGE })
+        // Same invariant as `update` and `deactivate`: touching a LINKED login
+        // (or an admin/manager profile) is admin-only. Kept identical on purpose
+        // so all three actions share one rule.
+        if (
+          (target.auth_user_id || ['admin', 'manager'].includes(target.role)) &&
+          actor.role !== 'admin'
+        )
+          return send(res, 403, { error: SAFE_MESSAGE })
+        // Resolve the CANONICAL auth email. `resetPasswordForEmail` returns no
+        // error for an unknown address (anti-enumeration), so sending to a stale
+        // `user_profiles.email` would report success while delivering nothing.
+        const { data: linkedUser, error: linkedUserError } = await admin.auth.admin.getUserById(
+          target.auth_user_id
+        )
+        const canonicalEmail = linkedUser?.user?.email
+        if (linkedUserError || !validText(canonicalEmail, 254))
+          return send(res, 400, { error: SAFE_MESSAGE })
+        const resetOrigin = trustedRedirectOrigin(req)
+        if (!resetOrigin) return send(res, 503, { error: SAFE_MESSAGE })
+        const { error: resetError } = await anon.auth.resetPasswordForEmail(canonicalEmail, {
+          redirectTo: `${resetOrigin}/reset-password`,
+        })
+        if (resetError) return send(res, 502, { error: SAFE_MESSAGE })
+        return send(res, 200, { ok: true, profileId: target.id })
+      }
+
       if (action === 'deactivate') {
         if (target.id === actor.id || target.auth_user_id === authData.user.id)
           return send(res, 403, { error: SAFE_MESSAGE })
