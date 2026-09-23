@@ -28,7 +28,11 @@ const safeAverage = (total, count, defaultValue = 0) => {
 }
 
 class AnalyticsService {
-  // Get products sold by vehicle type (new vs used)
+  // Get products sold by vehicle condition.
+  //
+  // The current analytics projection does not expose an authoritative condition
+  // field. Vehicle age is not a substitute for New/Used, so every fetched row
+  // remains available in the unknown bucket instead of being inferred.
   async getProductsByVehicleType(orgId = null) {
     try {
       let q = supabase
@@ -49,15 +53,12 @@ class AnalyticsService {
       if (orgId) q = q?.eq('jobs.dealer_id', orgId)
       const { data } = await q.throwOnError()
 
-      const currentYear = new Date()?.getFullYear()
-      const categorizedData = { new: [], used: [] }
+      const categorizedData = { new: [], used: [], unknown: [], condition_available: false }
 
       data?.forEach((item) => {
-        const vehicleYear = safeNumber(item?.jobs?.vehicles?.year, currentYear)
-        const isNew = vehicleYear >= currentYear - 3 // Consider vehicles 3 years old or newer as "new"
-        const category = isNew ? 'new' : 'used'
+        const vehicleYear = safeNumber(item?.jobs?.vehicles?.year, null)
 
-        categorizedData?.[category]?.push({
+        categorizedData?.unknown?.push({
           product_name: item?.products?.name || 'Unknown Product',
           product_category: item?.products?.category || 'Uncategorized',
           product_brand: item?.products?.brand || 'Unknown Brand',
@@ -73,7 +74,7 @@ class AnalyticsService {
       return categorizedData
     } catch (error) {
       console.error('Service error fetching products by vehicle type:', error)
-      return { new: [], used: [] }
+      return { new: [], used: [], unknown: [], condition_available: false }
     }
   }
 
