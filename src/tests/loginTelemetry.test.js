@@ -1,5 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { recordSuccessfulLogin } from '../lib/loginTelemetry'
+import {
+  recordSuccessfulLogin,
+  recordSuccessfulLoginInBackground,
+} from '../lib/loginTelemetry'
 
 const createClient = ({ error = null, rejects = null } = {}) => {
   const secondEq = vi.fn(() => (rejects ? Promise.reject(rejects) : Promise.resolve({ error })))
@@ -51,6 +54,22 @@ describe('recordSuccessfulLogin', () => {
       'Unable to record Rocket login telemetry:',
       'write blocked'
     )
+  })
+
+  it('returns immediately when the telemetry request never settles', () => {
+    const secondEq = vi.fn(() => new Promise(() => {}))
+    const firstEq = vi.fn(() => ({ eq: secondEq }))
+    const update = vi.fn(() => ({ eq: firstEq }))
+    const client = { from: vi.fn(() => ({ update })) }
+
+    expect(
+      recordSuccessfulLoginInBackground(
+        { authUserId: 'auth-user-id', profileId: 'profile-id' },
+        client
+      )
+    ).toEqual({ queued: true })
+
+    expect(secondEq).toHaveBeenCalledWith('auth_user_id', 'auth-user-id')
   })
 
   it('skips the database when either identity is missing', async () => {

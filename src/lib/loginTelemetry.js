@@ -24,3 +24,8 @@ export const recordSuccessfulLogin = async (
     return { recorded: false, reason: 'unexpected_error' }
   }
 }
+
+export const recordSuccessfulLoginInBackground = (identity, client = supabase) => {
+  void recordSuccessfulLogin(identity, client)
+  return { queued: true }
+}
