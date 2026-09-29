@@ -1,24 +1,21 @@
 import { supabase } from './supabase'
 
-export const recordSuccessfulLogin = async (
-  { authUserId, profileId, occurredAt = new Date().toISOString() },
-  client = supabase
-) => {
-  if (!authUserId || !profileId) return { recorded: false, reason: 'missing_identity' }
+const RECORD_LOGIN_RPC = 'record_successful_login_self'
 
+export const recordSuccessfulLogin = async (_identity, client = supabase) => {
   try {
-    const { error } = await client
-      .from('user_profiles')
-      .update({ last_login_at: occurredAt })
-      .eq('id', profileId)
-      .eq('auth_user_id', authUserId)
+    const { data, error } = await client.rpc(RECORD_LOGIN_RPC)
 
     if (error) {
       console.warn('Unable to record Rocket login telemetry:', error?.message || error)
       return { recorded: false, reason: 'database_error' }
     }
 
-    return { recorded: true, occurredAt }
+    if (data !== true) {
+      return { recorded: false, reason: 'not_recorded' }
+    }
+
+    return { recorded: true }
   } catch (error) {
     console.warn('Unable to record Rocket login telemetry:', error?.message || error)
     return { recorded: false, reason: 'unexpected_error' }
