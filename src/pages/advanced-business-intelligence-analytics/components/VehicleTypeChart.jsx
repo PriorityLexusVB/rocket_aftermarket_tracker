@@ -14,9 +14,12 @@ import {
 import Car from 'lucide-react/dist/esm/icons/car.js'
 import TrendingUp from 'lucide-react/dist/esm/icons/trending-up.js'
 const VehicleTypeChart = ({ data }) => {
+  const conditionAvailable = data?.condition_available === true
+  const allVehicles = [...(data?.new || []), ...(data?.used || []), ...(data?.unknown || [])]
+
   // Process data for charts
   const processVehicleTypeData = () => {
-    if (!data || (!data?.new && !data?.used)) return []
+    if (!conditionAvailable) return []
 
     const newVehiclesRevenue = data?.new?.reduce((sum, item) => sum + item?.total_price, 0) || 0
     const usedVehiclesRevenue = data?.used?.reduce((sum, item) => sum + item?.total_price, 0) || 0
@@ -42,9 +45,7 @@ const VehicleTypeChart = ({ data }) => {
 
   // Process popular models data
   const getPopularModels = () => {
-    if (!data || (!data?.new && !data?.used)) return []
-
-    const allVehicles = [...(data?.new || []), ...(data?.used || [])]
+    if (!data) return []
     const modelCounts = {}
 
     allVehicles?.forEach((vehicle) => {
@@ -107,18 +108,23 @@ const VehicleTypeChart = ({ data }) => {
             Vehicle Type Analysis
           </h3>
           <p className="text-gray-600 text-sm mt-1">
-            Product sales distribution by vehicle age category
+            {conditionAvailable
+              ? 'Product sales distribution by vehicle condition'
+              : 'Vehicle condition unavailable'}
           </p>
         </div>
-        <div className="flex items-center text-green-600">
-          <TrendingUp className="w-5 h-5 mr-1" />
-          <span className="text-sm font-semibold">Active</span>
-        </div>
+        {conditionAvailable && (
+          <div className="flex items-center text-green-600">
+            <TrendingUp className="w-5 h-5 mr-1" />
+            <span className="text-sm font-semibold">Active</span>
+          </div>
+        )}
       </div>
       {/* Pie Chart */}
-      <div className="mb-8">
-        <h4 className="text-lg font-semibold text-gray-800 mb-4">Revenue Distribution</h4>
-        {pieData?.length > 0 ? (
+      {conditionAvailable && (
+        <div className="mb-8">
+          <h4 className="text-lg font-semibold text-gray-800 mb-4">Revenue Distribution</h4>
+          {pieData?.length > 0 ? (
           <div style={{ width: '100%', minWidth: 0, height: 320 }}>
             <ResponsiveContainer width="100%" height={320} minWidth={0}>
               <PieChart>
@@ -145,15 +151,16 @@ const VehicleTypeChart = ({ data }) => {
               </PieChart>
             </ResponsiveContainer>
           </div>
-        ) : (
+          ) : (
           <div className="h-80 flex items-center justify-center text-gray-500">
             <div className="text-center">
               <Car className="w-12 h-12 mx-auto mb-4 text-gray-300" />
               <p>No vehicle type data available</p>
             </div>
           </div>
-        )}
-      </div>
+          )}
+        </div>
+      )}
       {/* Popular Models Bar Chart */}
       <div>
         <h4 className="text-lg font-semibold text-gray-800 mb-4">Top Performing Models</h4>
@@ -179,7 +186,8 @@ const VehicleTypeChart = ({ data }) => {
       </div>
       {/* Summary Stats */}
       <div className="mt-6 pt-6 border-t border-gray-200">
-        <div className="grid grid-cols-2 gap-4">
+        {conditionAvailable ? (
+          <div className="grid grid-cols-2 gap-4">
           <div className="text-center">
             <div className="text-2xl font-bold text-indigo-600">{data?.new?.length || 0}</div>
             <div className="text-sm text-gray-600">New Vehicle Products</div>
@@ -188,9 +196,23 @@ const VehicleTypeChart = ({ data }) => {
             <div className="text-2xl font-bold text-green-600">{data?.used?.length || 0}</div>
             <div className="text-sm text-gray-600">Used Vehicle Products</div>
           </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-4">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-indigo-600">{allVehicles.length}</div>
+              <div className="text-sm text-gray-600">Vehicle Products</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-green-600">
+                ${allVehicles.reduce((sum, item) => sum + (item?.total_price || 0), 0).toLocaleString()}
+              </div>
+              <div className="text-sm text-gray-600">Vehicle Product Revenue</div>
+            </div>
+          </div>
+        )}
         </div>
       </div>
-    </div>
   )
 }
 

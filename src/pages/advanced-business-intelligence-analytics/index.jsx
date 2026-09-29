@@ -26,7 +26,7 @@ const AdvancedBusinessIntelligenceAnalytics = () => {
 
   // Data states
   const [dashboardData, setDashboardData] = useState({
-    vehicle_type_analysis: { new: [], used: [] },
+    vehicle_type_analysis: { new: [], used: [], unknown: [], condition_available: false },
     products_per_deal: { averages: {}, deals: [] },
     vendor_performance: [],
     category_analysis: [],
