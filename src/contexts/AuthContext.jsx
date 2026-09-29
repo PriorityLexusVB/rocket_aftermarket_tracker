@@ -1,5 +1,6 @@
 import React, { createContext, useState, useEffect, useCallback, useContext, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
+import { recordSuccessfulLoginInBackground } from '../lib/loginTelemetry'
 import { persistOrgId } from '../utils/orgStorage'
 
 export const AuthContext = createContext()
@@ -154,6 +155,10 @@ export const AuthProvider = ({ children }) => {
         if (!profileResult?.ok) {
           return { success: false, error: profileResult?.error || 'Your Rocket access is unavailable.' }
         }
+        recordSuccessfulLoginInBackground({
+          authUserId: sessionUser?.id,
+          profileId: profileResult?.profile?.id,
+        })
         return { success: true, data: { ...data, session: nextSession } }
       }
 
