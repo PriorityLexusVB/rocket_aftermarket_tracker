@@ -343,11 +343,13 @@ const GuestClaimsSubmissionForm = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div>
-                <label className={LABEL_CLS}>
+                <label htmlFor="guest-claim-customer-name" className={LABEL_CLS}>
                   Full Name <span className="text-red-500">*</span>
                 </label>
                 <input
+                  id="guest-claim-customer-name"
                   type="text"
+                  required
                   value={formData?.customer_name}
                   onChange={(e) => handleInputChange('customer_name', e?.target?.value)}
                   className={inputCls(errors?.customer_name)}
@@ -357,11 +359,13 @@ const GuestClaimsSubmissionForm = () => {
               </div>
 
               <div>
-                <label className={LABEL_CLS}>
+                <label htmlFor="guest-claim-customer-email" className={LABEL_CLS}>
                   Email Address <span className="text-red-500">*</span>
                 </label>
                 <input
+                  id="guest-claim-customer-email"
                   type="email"
+                  required
                   value={formData?.customer_email}
                   onChange={(e) => handleInputChange('customer_email', e?.target?.value)}
                   className={inputCls(errors?.customer_email)}
@@ -371,11 +375,13 @@ const GuestClaimsSubmissionForm = () => {
               </div>
 
               <div className="md:col-span-2">
-                <label className={LABEL_CLS}>
+                <label htmlFor="guest-claim-customer-phone" className={LABEL_CLS}>
                   Phone Number <span className="text-red-500">*</span>
                 </label>
                 <input
+                  id="guest-claim-customer-phone"
                   type="tel"
+                  required
                   value={formData?.customer_phone}
                   onChange={(e) => handleInputChange('customer_phone', e?.target?.value)}
                   className={inputCls(errors?.customer_phone)}
@@ -392,11 +398,13 @@ const GuestClaimsSubmissionForm = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
               <div>
-                <label className={LABEL_CLS}>
+                <label htmlFor="guest-claim-vehicle-year" className={LABEL_CLS}>
                   Year <span className="text-red-500">*</span>
                 </label>
                 <input
+                  id="guest-claim-vehicle-year"
                   type="number"
+                  required
                   value={formData?.vehicle_year}
                   onChange={(e) => handleInputChange('vehicle_year', e?.target?.value)}
                   className={inputCls(errors?.vehicle_year)}
@@ -408,11 +416,13 @@ const GuestClaimsSubmissionForm = () => {
               </div>
 
               <div>
-                <label className={LABEL_CLS}>
+                <label htmlFor="guest-claim-vehicle-make" className={LABEL_CLS}>
                   Make <span className="text-red-500">*</span>
                 </label>
                 <input
+                  id="guest-claim-vehicle-make"
                   type="text"
+                  required
                   value={formData?.vehicle_make}
                   onChange={(e) => handleInputChange('vehicle_make', e?.target?.value)}
                   className={inputCls(errors?.vehicle_make)}
@@ -422,11 +432,13 @@ const GuestClaimsSubmissionForm = () => {
               </div>
 
               <div>
-                <label className={LABEL_CLS}>
+                <label htmlFor="guest-claim-vehicle-model" className={LABEL_CLS}>
                   Model <span className="text-red-500">*</span>
                 </label>
                 <input
+                  id="guest-claim-vehicle-model"
                   type="text"
+                  required
                   value={formData?.vehicle_model}
                   onChange={(e) => handleInputChange('vehicle_model', e?.target?.value)}
                   className={inputCls(errors?.vehicle_model)}
@@ -436,11 +448,13 @@ const GuestClaimsSubmissionForm = () => {
               </div>
 
               <div className="md:col-span-3">
-                <label className={LABEL_CLS}>
+                <label htmlFor="guest-claim-vehicle-vin" className={LABEL_CLS}>
                   VIN <span className="text-red-500">*</span>
                 </label>
                 <input
+                  id="guest-claim-vehicle-vin"
                   type="text"
+                  required
                   value={formData?.vehicle_vin}
                   onChange={(e) =>
                     handleInputChange('vehicle_vin', e?.target?.value?.toUpperCase())
@@ -463,10 +477,12 @@ const GuestClaimsSubmissionForm = () => {
 
             <div className="space-y-5">
               <div>
-                <label className={LABEL_CLS}>
+                <label htmlFor="guest-claim-product-selection" className={LABEL_CLS}>
                   Product / Service <span className="text-red-500">*</span>
                 </label>
                 <select
+                  id="guest-claim-product-selection"
+                  required
                   value={formData?.product_selection}
                   onChange={(e) => handleInputChange('product_selection', e?.target?.value)}
                   disabled={loading}
@@ -494,10 +510,12 @@ const GuestClaimsSubmissionForm = () => {
               {/* Other product description — shows when "other" is selected */}
               {formData?.product_selection === 'other' && (
                 <div>
-                  <label className={LABEL_CLS}>
+                  <label htmlFor="guest-claim-other-product-description" className={LABEL_CLS}>
                     Describe the product / service <span className="text-red-500">*</span>
                   </label>
                   <textarea
+                    id="guest-claim-other-product-description"
+                    required
                     value={formData?.other_product_description}
                     onChange={(e) =>
                       handleInputChange('other_product_description', e?.target?.value)
@@ -511,8 +529,11 @@ const GuestClaimsSubmissionForm = () => {
               )}
 
               <div>
-                <label className={LABEL_CLS}>Purchase Date (Optional)</label>
+                <label htmlFor="guest-claim-purchase-date" className={LABEL_CLS}>
+                  Purchase Date (Optional)
+                </label>
                 <input
+                  id="guest-claim-purchase-date"
                   type="date"
                   value={formData?.purchase_date}
                   onChange={(e) => handleInputChange('purchase_date', e?.target?.value)}
@@ -531,10 +552,12 @@ const GuestClaimsSubmissionForm = () => {
 
             <div className="space-y-5">
               <div>
-                <label className={LABEL_CLS}>
+                <label htmlFor="guest-claim-issue-description" className={LABEL_CLS}>
                   Issue Description <span className="text-red-500">*</span>
                 </label>
                 <textarea
+                  id="guest-claim-issue-description"
+                  required
                   value={formData?.issue_description}
                   onChange={(e) => handleInputChange('issue_description', e?.target?.value)}
                   rows={4}
@@ -545,10 +568,12 @@ const GuestClaimsSubmissionForm = () => {
               </div>
 
               <div>
-                <label className={LABEL_CLS}>
+                <label htmlFor="guest-claim-preferred-resolution" className={LABEL_CLS}>
                   Preferred Resolution <span className="text-red-500">*</span>
                 </label>
                 <select
+                  id="guest-claim-preferred-resolution"
+                  required
                   value={formData?.preferred_resolution}
                   onChange={(e) => handleInputChange('preferred_resolution', e?.target?.value)}
                   className={inputCls(errors?.preferred_resolution)}
@@ -563,8 +588,11 @@ const GuestClaimsSubmissionForm = () => {
               </div>
 
               <div>
-                <label className={LABEL_CLS}>Comments (Optional)</label>
+                <label htmlFor="guest-claim-comments" className={LABEL_CLS}>
+                  Comments (Optional)
+                </label>
                 <textarea
+                  id="guest-claim-comments"
                   value={formData?.comments}
                   onChange={(e) => handleInputChange('comments', e?.target?.value)}
                   rows={3}
